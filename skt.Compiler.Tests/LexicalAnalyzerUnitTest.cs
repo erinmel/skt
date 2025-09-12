@@ -554,6 +554,10 @@ string message = ""hello"";";
         string code = "int x = 42;";
         string testFilePath = "test_file.skt";
         
+        // Clean up before test to ensure clean state
+        string outputDir = "lexical_output";
+        SafeDeleteDirectory(outputDir);
+
         // Act
         var (tokens, errors) = _analyzer.TokenizeToFile(code, testFilePath);
         
@@ -562,17 +566,13 @@ string message = ""hello"";";
         Assert.True(tokens.Count > 0);
         
         // Verify file was created
-        string outputDir = "lexical_output";
         Assert.True(Directory.Exists(outputDir));
         
         var files = Directory.GetFiles(outputDir, "*.sktt");
         Assert.Single(files);
         
-        // Cleanup
-        if (Directory.Exists(outputDir))
-        {
-            Directory.Delete(outputDir, true);
-        }
+        // Cleanup after test
+        SafeDeleteDirectory(outputDir);
     }
 
     [Fact]
@@ -595,10 +595,51 @@ string message = ""hello"";";
         
         // Cleanup
         string outputDir = "lexical_output";
-        if (Directory.Exists(outputDir))
+        SafeDeleteDirectory(outputDir);
+    }
+
+    private static void SafeDeleteDirectory(string directoryPath)
+    {
+        if (!Directory.Exists(directoryPath))
+            return;
+
+        // Try to delete the directory with retry logic to handle file locking
+        int maxRetries = 5;
+        int retryDelay = 100; // milliseconds
+
+        for (int i = 0; i < maxRetries; i++)
         {
-            Directory.Delete(outputDir, true);
+            try
+            {
+                // First, try to release any file handles by forcing garbage collection
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                // Set all files to normal attributes to ensure they can be deleted
+                foreach (string file in Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories))
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                }
+
+                Directory.Delete(directoryPath, true);
+                return; // Success, exit
+            }
+            catch (IOException) when (i < maxRetries - 1)
+            {
+                // Wait before retrying
+                Thread.Sleep(retryDelay);
+                retryDelay *= 2; // Exponential backoff
+            }
+            catch (UnauthorizedAccessException) when (i < maxRetries - 1)
+            {
+                // Wait before retrying
+                Thread.Sleep(retryDelay);
+                retryDelay *= 2; // Exponential backoff
+            }
         }
+
+        // If we get here, all retries failed - log but don't fail the test
+        Console.WriteLine($"Warning: Could not delete directory {directoryPath} after {maxRetries} attempts");
     }
 
     #endregion

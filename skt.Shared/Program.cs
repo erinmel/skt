@@ -107,6 +107,49 @@ public static class TokenConstants
 
     public static readonly HashSet<char> MultiCharFirst = new()
     {
-        '+', '-', '*', '/', '^', '%', '=', '!', '<', '>', '&', '|'
+        '+', '-', '*', '/', '%', '^', '=', '!', '<', '>', '&', '|'
     };
 }
+
+// AST Node classes
+[Serializable]
+public class ASTNode
+{
+    public string Rule { get; set; }
+    public List<ASTNode> Children { get; set; }
+    public Token? Token { get; set; }
+    public int Line { get; set; }
+    public int Column { get; set; }
+    public int EndLine { get; set; }
+    public int EndColumn { get; set; }
+
+    public ASTNode(string rule, List<ASTNode>? children = null, Token? token = null,
+                   int line = 0, int column = 0, int endLine = 0, int endColumn = 0)
+    {
+        Rule = rule;
+        Children = children ?? new List<ASTNode>();
+        Token = token;
+        Line = line;
+        Column = column;
+        EndLine = endLine;
+        EndColumn = endColumn;
+    }
+
+    public bool IsTerminal => Token != null;
+    public bool IsError => Rule.StartsWith("ERROR");
+}
+
+// Production rule for grammar
+public record Production(string LeftSide, List<string> RightSide, int Index);
+
+// Parser error with position information
+[Serializable]
+public record ParseError(
+    string Message,
+    int Line,
+    int Column,
+    int EndLine,
+    int EndColumn,
+    string? ExpectedToken = null,
+    string? FoundToken = null
+);
