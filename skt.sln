@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "skt.Compiler", "skt.Compile
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "skt.IDE", "skt.IDE\skt.IDE.csproj", "{23AEB46A-B1CB-44BE-A37D-3FE1DB2FDCC0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "skt.Compiler.Tests", "skt.Compiler.Tests\skt.Compiler.Tests.csproj", "{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,18 @@ Global
 		{23AEB46A-B1CB-44BE-A37D-3FE1DB2FDCC0}.Release|x64.Build.0 = Release|Any CPU
 		{23AEB46A-B1CB-44BE-A37D-3FE1DB2FDCC0}.Release|x86.ActiveCfg = Release|Any CPU
 		{23AEB46A-B1CB-44BE-A37D-3FE1DB2FDCC0}.Release|x86.Build.0 = Release|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Debug|x64.Build.0 = Debug|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Debug|x86.Build.0 = Debug|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Release|x64.ActiveCfg = Release|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Release|x64.Build.0 = Release|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Release|x86.ActiveCfg = Release|Any CPU
+		{1231BDC6-C929-49EF-8C8C-0EA1DB57F9AB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

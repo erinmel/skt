@@ -1,5 +1,28 @@
+# Build outputs
 bin/
 obj/
 /packages/
+
+# JetBrains Rider/IntelliJ IDEA
+.idea/
+*.iml
 riderModule.iml
 /_ReSharper.Caches/
+.rider/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Common temp files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# OS generated files
+.DS_Store
+Thumbs.db
