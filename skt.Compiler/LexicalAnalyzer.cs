@@ -335,6 +335,13 @@ public class LexicalAnalyzer
         using var sha256 = SHA256.Create();
         byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(filePath));
         string hashHex = Convert.ToHexString(hash).ToLower(); // Use full 64 chars for collision resistance
+        // Ensure the directory exists before trying to create the file
+        string? directory = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
 
         // Add timestamp for collision avoidance
         string timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");

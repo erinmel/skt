@@ -912,7 +912,7 @@ public class SyntaxAnalyzerUnitTest
         var childrenProperty = nodeType.GetProperty("Children");
 
         string rule = ruleProperty?.GetValue(node)?.ToString() ?? "Unknown";
-        string value = valueProperty?.GetValue(node)?.ToString();
+        string? value = valueProperty?.GetValue(node)?.ToString();
 
         if (!string.IsNullOrEmpty(value))
         {
