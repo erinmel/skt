@@ -334,7 +334,7 @@ public class LexicalAnalyzer
         // Combine file path hash + timestamp for uniqueness
         using var sha256 = SHA256.Create();
         byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(filePath));
-        string hashHex = Convert.ToHexString(hash)[..16].ToLower(); // Use first 16 chars
+        string hashHex = Convert.ToHexString(hash).ToLower(); // Use full 64 chars for collision resistance
 
         // Add timestamp for collision avoidance
         string timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
