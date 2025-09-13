@@ -399,7 +399,7 @@ public class SyntaxAnalyzer
     {
         using var sha256 = SHA256.Create();
         byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(filePath));
-        return Convert.ToHexString(hash)[..16].ToLower(); // Use first 16 chars
+        return Convert.ToHexString(hash).ToLower(); // Use full hash for collision resistance
     }
 
     private static string? FindTokenFile(string hashPrefix)
