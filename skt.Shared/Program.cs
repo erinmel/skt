@@ -107,7 +107,7 @@ public static class TokenConstants
 
     public static readonly HashSet<char> MultiCharFirst = new()
     {
-        '+', '-', '*', '/', '%', '^', '=', '!', '<', '>', '&', '|'
+        '+', '-', '*', '/', '^', '%', '=', '!', '<', '>', '&', '|'
     };
 }
 
