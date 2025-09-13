@@ -411,14 +411,6 @@ public class LexicalAnalyzer
         return tokens;
     }
 
-    // Alternative: MessagePack serialization (if you want to add the NuGet package)
-    private static void WriteMessagePackTokens(string filePath, List<Token> tokens)
-    {
-        // Uncomment if you add MessagePack NuGet package
-        // var bytes = MessagePackSerializer.Serialize(tokens);
-        // File.WriteAllBytes(filePath, bytes);
-    }
-
     // Fallback: Optimized JSON with compression
     private static void WriteCompressedJsonTokens(string filePath, List<Token> tokens)
     {
