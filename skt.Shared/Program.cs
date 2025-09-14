@@ -1,24 +1,23 @@
-﻿// See https://aka.ms/new-console-template for more information
-using System.Text.Json.Serialization;
+﻿using System.Collections.Immutable;
 
 namespace skt.Shared;
 
 public enum TokenType
 {
-    INTEGER,
-    REAL,
-    BOOLEAN,
-    STRING,
-    IDENTIFIER,
-    RESERVED_WORD,
-    COMMENT,
-    ARITHMETIC_OPERATOR,
-    RELATIONAL_OPERATOR,
-    LOGICAL_OPERATOR,
-    ASSIGNMENT_OPERATOR,
-    SHIFT_OPERATOR,
-    SYMBOL,
-    ERROR
+    Integer,
+    Real,
+    Boolean,
+    String,
+    Identifier,
+    ReservedWord,
+    Comment,
+    ArithmeticOperator,
+    RelationalOperator,
+    LogicalOperator,
+    AssignmentOperator,
+    ShiftOperator,
+    Symbol,
+    Error
 }
 
 [Serializable]
@@ -44,90 +43,90 @@ public record ErrorToken(
 
 public static class TokenConstants
 {
-    public static readonly HashSet<string> Keywords = new()
-    {
-        "if", "else", "do", "while", "switch", "case",
-        "int", "float", "bool", "string", "main",
-        "cin", "cout", "true", "false"
-    };
+    public static readonly ImmutableHashSet<string> Keywords =
+        ImmutableHashSet.Create(
+            "if", "else", "do", "while", "switch", "case",
+            "int", "float", "bool", "string", "main",
+            "cin", "cout", "true", "false"
+        );
 
-    public static readonly Dictionary<string, TokenType> OperatorsMap = new()
-    {
-        { "+", TokenType.ARITHMETIC_OPERATOR },
-        { "-", TokenType.ARITHMETIC_OPERATOR },
-        { "*", TokenType.ARITHMETIC_OPERATOR },
-        { "/", TokenType.ARITHMETIC_OPERATOR },
-        { "%", TokenType.ARITHMETIC_OPERATOR },
-        { "^", TokenType.ARITHMETIC_OPERATOR },
-        { "<", TokenType.RELATIONAL_OPERATOR },
-        { ">", TokenType.RELATIONAL_OPERATOR },
-        { "==", TokenType.RELATIONAL_OPERATOR },
-        { "<=", TokenType.RELATIONAL_OPERATOR },
-        { ">=", TokenType.RELATIONAL_OPERATOR },
-        { "!=", TokenType.RELATIONAL_OPERATOR },
-        { "&&", TokenType.LOGICAL_OPERATOR },
-        { "||", TokenType.LOGICAL_OPERATOR },
-        { "!", TokenType.LOGICAL_OPERATOR },
-        { "=", TokenType.ASSIGNMENT_OPERATOR },
-        { "+=", TokenType.ASSIGNMENT_OPERATOR },
-        { "-=", TokenType.ASSIGNMENT_OPERATOR },
-        { "*=", TokenType.ASSIGNMENT_OPERATOR },
-        { "/=", TokenType.ASSIGNMENT_OPERATOR },
-        { "%=", TokenType.ASSIGNMENT_OPERATOR },
-        { "^=", TokenType.ASSIGNMENT_OPERATOR },
-        { "++", TokenType.ASSIGNMENT_OPERATOR },
-        { "--", TokenType.ASSIGNMENT_OPERATOR },
-        { "(", TokenType.SYMBOL },
-        { ")", TokenType.SYMBOL },
-        { "{", TokenType.SYMBOL },
-        { "}", TokenType.SYMBOL },
-        { ",", TokenType.SYMBOL },
-        { ";", TokenType.SYMBOL }
-    };
+    public static readonly ImmutableDictionary<string, TokenType> OperatorsMap =
+        new Dictionary<string, TokenType>
+        {
+            { "+", TokenType.ArithmeticOperator },
+            { "-", TokenType.ArithmeticOperator },
+            { "*", TokenType.ArithmeticOperator },
+            { "/", TokenType.ArithmeticOperator },
+            { "%", TokenType.ArithmeticOperator },
+            { "^", TokenType.ArithmeticOperator },
+            { "<", TokenType.RelationalOperator },
+            { ">", TokenType.RelationalOperator },
+            { "==", TokenType.RelationalOperator },
+            { "<=", TokenType.RelationalOperator },
+            { ">=", TokenType.RelationalOperator },
+            { "!=", TokenType.RelationalOperator },
+            { "&&", TokenType.LogicalOperator },
+            { "||", TokenType.LogicalOperator },
+            { "!", TokenType.LogicalOperator },
+            { "=", TokenType.AssignmentOperator },
+            { "+=", TokenType.AssignmentOperator },
+            { "-=", TokenType.AssignmentOperator },
+            { "*=", TokenType.AssignmentOperator },
+            { "/=", TokenType.AssignmentOperator },
+            { "%=", TokenType.AssignmentOperator },
+            { "^=", TokenType.AssignmentOperator },
+            { "++", TokenType.AssignmentOperator },
+            { "--", TokenType.AssignmentOperator },
+            { "(", TokenType.Symbol },
+            { ")", TokenType.Symbol },
+            { "{", TokenType.Symbol },
+            { "}", TokenType.Symbol },
+            { ",", TokenType.Symbol },
+            { ";", TokenType.Symbol }
+        }.ToImmutableDictionary();
 
-    public static readonly Dictionary<string, TokenType> MultiCharOperators = new()
-    {
-        { "++", TokenType.ASSIGNMENT_OPERATOR },
-        { "+=", TokenType.ASSIGNMENT_OPERATOR },
-        { "--", TokenType.ASSIGNMENT_OPERATOR },
-        { "-=", TokenType.ASSIGNMENT_OPERATOR },
-        { "*=", TokenType.ASSIGNMENT_OPERATOR },
-        { "/=", TokenType.ASSIGNMENT_OPERATOR },
-        { "%=", TokenType.ASSIGNMENT_OPERATOR },
-        { "^=", TokenType.ASSIGNMENT_OPERATOR },
-        { "==", TokenType.RELATIONAL_OPERATOR },
-        { "!=", TokenType.RELATIONAL_OPERATOR },
-        { "<=", TokenType.RELATIONAL_OPERATOR },
-        { ">=", TokenType.RELATIONAL_OPERATOR },
-        { ">>", TokenType.SHIFT_OPERATOR },
-        { "<<", TokenType.SHIFT_OPERATOR },
-        { "&&", TokenType.LOGICAL_OPERATOR },
-        { "||", TokenType.LOGICAL_OPERATOR }
-    };
+    public static readonly ImmutableDictionary<string, TokenType> MultiCharOperators =
+        new Dictionary<string, TokenType>
+        {
+            { "++", TokenType.AssignmentOperator },
+            { "+=", TokenType.AssignmentOperator },
+            { "--", TokenType.AssignmentOperator },
+            { "-=", TokenType.AssignmentOperator },
+            { "*=", TokenType.AssignmentOperator },
+            { "/=", TokenType.AssignmentOperator },
+            { "%=", TokenType.AssignmentOperator },
+            { "^=", TokenType.AssignmentOperator },
+            { "==", TokenType.RelationalOperator },
+            { "!=", TokenType.RelationalOperator },
+            { "<=", TokenType.RelationalOperator },
+            { ">=", TokenType.RelationalOperator },
+            { ">>", TokenType.ShiftOperator },
+            { "<<", TokenType.ShiftOperator },
+            { "&&", TokenType.LogicalOperator },
+            { "||", TokenType.LogicalOperator }
+        }.ToImmutableDictionary();
 
-    public static readonly HashSet<char> MultiCharFirst = new()
-    {
-        '+', '-', '*', '/', '^', '%', '=', '!', '<', '>', '&', '|'
-    };
+    public static readonly ImmutableHashSet<char> MultiCharFirst =
+        ImmutableHashSet.Create('+', '-', '*', '/', '^', '%', '=', '!', '<', '>', '&', '|');
 }
 
 // AST Node classes
 [Serializable]
-public class ASTNode
+public class AstNode
 {
     public string Rule { get; set; }
-    public List<ASTNode> Children { get; set; }
+    public List<AstNode> Children { get; set; }
     public Token? Token { get; set; }
     public int Line { get; set; }
     public int Column { get; set; }
     public int EndLine { get; set; }
     public int EndColumn { get; set; }
 
-    public ASTNode(string rule, List<ASTNode>? children = null, Token? token = null,
+    public AstNode(string rule, List<AstNode>? children = null, Token? token = null,
                    int line = 0, int column = 0, int endLine = 0, int endColumn = 0)
     {
         Rule = rule;
-        Children = children ?? new List<ASTNode>();
+        Children = children ?? new List<AstNode>();
         Token = token;
         Line = line;
         Column = column;
@@ -136,7 +135,7 @@ public class ASTNode
     }
 
     public bool IsTerminal => Token != null;
-    public bool IsError => Rule.StartsWith("ERROR");
+    public bool IsError => Rule.StartsWith("Error");
 }
 
 // Production rule for grammar

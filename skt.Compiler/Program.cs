@@ -123,7 +123,7 @@ else
     }
 }
 
-static void PrintAST(ASTNode node, int depth)
+static void PrintAST(AstNode node, int depth)
 {
     string indent = new string(' ', depth * 2);
 

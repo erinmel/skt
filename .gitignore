@@ -4,11 +4,11 @@ obj/
 /packages/
 
 # JetBrains Rider/IntelliJ IDEA
-.idea/
+.idea/**
 *.iml
 riderModule.iml
 /_ReSharper.Caches/
-.rider/
+.rider/**
 
 # Visual Studio
 .vs/
@@ -26,3 +26,8 @@ riderModule.iml
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Test results
+TestResults/
+**/TestResults/
+*.trx

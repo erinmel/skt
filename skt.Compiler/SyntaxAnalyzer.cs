@@ -342,10 +342,10 @@ public class SyntaxAnalyzer
 
         var tokenMapping = new Dictionary<TokenType, string>
         {
-            [TokenType.IDENTIFIER] = "ID",
-            [TokenType.INTEGER] = "ENTERO",
-            [TokenType.REAL] = "REAL",
-            [TokenType.STRING] = "STRING_LITERAL"
+            [TokenType.Identifier] = "ID",
+            [TokenType.Integer] = "ENTERO",
+            [TokenType.Real] = "REAL",
+            [TokenType.String] = "STRING_LITERAL"
         };
 
         return tokenMapping.GetValueOrDefault(token.Type, token.Value);
@@ -354,7 +354,7 @@ public class SyntaxAnalyzer
     private Token? CurrentToken => _position < _tokens.Count ? _tokens[_position] : null;
     private bool AtEnd => _position >= _tokens.Count;
 
-    public (ASTNode? ast, List<ParseError> errors) Parse(string filePath)
+    public (AstNode? ast, List<ParseError> errors) Parse(string filePath)
     {
         try
         {
@@ -372,7 +372,7 @@ public class SyntaxAnalyzer
             _tokens = LexicalAnalyzer.ReadBinaryTokens(file);
 
             // Filter out comments (though they should already be excluded)
-            _tokens = _tokens.Where(t => t.Type != TokenType.COMMENT).ToList();
+            _tokens = _tokens.Where(t => t.Type != TokenType.Comment).ToList();
 
             _position = 0;
             _errors.Clear();
@@ -422,7 +422,7 @@ public class SyntaxAnalyzer
         return matchingFiles.OrderByDescending(f => File.GetLastWriteTime(f)).First();
     }
 
-    private ASTNode? ParseNonTerminal(string nonTerminal)
+    private AstNode? ParseNonTerminal(string nonTerminal)
     {
         // Recursion control
         _recursionDepth++;
@@ -451,7 +451,7 @@ public class SyntaxAnalyzer
         }
     }
 
-    private ASTNode? ParseStandard(string nonTerminal)
+    private AstNode? ParseStandard(string nonTerminal)
     {
         var currentToken = CurrentToken;
 
@@ -460,7 +460,7 @@ public class SyntaxAnalyzer
             if (_parsingTable.ContainsKey((nonTerminal, "$")))
             {
                 var (production, _) = _parsingTable[(nonTerminal, "$")];
-                return CreateNode(nonTerminal, new List<ASTNode>(), currentToken);
+                return CreateNode(nonTerminal, new List<AstNode>(), currentToken);
             }
             else
             {
@@ -476,7 +476,7 @@ public class SyntaxAnalyzer
             if (_parsingTable.ContainsKey((nonTerminal, "$")))
             {
                 var (production, _) = _parsingTable[(nonTerminal, "$")];
-                return CreateNode(nonTerminal, new List<ASTNode>(), currentToken);
+                return CreateNode(nonTerminal, new List<AstNode>(), currentToken);
             }
             else
             {
@@ -493,10 +493,10 @@ public class SyntaxAnalyzer
         return ParseProduction(nonTerminal, targetProduction);
     }
 
-    private ASTNode ParseProduction(string nonTerminal, List<string> production)
+    private AstNode ParseProduction(string nonTerminal, List<string> production)
     {
         var currentToken = CurrentToken;
-        var node = CreateNode(nonTerminal, new List<ASTNode>(), currentToken);
+        var node = CreateNode(nonTerminal, new List<AstNode>(), currentToken);
 
         foreach (var symbol in production)
         {
@@ -532,7 +532,7 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private ASTNode? ParseTerminal(string expectedSymbol)
+    private AstNode? ParseTerminal(string expectedSymbol)
     {
         var currentToken = CurrentToken;
 
@@ -544,11 +544,11 @@ public class SyntaxAnalyzer
 
         string currentTerminal = MapTokenToTerminal(currentToken);
 
-        if ((expectedSymbol == "STRING_LITERAL" && currentToken!.Type == TokenType.STRING) ||
+        if ((expectedSymbol == "STRING_LITERAL" && currentToken!.Type == TokenType.String) ||
             currentTerminal == expectedSymbol)
         {
             _position++;
-            return CreateNode(expectedSymbol, new List<ASTNode>(), currentToken, currentToken);
+            return CreateNode(expectedSymbol, new List<AstNode>(), currentToken, currentToken);
         }
         else
         {
@@ -566,7 +566,7 @@ public class SyntaxAnalyzer
         }
     }
 
-    private ASTNode? ParseWithRecovery(string nonTerminal)
+    private AstNode? ParseWithRecovery(string nonTerminal)
     {
         return nonTerminal switch
         {
@@ -577,10 +577,10 @@ public class SyntaxAnalyzer
         };
     }
 
-    private ASTNode ParseVdeclRecovery()
+    private AstNode ParseVdeclRecovery()
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("vdecl", new List<ASTNode>(), currentToken);
+        var node = CreateNode("vdecl", new List<AstNode>(), currentToken);
 
         // type
         var typeNode = ParseNonTerminal("type");
@@ -603,10 +603,10 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private ASTNode ParseAsgnRecovery()
+    private AstNode ParseAsgnRecovery()
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("asgn", new List<ASTNode>(), currentToken);
+        var node = CreateNode("asgn", new List<AstNode>(), currentToken);
 
         // ID
         var idNode = ExpectToken("ID", "Identificador esperado en asignación");
@@ -659,7 +659,7 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private ASTNode? ParseStmtRecovery()
+    private AstNode? ParseStmtRecovery()
     {
         var currentToken = CurrentToken;
         string terminal = currentToken != null ? MapTokenToTerminal(currentToken) : "$";
@@ -674,10 +674,10 @@ public class SyntaxAnalyzer
         }
     }
 
-    private ASTNode ParseIdsRecovery()
+    private AstNode ParseIdsRecovery()
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("ids", new List<ASTNode>(), currentToken);
+        var node = CreateNode("ids", new List<AstNode>(), currentToken);
 
         // First ID
         var idNode = ExpectToken("ID", "Identificador esperado");
@@ -693,13 +693,13 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private ASTNode ParseIdsTRecovery()
+    private AstNode ParseIdsTRecovery()
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("ids_t", new List<ASTNode>(), currentToken);
+        var node = CreateNode("ids_t", new List<AstNode>(), currentToken);
 
         // Check if there's ID without comma (int x y;)
-        if (currentToken?.Type == TokenType.IDENTIFIER)
+        if (currentToken?.Type == TokenType.Identifier)
         {
             AddError("Falta coma entre identificadores");
             // Insert virtual comma
@@ -736,10 +736,10 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private ASTNode ParseIoStatement(string ioType)
+    private AstNode ParseIoStatement(string ioType)
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("stmt", new List<ASTNode>(), currentToken);
+        var node = CreateNode("stmt", new List<AstNode>(), currentToken);
 
         // cin/cout
         var ioNode = ExpectToken(ioType);
@@ -778,7 +778,7 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private ASTNode ExpectToken(string expectedTerminal, string? errorMessage = null)
+    private AstNode ExpectToken(string expectedTerminal, string? errorMessage = null)
     {
         var currentToken = CurrentToken;
 
@@ -794,7 +794,7 @@ public class SyntaxAnalyzer
         if (currentTerminal == expectedTerminal)
         {
             _position++;
-            return CreateNode(expectedTerminal, new List<ASTNode>(), currentToken, currentToken);
+            return CreateNode(expectedTerminal, new List<AstNode>(), currentToken, currentToken);
         }
         else
         {
@@ -827,7 +827,7 @@ public class SyntaxAnalyzer
         }
     }
 
-    private ASTNode CreateNode(string rule, List<ASTNode> children, Token? token = null, Token? endToken = null)
+    private AstNode CreateNode(string rule, List<AstNode> children, Token? token = null, Token? endToken = null)
     {
         if (token != null)
         {
@@ -838,7 +838,7 @@ public class SyntaxAnalyzer
                 tokenToAssign = endToken ?? token;
             }
 
-            return new ASTNode(
+            return new AstNode(
                 rule: rule,
                 children: children,
                 token: tokenToAssign,
@@ -850,33 +850,33 @@ public class SyntaxAnalyzer
         }
         else
         {
-            return new ASTNode(rule: rule, children: children, line: 0, column: 0);
+            return new AstNode(rule: rule, children: children, line: 0, column: 0);
         }
     }
 
-    private ASTNode CreateVirtualNode(string terminal)
+    private AstNode CreateVirtualNode(string terminal)
     {
         var currentToken = CurrentToken;
         var virtualToken = new Token(
             Type: new[] { ";", "(", ")", "{", "}", "," }.Contains(terminal)
-                ? TokenType.SYMBOL
-                : TokenType.IDENTIFIER,
+                ? TokenType.Symbol
+                : TokenType.Identifier,
             Value: terminal,
             Line: currentToken?.Line ?? 1,
             Column: currentToken?.Column ?? 1,
             EndLine: currentToken?.Line ?? 1,
             EndColumn: currentToken?.Column ?? 1
         );
-        return CreateNode(terminal, new List<ASTNode>(), virtualToken, virtualToken);
+        return CreateNode(terminal, new List<AstNode>(), virtualToken, virtualToken);
     }
 
-    private ASTNode CreateErrorNode(string expectedSymbol)
+    private AstNode CreateErrorNode(string expectedSymbol)
     {
         var currentToken = CurrentToken;
         // Error nodes don't have tokens because they're not terminals
-        return new ASTNode(
-            rule: $"ERROR({expectedSymbol})",
-            children: new List<ASTNode>(),
+        return new AstNode(
+            rule: $"Error({expectedSymbol})",
+            children: new List<AstNode>(),
             token: null,
             line: currentToken?.Line ?? 0,
             column: currentToken?.Column ?? 0,
@@ -885,7 +885,7 @@ public class SyntaxAnalyzer
         );
     }
 
-    private void UpdateNodePosition(ASTNode parent, ASTNode child)
+    private void UpdateNodePosition(AstNode parent, AstNode child)
     {
         parent.EndLine = child.EndLine;
         parent.EndColumn = child.EndColumn;

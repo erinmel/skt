@@ -1,6 +1,5 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using skt.Shared;
 
 namespace skt.Compiler;
@@ -100,13 +99,13 @@ public class LexicalAnalyzer
         return true;
     }
 
-    private TokenType DetermineIdentifierType(string value)
+    private static TokenType DetermineIdentifierType(string value)
     {
         return value switch
         {
-            "true" or "false" => TokenType.BOOLEAN,
-            _ when TokenConstants.Keywords.Contains(value) => TokenType.RESERVED_WORD,
-            _ => TokenType.IDENTIFIER
+            "true" or "false" => TokenType.Boolean,
+            _ when TokenConstants.Keywords.Contains(value) => TokenType.ReservedWord,
+            _ => TokenType.Identifier
         };
     }
 
@@ -137,7 +136,7 @@ public class LexicalAnalyzer
         }
 
         string value = _code[startPosition.._position];
-        TokenType tokenType = isReal ? TokenType.REAL : TokenType.INTEGER;
+        TokenType tokenType = isReal ? TokenType.Real : TokenType.Integer;
 
         tokens.Add(new Token(tokenType, value, startLine, startColumn, _line, _column));
         return true;
@@ -176,7 +175,7 @@ public class LexicalAnalyzer
         Advance(); // Skip closing quote
         string value = _code[startPosition.._position];
 
-        tokens.Add(new Token(TokenType.STRING, value, startLine, startColumn, _line, _column));
+        tokens.Add(new Token(TokenType.String, value, startLine, startColumn, _line, _column));
         return true;
     }
 
@@ -212,7 +211,7 @@ public class LexicalAnalyzer
         }
 
         string value = _code[startPosition.._position];
-        tokens.Add(new Token(TokenType.COMMENT, value, startLine, startColumn, _line, _column));
+        tokens.Add(new Token(TokenType.Comment, value, startLine, startColumn, _line, _column));
         return true;
     }
 
@@ -236,7 +235,7 @@ public class LexicalAnalyzer
         }
 
         string value = _code[startPosition.._position];
-        tokens.Add(new Token(TokenType.COMMENT, value, startLine, startColumn, _line, _column));
+        tokens.Add(new Token(TokenType.Comment, value, startLine, startColumn, _line, _column));
         return true;
     }
 
@@ -273,7 +272,7 @@ public class LexicalAnalyzer
     private void AddError(List<ErrorToken> errors, string expected, string found)
     {
         errors.Add(new ErrorToken(
-            TokenType.ERROR,
+            TokenType.Error,
             expected,
             found,
             _line,
@@ -288,7 +287,7 @@ public class LexicalAnalyzer
         var (tokens, errors) = Tokenize(code);
         
         // Exclude comments from the output file
-        var filteredTokens = tokens.Where(t => t.Type != TokenType.COMMENT).ToList();
+        var filteredTokens = tokens.Where(t => t.Type != TokenType.Comment).ToList();
 
         // Create better filename with timestamp to avoid collisions
         string fileName = CreateUniqueFileName(filePath) + ".sktt";
@@ -334,7 +333,7 @@ public class LexicalAnalyzer
         // Combine file path hash + timestamp for uniqueness
         using var sha256 = SHA256.Create();
         byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(filePath));
-        string hashHex = Convert.ToHexString(hash).ToLower(); // Use full 64 chars for collision resistance
+        string hashHex = Convert.ToHexString(hash).ToLower(); // Useful 64 chars for collision resistance
         // Ensure the directory exists before trying to create the file
         string? directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory))
@@ -351,25 +350,54 @@ public class LexicalAnalyzer
 
     private static void WriteBinaryTokens(string filePath, List<Token> tokens)
     {
-        using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-        using var writer = new BinaryWriter(stream, Encoding.UTF8);
-
-        // Write magic header and version for file format validation
-        writer.Write("SKTT".ToCharArray()); // Magic number
-        writer.Write((byte)1); // Version
-
-        // Write token count
-        writer.Write(tokens.Count);
-
-        // Write each token in binary format
-        foreach (var token in tokens)
+        // Ensure parent directory exists and handle potential concurrent deletions
+        string? dir = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(dir))
         {
-            writer.Write((byte)token.Type);
-            writer.Write(token.Value);
-            writer.Write(token.Line);
-            writer.Write(token.Column);
-            writer.Write(token.EndLine);
-            writer.Write(token.EndColumn);
+            Directory.CreateDirectory(dir);
+        }
+
+        int maxRetries = 3;
+        int delayMs = 50;
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                using var writer = new BinaryWriter(stream, Encoding.UTF8);
+
+                // Write magic header and version for file format validation
+                writer.Write("SKTT".ToCharArray()); // Magic number
+                writer.Write((byte)1); // Version
+
+                // Write token count
+                writer.Write(tokens.Count);
+
+                // Write each token in binary format
+                foreach (var token in tokens)
+                {
+                    writer.Write((byte)token.Type);
+                    writer.Write(token.Value);
+                    writer.Write(token.Line);
+                    writer.Write(token.Column);
+                    writer.Write(token.EndLine);
+                    writer.Write(token.EndColumn);
+                }
+
+                // Success: exit method
+                return;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                if (attempt == maxRetries - 1) throw;
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                Thread.Sleep(delayMs);
+                delayMs *= 2;
+            }
         }
     }
 
@@ -409,23 +437,5 @@ public class LexicalAnalyzer
         }
 
         return tokens;
-    }
-
-    // Fallback: Optimized JSON with compression
-    private static void WriteCompressedJsonTokens(string filePath, List<Token> tokens)
-    {
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault
-        };
-
-        byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(tokens, options);
-
-        // Compress with GZip for smaller files
-        using var fileStream = new FileStream(filePath, FileMode.Create);
-        using var gzipStream = new System.IO.Compression.GZipStream(fileStream, System.IO.Compression.CompressionMode.Compress);
-        gzipStream.Write(jsonBytes);
     }
 }
