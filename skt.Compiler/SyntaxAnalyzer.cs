@@ -10,12 +10,15 @@ public class SyntaxAnalyzer
     private const string RuleVdecl = "vdecl";
     private const string RuleIdsT = "ids_t";
     private const string RuleStmts = "stmts";
+    private const string RuleBlock = "block";
+    private const string RuleOutT = "out_t";
 
     // Shared token sets
     private static readonly string[] CriticalTokens = [";", ")", "}", "{", "("];
     private static readonly string[] IoTerms = ["cin", "cout"];
     private static readonly string[] IncOps = ["++", "--"];
     private static readonly string[] AsgnOps = ["=", "+=", "-=", "*=", "/=", "%=", "^="];
+    private static readonly string[] ElemStarts = ["int", "float", "bool", "string", "if", "while", "do", "cin", "cout", "ID"];
 
     private readonly Dictionary<string, List<List<string>>> _grammar;
     private readonly HashSet<string> _nonTerminals;
@@ -29,7 +32,7 @@ public class SyntaxAnalyzer
     private List<Token> _tokens;
     private int _position;
     private int _recursionDepth;
-    private const int MaxRecursionDepth = 300;
+    private const int MaxRecursionDepth = 8192;
 
     public SyntaxAnalyzer()
     {
@@ -52,8 +55,8 @@ public class SyntaxAnalyzer
     {
         return new Dictionary<string, List<List<string>>>
         {
-            ["prog"] = [["main", "{", "block", "}"]],
-            ["block"] = [["elem", "block"], [Epsilon]],
+            ["prog"] = [["main", "{", RuleBlock, "}"]],
+            [RuleBlock] = [["elem", RuleBlock], [Epsilon]],
             ["elem"] = [[RuleVdecl], ["stmt"]],
             [RuleVdecl] = [["type", "ids", ";"]],
             ["ids"] = [["ID", RuleIdsT]],
@@ -66,8 +69,8 @@ public class SyntaxAnalyzer
             ["cinstmt"] = [["cin", ">>", "ID", ";"]],
             ["coutstmt"] = [["cout", "<<", "out", ";"]],
             ["op_else"] = [["else", "{", RuleStmts, "}"], [Epsilon]],
-            ["out"] = [["expr", "out_t"]],
-            ["out_t"] = [["<<", "expr", "out_t"], [Epsilon]],
+            ["out"] = [["expr", RuleOutT]],
+            [RuleOutT] = [["<<", "expr", RuleOutT], [Epsilon]],
             // Modified: stmts now allows both variable declarations and statements
             [RuleStmts] = [["elem", RuleStmts], [Epsilon]],
             ["asgn"] = [["ID", "asgn_op", "expr", ";"], ["ID", "inc_op", ";"]],
@@ -398,21 +401,228 @@ public class SyntaxAnalyzer
 
         try
         {
-            // Special cases with error recovery
+            // Special cases with error recovery or iteration
             if (new[] { RuleVdecl, "asgn", "stmt" }.Contains(nonTerminal))
             {
                 return ParseWithRecovery(nonTerminal);
             }
-            else
+            if (nonTerminal == RuleStmts)
             {
-                return ParseStandard(nonTerminal);
+                return ParseStmtsIterative();
             }
+            if (nonTerminal == RuleBlock)
+            {
+                return ParseBlockIterative();
+            }
+            if (nonTerminal == RuleIdsT)
+            {
+                return ParseIdsTRecovery();
+            }
+            if (nonTerminal == RuleOutT)
+            {
+                return ParseOutTIterative();
+            }
+
+            return ParseStandard(nonTerminal);
         }
         finally
         {
             _recursionDepth--;
         }
     }
+
+    private static bool IsElemStart(Token? token)
+    {
+        if (token == null) return false;
+        string t = MapTokenToTerminal(token);
+        return ElemStarts.Contains(t);
+    }
+
+    private AstNode ParseStmtsIterative()
+    {
+        var currentToken = CurrentToken;
+        var node = CreateNode(RuleStmts, new List<AstNode>(), currentToken);
+
+        while (IsElemStart(CurrentToken))
+        {
+            var child = ParseNonTerminal("elem");
+            if (child != null)
+            {
+                node.Children.Add(child);
+                UpdateNodePosition(node, child);
+            }
+            else
+            {
+                // Recovery: break to avoid infinite loop
+                break;
+            }
+        }
+        return node;
+    }
+
+    private AstNode ParseBlockIterative()
+    {
+        var currentToken = CurrentToken;
+        var node = CreateNode(RuleBlock, new List<AstNode>(), currentToken);
+
+        while (IsElemStart(CurrentToken))
+        {
+            var child = ParseNonTerminal("elem");
+            if (child != null)
+            {
+                node.Children.Add(child);
+                UpdateNodePosition(node, child);
+            }
+            else
+            {
+                break;
+            }
+        }
+        return node;
+    }
+
+    private AstNode ParseOutTIterative()
+    {
+        var currentToken = CurrentToken;
+        var node = CreateNode(RuleOutT, new List<AstNode>(), currentToken);
+
+        while (true)
+        {
+            var tok = CurrentToken;
+            if (tok == null) break;
+            if (MapTokenToTerminal(tok) != "<<") break;
+
+            var op = ExpectToken("<<");
+            node.Children.Add(op);
+
+            var expr = ParseNonTerminal("expr");
+            if (expr != null)
+            {
+                node.Children.Add(expr);
+                UpdateNodePosition(node, expr);
+            }
+            else
+            {
+                AddError("Expresión esperada después de '<<'");
+                break;
+            }
+        }
+        return node;
+    }
+
+    // Make ids_t iterative to remove recursion
+    private AstNode ParseIdsTRecovery()
+    {
+        var currentToken = CurrentToken;
+        var node = CreateNode(RuleIdsT, new List<AstNode>(), currentToken);
+
+        while (true)
+        {
+            var tok = CurrentToken;
+            if (tok == null) break;
+            var term = MapTokenToTerminal(tok);
+
+            if (term == ",")
+            {
+                var commaNode = ExpectToken(",");
+                node.Children.Add(commaNode);
+
+                var idNode = ExpectToken("ID", "Identificador esperado después de coma");
+                node.Children.Add(idNode);
+                continue;
+            }
+
+            if (tok.Type == TokenType.Identifier)
+            {
+                AddError("Falta coma entre identificadores");
+                var commaNode = CreateVirtualNode(",");
+                node.Children.Add(commaNode);
+
+                var idNode = ExpectToken("ID");
+                node.Children.Add(idNode);
+                continue;
+            }
+
+            break;
+        }
+
+        return node;
+    }
+
+    private void AddError(string message)
+    {
+        var currentToken = CurrentToken;
+
+        // Create unique identifier for error position
+        (int, int, string) errorKey;
+        if (currentToken != null)
+        {
+            errorKey = (currentToken.Line, currentToken.Column, message[..Math.Min(50, message.Length)]);
+        }
+        else
+        {
+            if (_position > 0)
+            {
+                var lastToken = _tokens[_position - 1];
+                errorKey = (lastToken.Line, lastToken.EndColumn, message[..Math.Min(50, message.Length)]);
+            }
+            else
+            {
+                errorKey = (1, 1, message[..Math.Min(50, message.Length)]);
+            }
+        }
+
+        // Only add if we haven't already reported an error at this position with this message
+        if (!_errorPositions.Add(errorKey))
+        {
+            return;
+        }
+
+        ParseError error;
+        if (currentToken != null)
+        {
+            error = new ParseError(
+                Message: message,
+                Line: currentToken.Line,
+                Column: currentToken.Column,
+                EndLine: currentToken.EndLine,
+                EndColumn: currentToken.EndColumn,
+                FoundToken: currentToken.Value
+            );
+        }
+        else
+        {
+            // EOF case
+            if (_position > 0)
+            {
+                var lastToken = _tokens[_position - 1];
+                error = new ParseError(
+                    Message: message,
+                    Line: lastToken.Line,
+                    Column: lastToken.EndColumn,
+                    EndLine: lastToken.Line,
+                    EndColumn: lastToken.EndColumn,
+                    FoundToken: "EOF"
+                );
+            }
+            else
+            {
+                error = new ParseError(
+                    Message: message,
+                    Line: 1,
+                    Column: 1,
+                    EndLine: 1,
+                    EndColumn: 1,
+                    FoundToken: "EOF"
+                );
+            }
+        }
+        _errors.Add(error);
+    }
+
+    public List<ParseError> GetErrors() => [.._errors];
+    public bool HasErrors => _errors.Count > 0;
+    public void ResetErrorTracking() => _errorPositions.Clear();
 
     private AstNode? ParseStandard(string nonTerminal)
     {
@@ -634,46 +844,9 @@ public class SyntaxAnalyzer
         var idNode = ExpectToken("ID", "Identificador esperado");
         node.Children.Add(idNode);
 
-        // ids_t with recovery
+        // ids_t with recovery (iterative variant)
         var idsTNode = ParseIdsTRecovery();
         node.Children.Add(idsTNode);
-
-        return node;
-    }
-
-    private AstNode ParseIdsTRecovery()
-    {
-        var currentToken = CurrentToken;
-        var node = CreateNode(RuleIdsT, new List<AstNode>(), currentToken);
-
-        // Check if there's ID without comma (int x y;)
-        if (currentToken?.Type == TokenType.Identifier)
-        {
-            AddError("Falta coma entre identificadores");
-            // Insert virtual comma
-            var commaNode = CreateVirtualNode(",");
-            node.Children.Add(commaNode);
-
-            // Parse ID
-            var idNode = ExpectToken("ID");
-            node.Children.Add(idNode);
-
-            // Recursion
-            var idsTNode = ParseIdsTRecovery();
-            node.Children.Add(idsTNode);
-        }
-        else if (currentToken != null && MapTokenToTerminal(currentToken) == ",")
-        {
-            // Normal case with comma
-            var commaNode = ExpectToken(",");
-            node.Children.Add(commaNode);
-
-            var idNode = ExpectToken("ID", "Identificador esperado después de coma");
-            node.Children.Add(idNode);
-
-            var idsTNode = ParseIdsTRecovery();
-            node.Children.Add(idsTNode);
-        }
 
         return node;
     }
@@ -770,12 +943,17 @@ public class SyntaxAnalyzer
         return CreateNode(terminal, new List<AstNode>(), virtualToken, virtualToken);
     }
 
-    // Re-added: create a node with optional token bounds, only assigning token for terminals
     private AstNode CreateNode(string rule, List<AstNode> children, Token? token = null, Token? endToken = null)
     {
         if (token != null)
         {
-            Token? tokenToAssign = _terminals.Contains(rule) ? (endToken ?? token) : null;
+            // Only assign token to terminal nodes (if it's in the set of terminals)
+            Token? tokenToAssign = null;
+            if (_terminals.Contains(rule))
+            {
+                tokenToAssign = endToken ?? token;
+            }
+
             return new AstNode(
                 rule: rule,
                 children: children,
@@ -813,7 +991,6 @@ public class SyntaxAnalyzer
         parent.EndColumn = child.EndColumn;
     }
 
-    // Re-added: advance position until a token from the synchronization set is found
     private void SynchronizeTo(string[] syncSet)
     {
         while (!AtEnd)
@@ -826,79 +1003,4 @@ public class SyntaxAnalyzer
             _position++;
         }
     }
-
-    private void AddError(string message)
-    {
-        var currentToken = CurrentToken;
-
-        // Create unique identifier for error position
-        (int, int, string) errorKey;
-        if (currentToken != null)
-        {
-            errorKey = (currentToken.Line, currentToken.Column, message[..Math.Min(50, message.Length)]);
-        }
-        else
-        {
-            if (_position > 0)
-            {
-                var lastToken = _tokens[_position - 1];
-                errorKey = (lastToken.Line, lastToken.EndColumn, message[..Math.Min(50, message.Length)]);
-            }
-            else
-            {
-                errorKey = (1, 1, message[..Math.Min(50, message.Length)]);
-            }
-        }
-
-        // Only add if we haven't already reported an error at this position with this message
-        if (!_errorPositions.Add(errorKey))
-        {
-            return;
-        }
-
-        ParseError error;
-        if (currentToken != null)
-        {
-            error = new ParseError(
-                Message: message,
-                Line: currentToken.Line,
-                Column: currentToken.Column,
-                EndLine: currentToken.EndLine,
-                EndColumn: currentToken.EndColumn,
-                FoundToken: currentToken.Value
-            );
-        }
-        else
-        {
-            // EOF case
-            if (_position > 0)
-            {
-                var lastToken = _tokens[_position - 1];
-                error = new ParseError(
-                    Message: message,
-                    Line: lastToken.Line,
-                    Column: lastToken.EndColumn,
-                    EndLine: lastToken.Line,
-                    EndColumn: lastToken.EndColumn,
-                    FoundToken: "EOF"
-                );
-            }
-            else
-            {
-                error = new ParseError(
-                    Message: message,
-                    Line: 1,
-                    Column: 1,
-                    EndLine: 1,
-                    EndColumn: 1,
-                    FoundToken: "EOF"
-                );
-            }
-        }
-        _errors.Add(error);
-    }
-
-    public List<ParseError> GetErrors() => [.._errors];
-    public bool HasErrors => _errors.Count > 0;
-    public void ResetErrorTracking() => _errorPositions.Clear();
 }
