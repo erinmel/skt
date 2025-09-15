@@ -6,6 +6,17 @@ namespace skt.Compiler;
 
 public class SyntaxAnalyzer
 {
+    private const string Epsilon = "EPSILON";
+    private const string RuleVdecl = "vdecl";
+    private const string RuleIdsT = "ids_t";
+    private const string RuleStmts = "stmts";
+
+    // Shared token sets
+    private static readonly string[] CriticalTokens = [";", ")", "}", "{", "("];
+    private static readonly string[] IoTerms = ["cin", "cout"];
+    private static readonly string[] IncOps = ["++", "--"];
+    private static readonly string[] AsgnOps = ["=", "+=", "-=", "*=", "/=", "%=", "^="];
+
     private readonly Dictionary<string, List<List<string>>> _grammar;
     private readonly HashSet<string> _nonTerminals;
     private readonly HashSet<string> _terminals;
@@ -14,7 +25,6 @@ public class SyntaxAnalyzer
     private readonly Dictionary<(string, string), (List<string>, int)> _parsingTable;
     private readonly List<ParseError> _errors;
     private readonly HashSet<(int, int, string)> _errorPositions;
-    private readonly HashSet<string> _syncTokens;
 
     private List<Token> _tokens;
     private int _position;
@@ -35,81 +45,55 @@ public class SyntaxAnalyzer
         _position = 0;
         _recursionDepth = 0;
 
-        _syncTokens = new HashSet<string>
-        {
-            ";", "}", "{", "if", "while", "do", "cin", "cout",
-            "int", "float", "bool", "string", "$"
-        };
-
         BuildParser();
     }
 
-    private Dictionary<string, List<List<string>>> DefineGrammar()
+    private static Dictionary<string, List<List<string>>> DefineGrammar()
     {
         return new Dictionary<string, List<List<string>>>
         {
-            ["prog"] = new() { new() { "main", "{", "block", "}" } },
-            ["block"] = new() { new() { "elem", "block" }, new() { "EPSILON" } },
-            ["elem"] = new() { new() { "vdecl" }, new() { "stmt" } },
-            ["vdecl"] = new() { new() { "type", "ids", ";" } },
-            ["ids"] = new() { new() { "ID", "ids_t" } },
-            ["ids_t"] = new() { new() { ",", "ID", "ids_t" }, new() { "EPSILON" } },
-            ["type"] = new() { new() { "int" }, new() { "float" }, new() { "bool" }, new() { "string" } },
-            ["stmt"] = new()
-            {
-                new() { "ifstmt" }, new() { "whilestmt" }, new() { "dostmt" },
-                new() { "cinstmt" }, new() { "coutstmt" }, new() { "asgn" }
-            },
-            ["ifstmt"] = new() { new() { "if", "expr", "{", "stmts", "}", "op_else" } },
-            ["whilestmt"] = new() { new() { "while", "expr", "{", "stmts", "}" } },
-            ["dostmt"] = new() { new() { "do", "{", "stmts", "}", "while", "expr", ";" } },
-            ["cinstmt"] = new() { new() { "cin", ">>", "ID", ";" } },
-            ["coutstmt"] = new() { new() { "cout", "<<", "out", ";" } },
-            ["op_else"] = new() { new() { "else", "{", "stmts", "}" }, new() { "EPSILON" } },
-            ["out"] = new() { new() { "expr", "out_t" } },
-            ["out_t"] = new() { new() { "<<", "expr", "out_t" }, new() { "EPSILON" } },
+            ["prog"] = [["main", "{", "block", "}"]],
+            ["block"] = [["elem", "block"], [Epsilon]],
+            ["elem"] = [[RuleVdecl], ["stmt"]],
+            [RuleVdecl] = [["type", "ids", ";"]],
+            ["ids"] = [["ID", RuleIdsT]],
+            [RuleIdsT] = [[",", "ID", RuleIdsT], [Epsilon]],
+            ["type"] = [["int"], ["float"], ["bool"], ["string"]],
+            ["stmt"] = [["ifstmt"], ["whilestmt"], ["dostmt"], ["cinstmt"], ["coutstmt"], ["asgn"]],
+            ["ifstmt"] = [["if", "expr", "{", RuleStmts, "}", "op_else"]],
+            ["whilestmt"] = [["while", "expr", "{", RuleStmts, "}"]],
+            ["dostmt"] = [["do", "{", RuleStmts, "}", "while", "expr", ";"]],
+            ["cinstmt"] = [["cin", ">>", "ID", ";"]],
+            ["coutstmt"] = [["cout", "<<", "out", ";"]],
+            ["op_else"] = [["else", "{", RuleStmts, "}"], [Epsilon]],
+            ["out"] = [["expr", "out_t"]],
+            ["out_t"] = [["<<", "expr", "out_t"], [Epsilon]],
             // Modified: stmts now allows both variable declarations and statements
-            ["stmts"] = new() { new() { "elem", "stmts" }, new() { "EPSILON" } },
-            ["asgn"] = new()
-            {
-                new() { "ID", "asgn_op", "expr", ";" },
-                new() { "ID", "inc_op", ";" }
-            },
-            ["asgn_op"] = new()
-            {
-                new() { "=" }, new() { "+=" }, new() { "-=" }, new() { "*=" },
-                new() { "/=" }, new() { "%=" }, new() { "^=" }
-            },
-            ["inc_op"] = new() { new() { "++" }, new() { "--" } },
-            ["expr"] = new() { new() { "logic" } },
-            ["logic"] = new() { new() { "not", "logic_t" } },
-            ["logic_t"] = new() { new() { "log_op", "not", "logic_t" }, new() { "EPSILON" } },
-            ["log_op"] = new() { new() { "||" }, new() { "&&" } },
-            ["not"] = new() { new() { "!", "not" }, new() { "rel" } },
-            ["rel"] = new() { new() { "arit", "rel_t" } },
-            ["rel_t"] = new() { new() { "rel_op", "arit" }, new() { "EPSILON" } },
-            ["rel_op"] = new()
-            {
-                new() { "<" }, new() { "<=" }, new() { ">" }, new() { ">=" },
-                new() { "==" }, new() { "!=" }
-            },
-            ["arit"] = new() { new() { "term", "arit_t" } },
-            ["arit_t"] = new() { new() { "sum_op", "term", "arit_t" }, new() { "EPSILON" } },
-            ["sum_op"] = new() { new() { "+" }, new() { "-" } },
-            ["term"] = new() { new() { "pow", "term_t" } },
-            ["term_t"] = new() { new() { "mul_op", "pow", "term_t" }, new() { "EPSILON" } },
-            ["mul_op"] = new() { new() { "*" }, new() { "/" }, new() { "%" } },
-            ["pow"] = new() { new() { "fact", "pow_t" } },
-            ["pow_t"] = new() { new() { "^", "fact", "pow_t" }, new() { "EPSILON" } },
-            ["fact"] = new()
-            {
-                new() { "(", "expr", ")" }, new() { "ID" }, new() { "sig_num" },
-                new() { "bool_lit" }, new() { "STRING_LITERAL" }
-            },
-            ["sig_num"] = new() { new() { "sign", "num" } },
-            ["sign"] = new() { new() { "+" }, new() { "-" }, new() { "EPSILON" } },
-            ["num"] = new() { new() { "ENTERO" }, new() { "REAL" } },
-            ["bool_lit"] = new() { new() { "true" }, new() { "false" } }
+            [RuleStmts] = [["elem", RuleStmts], [Epsilon]],
+            ["asgn"] = [["ID", "asgn_op", "expr", ";"], ["ID", "inc_op", ";"]],
+            ["asgn_op"] = [["="], ["+="], ["-="], ["*="], ["/="], ["%="], ["^="]],
+            ["inc_op"] = [["++"], ["--"]],
+            ["expr"] = [["logic"]],
+            ["logic"] = [["not", "logic_t"]],
+            ["logic_t"] = [["log_op", "not", "logic_t"], [Epsilon]],
+            ["log_op"] = [["||"], ["&&"]],
+            ["not"] = [["!", "not"], ["rel"]],
+            ["rel"] = [["arit", "rel_t"]],
+            ["rel_t"] = [["rel_op", "arit"], [Epsilon]],
+            ["rel_op"] = [["<"], ["<="], [">"], [">="], ["=="], ["!="]],
+            ["arit"] = [["term", "arit_t"]],
+            ["arit_t"] = [["sum_op", "term", "arit_t"], [Epsilon]],
+            ["sum_op"] = [["+"], ["-"]],
+            ["term"] = [["pow", "term_t"]],
+            ["term_t"] = [["mul_op", "pow", "term_t"], [Epsilon]],
+            ["mul_op"] = [["*"], ["/"], ["%"]],
+            ["pow"] = [["fact", "pow_t"]],
+            ["pow_t"] = [["^", "fact", "pow_t"], [Epsilon]],
+            ["fact"] = [["(", "expr", ")"], ["ID"], ["sig_num"], ["bool_lit"], ["STRING_LITERAL"]],
+            ["sig_num"] = [["sign", "num"]],
+            ["sign"] = [["+"], ["-"], [Epsilon]],
+            ["num"] = [["ENTERO"], ["REAL"]],
+            ["bool_lit"] = [["true"], ["false"]]
         };
     }
 
@@ -125,18 +109,12 @@ public class SyntaxAnalyzer
     {
         _nonTerminals.UnionWith(_grammar.Keys);
 
-        foreach (var productions in _grammar.Values)
+        foreach (var symbol in _grammar.Values
+                     .SelectMany(productions => productions)
+                     .SelectMany(production => production)
+                     .Where(symbol => !_nonTerminals.Contains(symbol) && symbol != Epsilon))
         {
-            foreach (var production in productions)
-            {
-                foreach (var symbol in production)
-                {
-                    if (!_nonTerminals.Contains(symbol) && symbol != "EPSILON")
-                    {
-                        _terminals.Add(symbol);
-                    }
-                }
-            }
+            _terminals.Add(symbol);
         }
         _terminals.Add("$");
     }
@@ -177,9 +155,9 @@ public class SyntaxAnalyzer
 
     private void AddFirstOfProduction(string nonTerminal, List<string> production)
     {
-        if (production.Count == 1 && production[0] == "EPSILON")
+        if (production is [Epsilon])
         {
-            _first[nonTerminal].Add("EPSILON");
+            _first[nonTerminal].Add(Epsilon);
             return;
         }
 
@@ -194,8 +172,8 @@ public class SyntaxAnalyzer
             }
             else if (_nonTerminals.Contains(symbol))
             {
-                _first[nonTerminal].UnionWith(_first[symbol].Except(new[] { "EPSILON" }));
-                if (!_first[symbol].Contains("EPSILON"))
+                _first[nonTerminal].UnionWith(_first[symbol].Except([Epsilon]));
+                if (!_first[symbol].Contains(Epsilon))
                 {
                     allHaveEpsilon = false;
                     break;
@@ -205,7 +183,7 @@ public class SyntaxAnalyzer
 
         if (allHaveEpsilon)
         {
-            _first[nonTerminal].Add("EPSILON");
+            _first[nonTerminal].Add(Epsilon);
         }
     }
 
@@ -222,10 +200,7 @@ public class SyntaxAnalyzer
         while (changed)
         {
             changed = false;
-            var followBefore = _follow.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value.Count
-            );
+            var countsBefore = _follow.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count);
 
             foreach (var nt in _nonTerminals)
             {
@@ -235,12 +210,8 @@ public class SyntaxAnalyzer
                 }
             }
 
-            var followAfter = _follow.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value.Count
-            );
-
-            if (!followBefore.SequenceEqual(followAfter))
+            // Detect changes without relying on dictionary enumeration order
+            if (_nonTerminals.Any(nt => _follow[nt].Count != countsBefore[nt]))
             {
                 changed = true;
             }
@@ -258,8 +229,8 @@ public class SyntaxAnalyzer
                 if (beta.Count > 0)
                 {
                     var firstBeta = FirstOfString(beta);
-                    _follow[symbol].UnionWith(firstBeta.Except(new[] { "EPSILON" }));
-                    if (firstBeta.Contains("EPSILON"))
+                    _follow[symbol].UnionWith(firstBeta.Except([Epsilon]));
+                    if (firstBeta.Contains(Epsilon))
                     {
                         _follow[symbol].UnionWith(_follow[nonTerminal]);
                     }
@@ -287,8 +258,8 @@ public class SyntaxAnalyzer
             }
             else if (_nonTerminals.Contains(symbol))
             {
-                result.UnionWith(_first[symbol].Except(new[] { "EPSILON" }));
-                if (!_first[symbol].Contains("EPSILON"))
+                result.UnionWith(_first[symbol].Except([Epsilon]));
+                if (!_first[symbol].Contains(Epsilon))
                 {
                     allHaveEpsilon = false;
                     break;
@@ -298,7 +269,7 @@ public class SyntaxAnalyzer
 
         if (allHaveEpsilon)
         {
-            result.Add("EPSILON");
+            result.Add(Epsilon);
         }
         return result;
     }
@@ -312,31 +283,23 @@ public class SyntaxAnalyzer
                 var production = _grammar[nt][i];
                 var firstProd = FirstOfString(production);
 
-                // For each terminal in FIRST of the production
-                foreach (var terminal in firstProd.Except(new[] { "EPSILON" }))
+                foreach (var terminal in firstProd.Where(t => t != Epsilon))
                 {
-                    if (!_parsingTable.ContainsKey((nt, terminal)))
-                    {
-                        _parsingTable[(nt, terminal)] = (production, i);
-                    }
+                    _parsingTable.TryAdd((nt, terminal), (production, i));
                 }
 
-                // If EPSILON is in FIRST, add for FOLLOW
-                if (firstProd.Contains("EPSILON"))
+                if (firstProd.Contains(Epsilon))
                 {
                     foreach (var terminal in _follow[nt])
                     {
-                        if (!_parsingTable.ContainsKey((nt, terminal)))
-                        {
-                            _parsingTable[(nt, terminal)] = (production, i);
-                        }
+                        _parsingTable.TryAdd((nt, terminal), (production, i));
                     }
                 }
             }
         }
     }
 
-    private string MapTokenToTerminal(Token? token)
+    private static string MapTokenToTerminal(Token? token)
     {
         if (token == null) return "$";
 
@@ -419,7 +382,7 @@ public class SyntaxAnalyzer
         }
 
         // Return the most recent file
-        return matchingFiles.OrderByDescending(f => File.GetLastWriteTime(f)).First();
+        return matchingFiles.OrderByDescending(File.GetLastWriteTime).First();
     }
 
     private AstNode? ParseNonTerminal(string nonTerminal)
@@ -436,7 +399,7 @@ public class SyntaxAnalyzer
         try
         {
             // Special cases with error recovery
-            if (new[] { "vdecl", "asgn", "stmt" }.Contains(nonTerminal))
+            if (new[] { RuleVdecl, "asgn", "stmt" }.Contains(nonTerminal))
             {
                 return ParseWithRecovery(nonTerminal);
             }
@@ -459,7 +422,6 @@ public class SyntaxAnalyzer
         {
             if (_parsingTable.ContainsKey((nonTerminal, "$")))
             {
-                var (production, _) = _parsingTable[(nonTerminal, "$")];
                 return CreateNode(nonTerminal, new List<AstNode>(), currentToken);
             }
             else
@@ -475,7 +437,6 @@ public class SyntaxAnalyzer
         {
             if (_parsingTable.ContainsKey((nonTerminal, "$")))
             {
-                var (production, _) = _parsingTable[(nonTerminal, "$")];
                 return CreateNode(nonTerminal, new List<AstNode>(), currentToken);
             }
             else
@@ -498,20 +459,13 @@ public class SyntaxAnalyzer
         var currentToken = CurrentToken;
         var node = CreateNode(nonTerminal, new List<AstNode>(), currentToken);
 
-        foreach (var symbol in production)
+        foreach (var symbol in production.Where(s => s != Epsilon))
         {
-            if (symbol == "EPSILON")
-            {
-                continue;
-            }
-            else if (_terminals.Contains(symbol))
+            if (_terminals.Contains(symbol))
             {
                 var child = ParseTerminal(symbol);
-                if (child != null)
-                {
-                    node.Children.Add(child);
-                    UpdateNodePosition(node, child);
-                }
+                node.Children.Add(child);
+                UpdateNodePosition(node, child);
             }
             else if (_nonTerminals.Contains(symbol))
             {
@@ -532,7 +486,7 @@ public class SyntaxAnalyzer
         return node;
     }
 
-    private AstNode? ParseTerminal(string expectedSymbol)
+    private AstNode ParseTerminal(string expectedSymbol)
     {
         var currentToken = CurrentToken;
 
@@ -554,7 +508,7 @@ public class SyntaxAnalyzer
         {
             AddError($"Esperaba '{expectedSymbol}', encontró '{currentToken?.Value}'");
             // For critical tokens, insert virtual token
-            if (new[] { ";", ")", "}", "{", "(" }.Contains(expectedSymbol))
+            if (CriticalTokens.Contains(expectedSymbol))
             {
                 return CreateVirtualNode(expectedSymbol);
             }
@@ -570,7 +524,7 @@ public class SyntaxAnalyzer
     {
         return nonTerminal switch
         {
-            "vdecl" => ParseVdeclRecovery(),
+            RuleVdecl => ParseVdeclRecovery(),
             "asgn" => ParseAsgnRecovery(),
             "stmt" => ParseStmtRecovery(),
             _ => ParseStandard(nonTerminal)
@@ -580,7 +534,7 @@ public class SyntaxAnalyzer
     private AstNode ParseVdeclRecovery()
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("vdecl", new List<AstNode>(), currentToken);
+        var node = CreateNode(RuleVdecl, new List<AstNode>(), currentToken);
 
         // type
         var typeNode = ParseNonTerminal("type");
@@ -591,10 +545,7 @@ public class SyntaxAnalyzer
 
         // ids with comma recovery
         var idsNode = ParseIdsRecovery();
-        if (idsNode != null)
-        {
-            node.Children.Add(idsNode);
-        }
+        node.Children.Add(idsNode);
 
         // ;
         var semicolon = ExpectToken(";", "Falta punto y coma en declaración");
@@ -617,7 +568,7 @@ public class SyntaxAnalyzer
         if (currentToken != null)
         {
             string terminal = MapTokenToTerminal(currentToken);
-            if (new[] { "=", "+=", "-=", "*=", "/=", "%=", "^=" }.Contains(terminal))
+            if (AsgnOps.Contains(terminal))
             {
                 var opNode = ParseNonTerminal("asgn_op");
                 if (opNode != null)
@@ -634,10 +585,10 @@ public class SyntaxAnalyzer
                 else
                 {
                     AddError("Expresión esperada después del operador");
-                    SynchronizeTo(new[] { ";" });
+                    SynchronizeTo([";"]);
                 }
             }
-            else if (new[] { "++", "--" }.Contains(terminal))
+            else if (IncOps.Contains(terminal))
             {
                 var incNode = ParseNonTerminal("inc_op");
                 if (incNode != null)
@@ -648,7 +599,7 @@ public class SyntaxAnalyzer
             else
             {
                 AddError("Operador de asignación esperado");
-                SynchronizeTo(new[] { ";" });
+                SynchronizeTo([";"]);
             }
         }
 
@@ -664,7 +615,7 @@ public class SyntaxAnalyzer
         var currentToken = CurrentToken;
         string terminal = currentToken != null ? MapTokenToTerminal(currentToken) : "$";
 
-        if (new[] { "cin", "cout" }.Contains(terminal))
+        if (IoTerms.Contains(terminal))
         {
             return ParseIoStatement(terminal);
         }
@@ -685,10 +636,7 @@ public class SyntaxAnalyzer
 
         // ids_t with recovery
         var idsTNode = ParseIdsTRecovery();
-        if (idsTNode != null)
-        {
-            node.Children.Add(idsTNode);
-        }
+        node.Children.Add(idsTNode);
 
         return node;
     }
@@ -696,7 +644,7 @@ public class SyntaxAnalyzer
     private AstNode ParseIdsTRecovery()
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("ids_t", new List<AstNode>(), currentToken);
+        var node = CreateNode(RuleIdsT, new List<AstNode>(), currentToken);
 
         // Check if there's ID without comma (int x y;)
         if (currentToken?.Type == TokenType.Identifier)
@@ -712,10 +660,7 @@ public class SyntaxAnalyzer
 
             // Recursion
             var idsTNode = ParseIdsTRecovery();
-            if (idsTNode != null)
-            {
-                node.Children.Add(idsTNode);
-            }
+            node.Children.Add(idsTNode);
         }
         else if (currentToken != null && MapTokenToTerminal(currentToken) == ",")
         {
@@ -727,10 +672,7 @@ public class SyntaxAnalyzer
             node.Children.Add(idNode);
 
             var idsTNode = ParseIdsTRecovery();
-            if (idsTNode != null)
-            {
-                node.Children.Add(idsTNode);
-            }
+            node.Children.Add(idsTNode);
         }
 
         return node;
@@ -767,7 +709,7 @@ public class SyntaxAnalyzer
             else
             {
                 AddError("Expresión esperada después de '<<'");
-                SynchronizeTo(new[] { ";" });
+                SynchronizeTo([";"]);
             }
         }
 
@@ -802,7 +744,7 @@ public class SyntaxAnalyzer
             AddError(errorMessage);
 
             // For critical tokens, insert virtual; for others, consume and create virtual
-            if (new[] { ";", ")", "}", "{", "(" }.Contains(expectedTerminal))
+            if (CriticalTokens.Contains(expectedTerminal))
             {
                 return CreateVirtualNode(expectedTerminal);
             }
@@ -814,30 +756,26 @@ public class SyntaxAnalyzer
         }
     }
 
-    private void SynchronizeTo(string[] syncSet)
+    private AstNode CreateVirtualNode(string terminal)
     {
-        while (!AtEnd)
-        {
-            var currentToken = CurrentToken;
-            if (currentToken != null && syncSet.Contains(MapTokenToTerminal(currentToken)))
-            {
-                break;
-            }
-            _position++;
-        }
+        var currentToken = CurrentToken;
+        var virtualToken = new Token(
+            Type: CriticalTokens.Contains(terminal) ? TokenType.Symbol : TokenType.Identifier,
+            Value: terminal,
+            Line: currentToken?.Line ?? 1,
+            Column: currentToken?.Column ?? 1,
+            EndLine: currentToken?.Line ?? 1,
+            EndColumn: currentToken?.Column ?? 1
+        );
+        return CreateNode(terminal, new List<AstNode>(), virtualToken, virtualToken);
     }
 
+    // Re-added: create a node with optional token bounds, only assigning token for terminals
     private AstNode CreateNode(string rule, List<AstNode> children, Token? token = null, Token? endToken = null)
     {
         if (token != null)
         {
-            // Only assign token to terminal nodes (if it's in the set of terminals)
-            Token? tokenToAssign = null;
-            if (_terminals.Contains(rule))
-            {
-                tokenToAssign = endToken ?? token;
-            }
-
+            Token? tokenToAssign = _terminals.Contains(rule) ? (endToken ?? token) : null;
             return new AstNode(
                 rule: rule,
                 children: children,
@@ -852,22 +790,6 @@ public class SyntaxAnalyzer
         {
             return new AstNode(rule: rule, children: children, line: 0, column: 0);
         }
-    }
-
-    private AstNode CreateVirtualNode(string terminal)
-    {
-        var currentToken = CurrentToken;
-        var virtualToken = new Token(
-            Type: new[] { ";", "(", ")", "{", "}", "," }.Contains(terminal)
-                ? TokenType.Symbol
-                : TokenType.Identifier,
-            Value: terminal,
-            Line: currentToken?.Line ?? 1,
-            Column: currentToken?.Column ?? 1,
-            EndLine: currentToken?.Line ?? 1,
-            EndColumn: currentToken?.Column ?? 1
-        );
-        return CreateNode(terminal, new List<AstNode>(), virtualToken, virtualToken);
     }
 
     private AstNode CreateErrorNode(string expectedSymbol)
@@ -885,10 +807,24 @@ public class SyntaxAnalyzer
         );
     }
 
-    private void UpdateNodePosition(AstNode parent, AstNode child)
+    private static void UpdateNodePosition(AstNode parent, AstNode child)
     {
         parent.EndLine = child.EndLine;
         parent.EndColumn = child.EndColumn;
+    }
+
+    // Re-added: advance position until a token from the synchronization set is found
+    private void SynchronizeTo(string[] syncSet)
+    {
+        while (!AtEnd)
+        {
+            var currentToken = CurrentToken;
+            if (currentToken != null && syncSet.Contains(MapTokenToTerminal(currentToken)))
+            {
+                break;
+            }
+            _position++;
+        }
     }
 
     private void AddError(string message)
@@ -915,12 +851,10 @@ public class SyntaxAnalyzer
         }
 
         // Only add if we haven't already reported an error at this position with this message
-        if (_errorPositions.Contains(errorKey))
+        if (!_errorPositions.Add(errorKey))
         {
             return;
         }
-
-        _errorPositions.Add(errorKey);
 
         ParseError error;
         if (currentToken != null)
@@ -964,7 +898,7 @@ public class SyntaxAnalyzer
         _errors.Add(error);
     }
 
-    public List<ParseError> GetErrors() => new(_errors);
+    public List<ParseError> GetErrors() => [.._errors];
     public bool HasErrors => _errors.Count > 0;
     public void ResetErrorTracking() => _errorPositions.Clear();
 }
