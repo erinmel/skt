@@ -8,7 +8,11 @@
         Icon="avares://skt.IDE/Assets/SKT.ico"
         Title="SKT IDE"
         Width="1200"
-        Height="800">
+        Height="800"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
+        >
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -16,7 +20,7 @@
 
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <!-- Toolbar -->
+            <!-- Toolbar (this includes your custom window controls) -->
             <RowDefinition Height="40"/>
             <!-- Main content area -->
             <RowDefinition Height="7*"/>
@@ -35,8 +39,10 @@
             <ColumnDefinition Width="45" MinWidth="45" MaxWidth="45"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Toolbar -->
-        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+        <!-- Custom Toolbar with Window Controls -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                x:Name="TitleBar">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -44,7 +50,11 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="5,0">
+                <!-- Logo and File Operations -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center" Name="LogoPanel">
+                    <!-- Logo -->
+                    <svg:Svg Path="{DynamicResource Skt.Icon}" Width="20" Height="20" Margin="0,0,8,0"/>
+
                     <!-- File Menu Dropdown -->
                     <Button Name="FileMenuButton"
                             Background="Transparent"
@@ -101,14 +111,57 @@
                     </Button>
                 </StackPanel>
 
-                <TextBlock Grid.Column="1" Text="SKT IDE"
-                          VerticalAlignment="Center"
-                          HorizontalAlignment="Center"
-                          FontWeight="Bold"/>
+                <!-- Draggable Area -->
+                <Border Grid.Column="1" Background="Transparent" x:Name="DragArea"/>
+
+                <!-- Your Custom Window Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0">
+                    <Button Name="Minimize"
+                            Tag="WindowControl"
+                            Width="46" Height="40"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            ToolTip.Tip="Minimize"
+                            Click="Minimize_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.Minimize}" Width="16" Height="16"/>
+                    </Button>
+
+                    <Button Name="Restore"
+                            Tag="WindowControl"
+                            Width="46" Height="40"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            ToolTip.Tip="Maximize/Restore"
+                            Click="Restore_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.Restore}" Width="16" Height="16"/>
+                    </Button>
+
+                    <Button Name="CloseButton"
+                            Tag="WindowControl"
+                            Width="46" Height="40"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            ToolTip.Tip="Close"
+                            Click="Close_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.Close}" Width="16" Height="16"/>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Text Editor -->
+        <!-- Main Content Area -->
         <Border Grid.Row="1" Grid.Column="0" Margin="2">
             <Grid>
                 <Grid.RowDefinitions>
@@ -229,7 +282,6 @@
                 <!-- Flexible Spacer with a thin divider centered -->
                 <Grid Grid.Row="1" Margin="5,10"/>
 
-
                 <!-- Bottom Section - Terminal Panel Toggles -->
                 <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="3,5">
                     <Button Name="TerminalToggle"
@@ -278,6 +330,7 @@
                 </StackPanel>
             </Grid>
         </Border>
+
         <!-- Terminal/Errors -->
         <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="2">
             <Grid>

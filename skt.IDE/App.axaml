@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:skt.IDE"
              x:Class="skt.IDE.App"
-             RequestedThemeVariant="Light">
+             RequestedThemeVariant="Dark">
 
     <Application.DataTemplates>
         <local:ViewLocator/>
@@ -64,12 +64,38 @@
         <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
             <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
         </Style>
+
+        <!-- Window control buttons -->
+        <Style Selector="Button[Tag=WindowControl]">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="Root" Background="{TemplateBinding Background}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button[Tag=WindowControl]:pointerover /template/ Border#Root">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+        </Style>
+        <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover /template/ Border#Root">
+            <Setter Property="Background" Value="#E81123"/>
+        </Style>
     </Application.Styles>
 
     <Application.Resources>
         <ResourceDictionary>
             <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
 
+
+            <x:String x:Key="Skt.Version">1.0.0</x:String>
+            <x:String x:Key="Skt.Title">Skt Ide</x:String>
+            <x:String x:Key="Skt.Icon">avares://skt.IDE/Assets/icons/SKT.svg</x:String>
             <!-- Theme-aware icon paths -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
@@ -87,6 +113,9 @@
                     <x:String x:Key="IconPath.PanelOutput">avares://skt.IDE/Assets/icons/tools/Dark/panel-output.svg</x:String>
                     <x:String x:Key="IconPath.PanelErrors">avares://skt.IDE/Assets/icons/tools/Dark/panel-errors.svg</x:String>
                     <x:String x:Key="IconPath.PanelBuild">avares://skt.IDE/Assets/icons/tools/Dark/panel-build.svg</x:String>
+                    <x:String x:Key="IconPath.Close">avares://skt.IDE/Assets/icons/tools/Dark/ui-close.svg</x:String>
+                    <x:String x:Key="IconPath.Restore">avares://skt.IDE/Assets/icons/tools/Dark/ui-restore.svg</x:String>
+                    <x:String x:Key="IconPath.Minimize">avares://skt.IDE/Assets/icons/tools/Dark/ui-minimize.svg</x:String>
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Light">
@@ -104,6 +133,9 @@
                     <x:String x:Key="IconPath.PanelOutput">avares://skt.IDE/Assets/icons/tools/Light/panel-output.svg</x:String>
                     <x:String x:Key="IconPath.PanelErrors">avares://skt.IDE/Assets/icons/tools/Light/panel-errors.svg</x:String>
                     <x:String x:Key="IconPath.PanelBuild">avares://skt.IDE/Assets/icons/tools/Light/panel-build.svg</x:String>
+                    <x:String x:Key="IconPath.Close">avares://skt.IDE/Assets/icons/tools/Light/ui-close.svg</x:String>
+                    <x:String x:Key="IconPath.Restore">avares://skt.IDE/Assets/icons/tools/Light/ui-restore.svg</x:String>
+                    <x:String x:Key="IconPath.Minimize">avares://skt.IDE/Assets/icons/tools/Light/ui-minimize.svg</x:String>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
