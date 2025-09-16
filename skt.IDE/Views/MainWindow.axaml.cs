@@ -6,6 +6,7 @@ using skt.IDE.ViewModels;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 
 namespace skt.IDE.Views;
 
@@ -47,6 +48,17 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeUi();
         InitializeTitleBarEvents();
+
+        // Subscribe to window state changes to update ViewModel
+        PropertyChanged += OnWindowPropertyChanged;
+    }
+
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == WindowStateProperty && ViewModel != null)
+        {
+            ViewModel.UpdateWindowState(WindowState);
+        }
     }
 
     private void InitializeUi()
@@ -54,6 +66,12 @@ public partial class MainWindow : Window
         UpdateToolWindowVisibility();
         UpdateTerminalPanelVisibility();
         UpdateToolWindowSelection();
+
+        // Initialize window state in ViewModel
+        if (ViewModel != null)
+        {
+            ViewModel.UpdateWindowState(WindowState);
+        }
     }
 
     private void InitializeTitleBarEvents()
@@ -104,6 +122,10 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MaximizeRestore_Click(object? sender, RoutedEventArgs e)
+    {
+        ToggleWindowState();
+    }
     private void DragArea_DoubleTapped(object? sender, TappedEventArgs e)
     {
         ToggleWindowState();

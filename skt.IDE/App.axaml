@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
              xmlns:local="using:skt.IDE"
              x:Class="skt.IDE.App"
              RequestedThemeVariant="Dark">
@@ -28,7 +29,63 @@
             </FluentTheme.Palettes>
         </FluentTheme>
 
-        <!-- Global splitter look -->
+        <!-- Base Button Style - Common properties for all buttons -->
+        <Style Selector="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- Disabled button template content -->
+        <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
+        <!-- Hover effect for all buttons -->
+        <Style Selector="Button:pointerover /template/ Border#Root">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+        </Style>
+
+        <!-- Icon-only buttons (ToolIcon tag) -->
+        <Style Selector="Button[Tag=ToolIcon]">
+            <Setter Property="Padding" Value="6"/>
+        </Style>
+
+        <!-- Selected state for tool icons -->
+        <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+        </Style>
+
+        <!-- Window control buttons -->
+        <Style Selector="Button[Tag=WindowControl]">
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="32"/>
+        </Style>
+
+        <!-- Window control button hover -->
+        <Style Selector="Button[Tag=WindowControl]:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+        </Style>
+
+        <!-- Special close button hover -->
+        <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover">
+            <Setter Property="Background" Value="#E81123"/>
+        </Style>
+
+        <!-- Global splitter style -->
         <Style Selector="GridSplitter">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Template">
@@ -42,104 +99,36 @@
             </Setter>
         </Style>
 
-        <!-- Icon-only buttons for tool/terminal toggles -->
-        <Style Selector="Button[Tag=ToolIcon]">
-            <Setter Property="Padding" Value="6"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter Content="{TemplateBinding Content}"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <Style Selector="Button[Tag=ToolIcon]:pointerover /template/ Border#Root">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-        </Style>
-        <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+        <!-- Disabled states - simple approach -->
+        <Style Selector="Button:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
         </Style>
 
-        <!-- Window control buttons -->
-        <Style Selector="Button[Tag=WindowControl]">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border x:Name="Root" Background="{TemplateBinding Background}">
-                        <ContentPresenter Content="{TemplateBinding Content}"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
+        <Style Selector="MenuItem:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
         </Style>
-        <Style Selector="Button[Tag=WindowControl]:pointerover /template/ Border#Root">
+
+
+        <!-- Hover effect for all buttons -->
+        <Style Selector="Button:pointerover /template/ Border#Root">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
         </Style>
-        <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover /template/ Border#Root">
-            <Setter Property="Background" Value="#E81123"/>
+        <!-- Hide dropdown arrow on DropDownButton -->
+        <Style Selector="DropDownButton PathIcon">
+            <Setter Property="IsVisible" Value="False"/>
         </Style>
     </Application.Styles>
 
     <Application.Resources>
         <ResourceDictionary>
-            <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://skt.IDE/Styles/IconResources.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
 
+            <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
 
             <x:String x:Key="Skt.Version">1.0.0</x:String>
             <x:String x:Key="Skt.Title">Skt Ide</x:String>
-            <x:String x:Key="Skt.Icon">avares://skt.IDE/Assets/icons/SKT.svg</x:String>
-            <!-- Theme-aware icon paths -->
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Dark">
-                    <x:String x:Key="IconPath.ToolbarMenu">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-burger.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarProjectNew">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-project-new.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarProjectOpen">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-project-open.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarFileNew">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-file-new.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarSave">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-save.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarSaveAs">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-save-as.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarSettings">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-settings.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowExplorer">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-explorer.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowTokens">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-tokens.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowSyntaxTree">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-tree.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowIntermediateCode">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-intermediate-code.svg</x:String>
-                    <x:String x:Key="IconPath.PanelTerminal">avares://skt.IDE/Assets/icons/tools/Dark/panel-terminal.svg</x:String>
-                    <x:String x:Key="IconPath.PanelOutput">avares://skt.IDE/Assets/icons/tools/Dark/panel-output.svg</x:String>
-                    <x:String x:Key="IconPath.PanelErrors">avares://skt.IDE/Assets/icons/tools/Dark/panel-errors.svg</x:String>
-                    <x:String x:Key="IconPath.PanelBuild">avares://skt.IDE/Assets/icons/tools/Dark/panel-build.svg</x:String>
-                    <x:String x:Key="IconPath.Close">avares://skt.IDE/Assets/icons/tools/Dark/ui-close.svg</x:String>
-                    <x:String x:Key="IconPath.Restore">avares://skt.IDE/Assets/icons/tools/Dark/ui-restore.svg</x:String>
-                    <x:String x:Key="IconPath.Minimize">avares://skt.IDE/Assets/icons/tools/Dark/ui-minimize.svg</x:String>
-                </ResourceDictionary>
-
-                <ResourceDictionary x:Key="Light">
-                    <x:String x:Key="IconPath.ToolbarMenu">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-burger.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarProjectNew">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-project-new.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarProjectOpen">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-project-open.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarFileNew">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-file-new.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarSave">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-save.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarSaveAs">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-save-as.svg</x:String>
-                    <x:String x:Key="IconPath.ToolbarSettings">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-settings.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowExplorer">avares://skt.IDE/Assets/icons/tools/Light/tool-window-explorer.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowTokens">avares://skt.IDE/Assets/icons/tools/Light/tool-window-tokens.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowSyntaxTree">avares://skt.IDE/Assets/icons/tools/Light/tool-window-tree.svg</x:String>
-                    <x:String x:Key="IconPath.ToolWindowIntermediateCode">avares://skt.IDE/Assets/icons/tools/Light/tool-window-intermediate-code.svg</x:String>
-                    <x:String x:Key="IconPath.PanelTerminal">avares://skt.IDE/Assets/icons/tools/Light/panel-terminal.svg</x:String>
-                    <x:String x:Key="IconPath.PanelOutput">avares://skt.IDE/Assets/icons/tools/Light/panel-output.svg</x:String>
-                    <x:String x:Key="IconPath.PanelErrors">avares://skt.IDE/Assets/icons/tools/Light/panel-errors.svg</x:String>
-                    <x:String x:Key="IconPath.PanelBuild">avares://skt.IDE/Assets/icons/tools/Light/panel-build.svg</x:String>
-                    <x:String x:Key="IconPath.Close">avares://skt.IDE/Assets/icons/tools/Light/ui-close.svg</x:String>
-                    <x:String x:Key="IconPath.Restore">avares://skt.IDE/Assets/icons/tools/Light/ui-restore.svg</x:String>
-                    <x:String x:Key="IconPath.Minimize">avares://skt.IDE/Assets/icons/tools/Light/ui-minimize.svg</x:String>
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

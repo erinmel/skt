@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:skt.IDE.ViewModels"
         xmlns:views="using:skt.IDE.Views.ToolWindows"
-        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
         x:Class="skt.IDE.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="avares://skt.IDE/Assets/SKT.ico"
@@ -66,13 +65,12 @@
                                     Padding="5"
                                     VerticalAlignment="Center">
                         <DropDownButton.Content>
-                            <svg:Svg Path="{DynamicResource Skt.Icon}" Width="20" Height="20"/>
+                            <Image Source="{DynamicResource Icon.Skt}" Width="20" Height="20"/>
                         </DropDownButton.Content>
                         <DropDownButton.Flyout>
                             <MenuFlyout>
-                                <MenuItem Header="Restore" Click="Restore_Click"/>
                                 <MenuItem Header="Minimize" Click="Minimize_Click"/>
-                                <MenuItem Header="Maximize" Click="Restore_Click"/>
+                                <MenuItem Header="Restore" Click="Restore_Click"/>
                                 <Separator/>
                                 <MenuItem Header="Close" Click="Close_Click"/>
                             </MenuFlyout>
@@ -85,40 +83,30 @@
                                     BorderThickness="0"
                                     Padding="10,5">
                         <DropDownButton.Content>
-                            <svg:Svg Path="{DynamicResource IconPath.ToolbarMenu}" Width="20" Height="20"/>
+                            <Image Source="{DynamicResource Icon.ToolbarMenu}" Width="20" Height="20"/>
                         </DropDownButton.Content>
                         <DropDownButton.Flyout>
                             <MenuFlyout>
                                 <MenuItem Header="New Project" Click="NewProjectButton_Click">
                                     <MenuItem.Icon>
-                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectNew}" Width="16" Height="16"/>
+                                        <Image Source="{DynamicResource Icon.ToolbarProjectNew}" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Open Project" Click="OpenProjectButton_Click">
                                     <MenuItem.Icon>
-                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectOpen}" Width="16" Height="16"/>
+                                        <Image Source="{DynamicResource Icon.ToolbarProjectOpen}" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem Header="New File" Click="NewFileButton_Click">
+                                <MenuItem Header="New File" Click="NewFileButton_Click" IsEnabled="{Binding CanCreateNewFile}">
                                     <MenuItem.Icon>
-                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarFileNew}" Width="16" Height="16"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="Open File" Click="OpenFileButton_Click">
-                                    <MenuItem.Icon>
-                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarOpenFile}" Width="16" Height="16"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="Close File" Click="CloseFileButton_Click">
-                                    <MenuItem.Icon>
-                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarCloseFile}" Width="16" Height="16"/>
+                                        <Image Source="{DynamicResource Icon.ToolbarFileNew}" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="Settings" Click="SettingsButton_Click">
                                     <MenuItem.Icon>
-                                        <svg:Svg Path="{DynamicResource IconPath.Settings}" Width="16" Height="16"/>
+                                        <Image Source="{DynamicResource Icon.ToolbarSettings}" Width="16" Height="16"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
@@ -132,7 +120,7 @@
                             Padding="10,5"
                             ToolTip.Tip="Open Project"
                             Click="OpenProjectButton_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectOpen}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.ToolbarProjectOpen}" Width="20" Height="20"/>
                     </Button>
 
                     <!-- New Project Button -->
@@ -142,7 +130,7 @@
                             Padding="10,5"
                             ToolTip.Tip="New Project"
                             Click="NewProjectButton_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectNew}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.ToolbarProjectNew}" Width="20" Height="20"/>
                     </Button>
 
                     <!-- New File Button -->
@@ -151,8 +139,9 @@
                             BorderThickness="0"
                             Padding="10,5"
                             ToolTip.Tip="New File"
-                            Click="NewProjectButton_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarFileNew}" Width="20" Height="20"/>
+                            IsEnabled="{Binding CanCreateNewFile}"
+                            Click="NewFileButton_Click">
+                        <Image Source="{DynamicResource Icon.ToolbarFileNew}" Width="20" Height="20"/>
                     </Button>
 
 
@@ -161,8 +150,10 @@
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="10,5"
-                            ToolTip.Tip="Save">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarSave}" Width="20" Height="20"/>
+                            ToolTip.Tip="Save"
+                            IsEnabled="{Binding CanSave}"
+                            Click="SaveButton_Click">
+                        <Image Source="{DynamicResource Icon.ToolbarSave}" Width="20" Height="20"/>
                     </Button>
 
                     <!-- Save As Button -->
@@ -170,8 +161,10 @@
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="10,5"
-                            ToolTip.Tip="Save As">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarSaveAs}" Width="20" Height="20"/>
+                            ToolTip.Tip="Save As"
+                            IsEnabled="{Binding CanSaveAs}"
+                            Click="SaveAsButton_Click">
+                        <Image Source="{DynamicResource Icon.ToolbarSaveAs}" Width="20" Height="20"/>
                     </Button>
                 </StackPanel>
 
@@ -181,17 +174,12 @@
                 <!-- Your Custom Window Controls -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0">
                     <Button Name="SettingsButton"
-                            Tag="WindowControl"
-                            Width="46" Height="40"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
+                            Padding="10,5"
                             ToolTip.Tip="Settings"
                             Click="SettingsButton_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.Settings}" Width="16" Height="16"/>
+                        <Image Source="{DynamicResource Icon.ToolbarSettings}" Width="16" Height="16"/>
                     </Button>
 
                     <!-- Transparent spacer to separate settings from window controls -->
@@ -199,44 +187,24 @@
 
                     <Button Name="Minimize"
                             Tag="WindowControl"
-                            Width="46" Height="40"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
                             ToolTip.Tip="Minimize"
                             Click="Minimize_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.Minimize}" Width="16" Height="16"/>
+                        <Image Source="{DynamicResource Icon.Minimize}" Width="16" Height="16"/>
                     </Button>
 
-                    <Button Name="Restore"
+
+                    <Button Name="MaximizeRestoreButton"
                             Tag="WindowControl"
-                            Width="46" Height="40"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
                             ToolTip.Tip="Maximize/Restore"
                             Click="Restore_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.Restore}" Width="16" Height="16"/>
+                        <Image Source="{DynamicResource Icon.Restore}" Width="16" Height="16"/>
                     </Button>
 
                     <Button Name="CloseButton"
                             Tag="WindowControl"
-                            Width="46" Height="40"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
                             ToolTip.Tip="Close"
                             Click="Close_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.Close}" Width="16" Height="16"/>
+                        <Image Source="{DynamicResource Icon.Close}" Width="16" Height="16"/>
                     </Button>
                 </StackPanel>
             </Grid>
@@ -323,7 +291,7 @@
                             Margin="0,3"
                             ToolTip.Tip="File Explorer"
                             Click="ToolWindowToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowExplorer}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.ToolWindowExplorer}" Width="20" Height="20"/>
                     </Button>
 
                     <Button Name="TokensToggle"
@@ -334,7 +302,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Tokens View"
                             Click="ToolWindowToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowTokens}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.ToolWindowTokens}" Width="20" Height="20"/>
                     </Button>
 
                     <Button Name="SyntaxTreeToggle"
@@ -345,7 +313,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Syntax Tree"
                             Click="ToolWindowToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowSyntaxTree}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.ToolWindowSyntaxTree}" Width="20" Height="20"/>
                     </Button>
 
                     <Button Name="PhaseOutputToggle"
@@ -356,7 +324,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Phase Output"
                             Click="ToolWindowToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowIntermediateCode}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.ToolWindowIntermediateCode}" Width="20" Height="20"/>
                     </Button>
                 </StackPanel>
 
@@ -373,7 +341,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Terminal"
                             Click="ToolPanelToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.PanelTerminal}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.PanelTerminal}" Width="20" Height="20"/>
                     </Button>
 
                     <Button Name="OutputToggle"
@@ -384,7 +352,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Output"
                             Click="ToolPanelToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.PanelOutput}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.PanelOutput}" Width="20" Height="20"/>
                     </Button>
 
                     <Button Name="ErrorsToggle"
@@ -395,7 +363,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Errors"
                             Click="ToolPanelToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.PanelErrors}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.PanelErrors}" Width="20" Height="20"/>
                     </Button>
 
                     <Button Name="BuildToggle"
@@ -406,7 +374,7 @@
                             Margin="0,3"
                             ToolTip.Tip="Build"
                             Click="ToolPanelToggle_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.PanelBuild}" Width="20" Height="20"/>
+                        <Image Source="{DynamicResource Icon.PanelBuild}" Width="20" Height="20"/>
                     </Button>
                 </StackPanel>
             </Grid>
