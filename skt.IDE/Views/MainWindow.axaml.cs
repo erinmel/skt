@@ -322,14 +322,45 @@ public partial class MainWindow : Window
 
     #region Toolbar Event Handlers
 
-    private void FileMenuButton_Click(object? sender, RoutedEventArgs e)
+    private void NewProjectButton_Click(object? sender, RoutedEventArgs e)
     {
-        // TODO: Implement file menu dropdown
-        // This could show options like New, Open, Save, Recent Files, etc.
         var viewModel = ViewModel;
         if (viewModel is not null)
         {
-            viewModel.StatusMessage = "File menu not implemented yet";
+            viewModel.StatusMessage = "New project not implemented yet";
+        }
+    }
+
+    private async void OpenFileButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var viewModel = ViewModel;
+        if (viewModel is null) return;
+
+        var storageProvider = StorageProvider;
+        var result = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open File",
+            AllowMultiple = false
+        });
+
+        if (result.Count > 0)
+        {
+            var file = result[0];
+            var filePath = file.Path.LocalPath;
+            viewModel.EditorContent = await System.IO.File.ReadAllTextAsync(filePath);
+            viewModel.CurrentFilePath = filePath;
+            viewModel.StatusMessage = $"Opened: {System.IO.Path.GetFileName(filePath)}";
+        }
+    }
+
+    private void CloseFileButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var viewModel = ViewModel;
+        if (viewModel is not null)
+        {
+            viewModel.EditorContent = string.Empty;
+            viewModel.CurrentFilePath = string.Empty;
+            viewModel.StatusMessage = "File closed";
         }
     }
 

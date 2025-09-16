@@ -14,9 +14,16 @@
         SystemDecorations="BorderOnly"
         >
 
+    <Window.Styles>
+        <Style Selector="DropDownButton PathIcon">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </Window.Styles>
+
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
+
 
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
@@ -52,17 +59,71 @@
 
                 <!-- Logo and File Operations -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center" Name="LogoPanel">
-                    <!-- Logo -->
-                    <svg:Svg Path="{DynamicResource Skt.Icon}" Width="20" Height="20" Margin="0,0,8,0"/>
+                    <!-- Logo Dropdown -->
+                    <DropDownButton Name="LogoDropDown"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="5"
+                                    VerticalAlignment="Center">
+                        <DropDownButton.Content>
+                            <svg:Svg Path="{DynamicResource Skt.Icon}" Width="20" Height="20"/>
+                        </DropDownButton.Content>
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="Restore" Click="Restore_Click"/>
+                                <MenuItem Header="Minimize" Click="Minimize_Click"/>
+                                <MenuItem Header="Maximize" Click="Restore_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Close" Click="Close_Click"/>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
 
                     <!-- File Menu Dropdown -->
-                    <Button Name="FileMenuButton"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="10,5"
-                            Click="FileMenuButton_Click">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarMenu}" Width="20" Height="20"/>
-                    </Button>
+                    <DropDownButton Name="FileMenuDropDown"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="10,5">
+                        <DropDownButton.Content>
+                            <svg:Svg Path="{DynamicResource IconPath.ToolbarMenu}" Width="20" Height="20"/>
+                        </DropDownButton.Content>
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="New Project" Click="NewProjectButton_Click">
+                                    <MenuItem.Icon>
+                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectNew}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Open Project" Click="OpenProjectButton_Click">
+                                    <MenuItem.Icon>
+                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectOpen}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="New File" Click="NewFileButton_Click">
+                                    <MenuItem.Icon>
+                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarFileNew}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Open File" Click="OpenFileButton_Click">
+                                    <MenuItem.Icon>
+                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarOpenFile}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Close File" Click="CloseFileButton_Click">
+                                    <MenuItem.Icon>
+                                        <svg:Svg Path="{DynamicResource IconPath.ToolbarCloseFile}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Settings" Click="SettingsButton_Click">
+                                    <MenuItem.Icon>
+                                        <svg:Svg Path="{DynamicResource IconPath.Settings}" Width="16" Height="16"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
 
                     <!-- Open Project Button -->
                     <Button Name="OpenProjectButton"
@@ -74,14 +135,26 @@
                         <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectOpen}" Width="20" Height="20"/>
                     </Button>
 
+                    <!-- New Project Button -->
+                    <Button Name="NewProjectButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            ToolTip.Tip="New Project"
+                            Click="NewProjectButton_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectNew}" Width="20" Height="20"/>
+                    </Button>
+
                     <!-- New File Button -->
                     <Button Name="NewFileButton"
                             Background="Transparent"
                             BorderThickness="0"
                             Padding="10,5"
-                            ToolTip.Tip="New File">
+                            ToolTip.Tip="New File"
+                            Click="NewProjectButton_Click">
                         <svg:Svg Path="{DynamicResource IconPath.ToolbarFileNew}" Width="20" Height="20"/>
                     </Button>
+
 
                     <!-- Save Button -->
                     <Button Name="SaveButton"
@@ -100,15 +173,6 @@
                             ToolTip.Tip="Save As">
                         <svg:Svg Path="{DynamicResource IconPath.ToolbarSaveAs}" Width="20" Height="20"/>
                     </Button>
-
-                    <!-- Settings Button -->
-                    <Button Name="SettingsButton"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="10,5"
-                            ToolTip.Tip="Settings">
-                        <svg:Svg Path="{DynamicResource IconPath.ToolbarSettings}" Width="20" Height="20"/>
-                    </Button>
                 </StackPanel>
 
                 <!-- Draggable Area -->
@@ -116,6 +180,23 @@
 
                 <!-- Your Custom Window Controls -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0">
+                    <Button Name="SettingsButton"
+                            Tag="WindowControl"
+                            Width="46" Height="40"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            ToolTip.Tip="Settings"
+                            Click="SettingsButton_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.Settings}" Width="16" Height="16"/>
+                    </Button>
+
+                    <!-- Transparent spacer to separate settings from window controls -->
+                    <Border Width="10" Background="Transparent"/>
+
                     <Button Name="Minimize"
                             Tag="WindowControl"
                             Width="46" Height="40"

@@ -100,6 +100,7 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
                     <x:String x:Key="IconPath.ToolbarMenu">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-burger.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarProjectNew">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-project-new.svg</x:String>
                     <x:String x:Key="IconPath.ToolbarProjectOpen">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-project-open.svg</x:String>
                     <x:String x:Key="IconPath.ToolbarFileNew">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-file-new.svg</x:String>
                     <x:String x:Key="IconPath.ToolbarSave">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-save.svg</x:String>
@@ -120,6 +121,7 @@
 
                 <ResourceDictionary x:Key="Light">
                     <x:String x:Key="IconPath.ToolbarMenu">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-burger.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarProjectNew">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-project-new.svg</x:String>
                     <x:String x:Key="IconPath.ToolbarProjectOpen">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-project-open.svg</x:String>
                     <x:String x:Key="IconPath.ToolbarFileNew">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-file-new.svg</x:String>
                     <x:String x:Key="IconPath.ToolbarSave">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-save.svg</x:String>
