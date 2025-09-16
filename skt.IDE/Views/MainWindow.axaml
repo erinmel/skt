@@ -188,7 +188,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="File Explorer"
-                            Click="FileExplorerToggle_Click">
+                            Click="ToolWindowToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.ToolWindowExplorer}" Width="20" Height="20"/>
                     </Button>
 
@@ -199,7 +199,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Tokens View"
-                            Click="TokensToggle_Click">
+                            Click="ToolWindowToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.ToolWindowTokens}" Width="20" Height="20"/>
                     </Button>
 
@@ -210,7 +210,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Syntax Tree"
-                            Click="SyntaxTreeToggle_Click">
+                            Click="ToolWindowToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.ToolWindowSyntaxTree}" Width="20" Height="20"/>
                     </Button>
 
@@ -221,7 +221,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Phase Output"
-                            Click="PhaseOutputToggle_Click">
+                            Click="ToolWindowToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.ToolWindowIntermediateCode}" Width="20" Height="20"/>
                     </Button>
                 </StackPanel>
@@ -239,7 +239,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Terminal"
-                            Click="TerminalToggle_Click">
+                            Click="ToolPanelToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.PanelTerminal}" Width="20" Height="20"/>
                     </Button>
 
@@ -250,7 +250,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Output"
-                            Click="OutputToggle_Click">
+                            Click="ToolPanelToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.PanelOutput}" Width="20" Height="20"/>
                     </Button>
 
@@ -261,7 +261,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Errors"
-                            Click="ErrorsToggle_Click">
+                            Click="ToolPanelToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.PanelErrors}" Width="20" Height="20"/>
                     </Button>
 
@@ -272,7 +272,7 @@
                             Padding="6,6"
                             Margin="0,3"
                             ToolTip.Tip="Build"
-                            Click="BuildToggle_Click">
+                            Click="ToolPanelToggle_Click">
                         <svg:Svg Path="{DynamicResource IconPath.PanelBuild}" Width="20" Height="20"/>
                     </Button>
                 </StackPanel>
