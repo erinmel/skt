@@ -75,14 +75,14 @@
             <Setter Property="Height" Value="32"/>
         </Style>
 
-        <!-- Window control button hover -->
-        <Style Selector="Button[Tag=WindowControl]:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-        </Style>
-
         <!-- Special close button hover -->
         <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover">
             <Setter Property="Background" Value="#E81123"/>
+        </Style>
+
+        <!-- Window control button hover -->
+        <Style Selector="Button[Tag=WindowControl]:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
         </Style>
 
         <!-- Global splitter style -->

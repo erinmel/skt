@@ -4,6 +4,8 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia;
 
 namespace skt.IDE.ViewModels;
 
@@ -50,6 +52,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _windowStateButtonText = "🗖";
 
     [ObservableProperty] private string _windowStateButtonTooltip = "Maximize";
+
+    public DrawingImage? WindowStateIcon
+    {
+        get
+        {
+            var key = CurrentWindowState == WindowState.Maximized ? "Icon.Restore" : "Icon.Maximize";
+            return Application.Current?.FindResource(key) as DrawingImage;
+        }
+    }
 
     // Computed properties for button enablement
     public bool CanSave => IsFileOpen && !string.IsNullOrEmpty(CurrentFilePath);
@@ -133,15 +144,16 @@ public partial class MainWindowViewModel : ViewModelBase
         switch (CurrentWindowState)
         {
             case WindowState.Maximized:
-                WindowStateButtonText = "🗗";
                 WindowStateButtonTooltip = "Restore";
                 break;
             case WindowState.Normal:
             case WindowState.Minimized:
-                WindowStateButtonText = "🗖";
                 WindowStateButtonTooltip = "Maximize";
                 break;
         }
+
+        // Notify that the icon has changed so the UI updates
+        OnPropertyChanged(nameof(WindowStateIcon));
     }
 
     partial void OnEditorContentChanged(string value)

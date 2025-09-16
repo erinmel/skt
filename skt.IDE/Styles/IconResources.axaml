@@ -293,7 +293,19 @@
             <DrawingGroup>
                 <GeometryDrawing Brush="{DynamicResource SystemControlForegroundBaseHighBrush}">
                     <GeometryDrawing.Geometry>
-                        <PathGeometry Figures="M656-140v-392H140v392h516Zm60-228v-60h104v-392H304v228h-60v-228q0-24 18-42t42-18h516q24 0 42 18t18 42v392q0 24-18 42t-42 18H716ZM140-80q-24 0-42-18t-18-42v-392q0-24 18-42t42-18h504q29.7 0 50.85 20.86Q716-550.29 716-521v381q0 24-18 42t-42 18H140Zm422-617ZM398-336Z"/>
+                        <PathGeometry Figures="M260-260h560v-500H260v500Zm0 60q-24 0-42-18t-18-42v-560q0-24 18-42t42-18h560q24 0 42 18t18 42v560q0 24-18 42t-42 18H260ZM140-80q-24 0-42-18t-18-42v-620h60v620h620v60H140Zm120-740v560-560Z"/>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <DrawingImage x:Key="Icon.Maximize">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="{DynamicResource SystemControlForegroundBaseHighBrush}">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry Figures="M180-120q-24 0-42-18t-18-42v-600q0-24 18-42t42-18h600q24 0 42 18t18 42v600q0 24-18 42t-42 18H180Zm0-60h600v-503H180v503Z"/>
                     </GeometryDrawing.Geometry>
                 </GeometryDrawing>
             </DrawingGroup>

@@ -58,24 +58,7 @@
 
                 <!-- Logo and File Operations -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center" Name="LogoPanel">
-                    <!-- Logo Dropdown -->
-                    <DropDownButton Name="LogoDropDown"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="5"
-                                    VerticalAlignment="Center">
-                        <DropDownButton.Content>
-                            <Image Source="{DynamicResource Icon.Skt}" Width="20" Height="20"/>
-                        </DropDownButton.Content>
-                        <DropDownButton.Flyout>
-                            <MenuFlyout>
-                                <MenuItem Header="Minimize" Click="Minimize_Click"/>
-                                <MenuItem Header="Restore" Click="Restore_Click"/>
-                                <Separator/>
-                                <MenuItem Header="Close" Click="Close_Click"/>
-                            </MenuFlyout>
-                        </DropDownButton.Flyout>
-                    </DropDownButton>
+                    <Image Source="{DynamicResource Icon.Skt}" Width="30" Height="30" VerticalAlignment="Center"/>
 
                     <!-- File Menu Dropdown -->
                     <DropDownButton Name="FileMenuDropDown"
@@ -195,9 +178,9 @@
 
                     <Button Name="MaximizeRestoreButton"
                             Tag="WindowControl"
-                            ToolTip.Tip="Maximize/Restore"
+                            ToolTip.Tip="{Binding WindowStateButtonTooltip}"
                             Click="Restore_Click">
-                        <Image Source="{DynamicResource Icon.Restore}" Width="16" Height="16"/>
+                        <Image Source="{Binding WindowStateIcon}" Width="16" Height="16"/>
                     </Button>
 
                     <Button Name="CloseButton"
