@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.PhaseOutputView"
+             x:DataType="vm:PhaseOutputViewModel">
+
+  <Design.DataContext>
+    <vm:PhaseOutputViewModel/>
+  </Design.DataContext>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Header -->
+    <Border Grid.Row="0" Padding="5">
+      <TextBlock Text="{Binding CurrentPhase}" FontWeight="Bold"/>
+    </Border>
+
+    <!-- Output -->
+    <ScrollViewer Grid.Row="1">
+      <ListBox ItemsSource="{Binding OutputLines}"
+               FontFamily="Consolas,monospace">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

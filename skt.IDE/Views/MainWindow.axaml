@@ -1,20 +1,372 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:skt.IDE.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:views="using:skt.IDE.Views.ToolWindows"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Avalonia.Svg.Skia"
         x:Class="skt.IDE.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="skt.IDE">
+        Icon="avares://skt.IDE/Assets/SKT.ico"
+        Title="SKT IDE"
+        Width="1200"
+        Height="800">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <!-- Toolbar -->
+            <RowDefinition Height="40"/>
+            <!-- Main content area -->
+            <RowDefinition Height="7*"/>
+            <!-- Terminal/Errors -->
+            <RowDefinition Height="0*" MinHeight="0"/>
+            <!-- Status bar -->
+            <RowDefinition Height="25"/>
+        </Grid.RowDefinitions>
 
+        <Grid.ColumnDefinitions>
+            <!-- Text Editor -->
+            <ColumnDefinition Width="5*"/>
+            <!-- Tools (File Explorer) -->
+            <ColumnDefinition Width="3*"/>
+            <!-- Tool Window (Very narrow, fixed width) -->
+            <ColumnDefinition Width="45" MinWidth="45" MaxWidth="45"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="5,0">
+                    <!-- File Menu Dropdown -->
+                    <Button Name="FileMenuButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            Click="FileMenuButton_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarMenu}" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- Open Project Button -->
+                    <Button Name="OpenProjectButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            ToolTip.Tip="Open Project"
+                            Click="OpenProjectButton_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarProjectOpen}" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- New File Button -->
+                    <Button Name="NewFileButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            ToolTip.Tip="New File">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarFileNew}" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- Save Button -->
+                    <Button Name="SaveButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            ToolTip.Tip="Save">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarSave}" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- Save As Button -->
+                    <Button Name="SaveAsButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            ToolTip.Tip="Save As">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarSaveAs}" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- Settings Button -->
+                    <Button Name="SettingsButton"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="10,5"
+                            ToolTip.Tip="Settings">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolbarSettings}" Width="20" Height="20"/>
+                    </Button>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="SKT IDE"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          FontWeight="Bold"/>
+            </Grid>
+        </Border>
+
+        <!-- Text Editor -->
+        <Border Grid.Row="1" Grid.Column="0" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="5">
+                    <TextBlock Text="Text Editor" FontWeight="Bold"/>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <TextBox Name="EditorTextBox"
+                             AcceptsReturn="True"
+                             TextWrapping="NoWrap"
+                             FontFamily="Consolas,monospace"
+                             FontSize="14"
+                             Text="{Binding EditorContent}"
+                             Watermark="Open a file to start editing..."
+                             TextChanged="EditorTextBox_TextChanged"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Tools/Tool Window Content (Dynamic content based on selected tool) -->
+        <Border Grid.Row="1" Grid.Column="1" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="5">
+                    <TextBlock Text="{Binding SelectedToolWindowTitle}" FontWeight="Bold"/>
+                </Border>
+
+                <!-- Dynamic content based on selected tool window -->
+                <Grid Grid.Row="1">
+                    <!-- File Explorer (default) -->
+                    <views:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
+
+                    <!-- Tokens View -->
+                    <ScrollViewer Name="TokensContent" IsVisible="False">
+                        <TextBlock Text="{Binding TokensOutput}"
+                                  FontFamily="Consolas,monospace"
+                                  Padding="10"/>
+                    </ScrollViewer>
+
+                    <!-- Syntax Tree View -->
+                    <ScrollViewer Name="SyntaxTreeContent" IsVisible="False">
+                        <TextBlock Text="{Binding SyntaxTreeOutput}"
+                                  FontFamily="Consolas,monospace"
+                                  Padding="10"/>
+                    </ScrollViewer>
+
+                    <!-- Phase Output View -->
+                    <views:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Tool Window (Toggle Buttons) -->
+        <Border Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Top Section - Tool Window Toggles -->
+                <StackPanel Grid.Row="0" Orientation="Vertical" HorizontalAlignment="Center" Margin="3,5">
+                    <Button Name="FileExplorerToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="File Explorer"
+                            Click="FileExplorerToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowExplorer}" Width="20" Height="20"/>
+                    </Button>
+
+                    <Button Name="TokensToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Tokens View"
+                            Click="TokensToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowTokens}" Width="20" Height="20"/>
+                    </Button>
+
+                    <Button Name="SyntaxTreeToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Syntax Tree"
+                            Click="SyntaxTreeToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowSyntaxTree}" Width="20" Height="20"/>
+                    </Button>
+
+                    <Button Name="PhaseOutputToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Phase Output"
+                            Click="PhaseOutputToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.ToolWindowIntermediateCode}" Width="20" Height="20"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Flexible Spacer with a thin divider centered -->
+                <Grid Grid.Row="1" Margin="5,10"/>
+
+
+                <!-- Bottom Section - Terminal Panel Toggles -->
+                <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="3,5">
+                    <Button Name="TerminalToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Terminal"
+                            Click="TerminalToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.PanelTerminal}" Width="20" Height="20"/>
+                    </Button>
+
+                    <Button Name="OutputToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Output"
+                            Click="OutputToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.PanelOutput}" Width="20" Height="20"/>
+                    </Button>
+
+                    <Button Name="ErrorsToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Errors"
+                            Click="ErrorsToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.PanelErrors}" Width="20" Height="20"/>
+                    </Button>
+
+                    <Button Name="BuildToggle"
+                            Tag="ToolIcon"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="6,6"
+                            Margin="0,3"
+                            ToolTip.Tip="Build"
+                            Click="BuildToggle_Click">
+                        <svg:Svg Path="{DynamicResource IconPath.PanelBuild}" Width="20" Height="20"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <!-- Terminal/Errors -->
+        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="5">
+                    <TextBlock Text="Terminal &amp; Errors" FontWeight="Bold"/>
+                </Border>
+
+                <TabControl Grid.Row="1" Name="TerminalTabView">
+                    <TabItem Header="Terminal">
+                        <ScrollViewer>
+                            <TextBox AcceptsReturn="True"
+                                     FontFamily="Consolas,monospace"
+                                     Watermark="Terminal output will appear here..."
+                                     IsReadOnly="True"/>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Lexical Errors">
+                        <ScrollViewer>
+                            <TextBox AcceptsReturn="True"
+                                     FontFamily="Consolas,monospace"
+                                     Text="{Binding LexicalErrors}"
+                                     IsReadOnly="True"/>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Syntax Errors">
+                        <ScrollViewer>
+                            <TextBox AcceptsReturn="True"
+                                     FontFamily="Consolas,monospace"
+                                     Text="{Binding SyntaxErrors}"
+                                     IsReadOnly="True"/>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Other Errors">
+                        <ScrollViewer>
+                            <TextBox AcceptsReturn="True"
+                                     FontFamily="Consolas,monospace"
+                                     Text="{Binding OtherErrors}"
+                                     IsReadOnly="True"/>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,2">
+                    <TextBlock Text="{Binding StatusMessage}"
+                              VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,2">
+                    <TextBlock Text="{Binding CurrentLine, StringFormat='Line: {0}'}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0"/>
+                    <TextBlock Text="{Binding CurrentColumn, StringFormat='Col: {0}'}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0"/>
+                    <TextBlock Text="{Binding FileEncoding, StringFormat='Encoding: {0}'}"
+                              VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Splitters -->
+        <GridSplitter Grid.Row="1" Grid.Column="1"
+                     Width="2"
+                     HorizontalAlignment="Left"
+                     ResizeDirection="Columns"
+                     Margin="0"
+                     Padding="0"/>
+
+        <!-- Horizontal splitter between main area and terminal -->
+        <GridSplitter Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                     Height="2"
+                     VerticalAlignment="Top"
+                     ResizeDirection="Rows"
+                     Margin="0"
+                     Padding="0"/>
+    </Grid>
 </Window>

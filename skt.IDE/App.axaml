@@ -1,15 +1,111 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="skt.IDE.App"
              xmlns:local="using:skt.IDE"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             x:Class="skt.IDE.App"
+             RequestedThemeVariant="Light">
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Light"
+                    Accent="#ff8961cc"
+                    AltHigh="White" AltLow="White" AltMedium="White" AltMediumHigh="White" AltMediumLow="White"
+                    BaseHigh="Black" BaseLow="#ffeeceff" BaseMedium="#ffa987bc" BaseMediumHigh="#ff7b5890" BaseMediumLow="#ff9270a6"
+                    ChromeAltLow="#ff7b5890" ChromeBlackHigh="Black" ChromeBlackLow="#ffeeceff" ChromeBlackMedium="#ff7b5890" ChromeBlackMediumLow="#ffa987bc"
+                    ChromeDisabledHigh="#ffeeceff" ChromeDisabledLow="#ffa987bc" ChromeGray="#ff9270a6" ChromeHigh="#ffeeceff" ChromeLow="#fffeeaff"
+                    ChromeMedium="#fffbe4ff" ChromeMediumLow="#fffeeaff" ChromeWhite="White" ListLow="#fffbe4ff" ListMedium="#ffeeceff" RegionColor="#fffef6ff" />
+                <ColorPaletteResources x:Key="Dark"
+                    Accent="#ff8961cc"
+                    AltHigh="Black" AltLow="Black" AltMedium="Black" AltMediumHigh="Black" AltMediumLow="Black"
+                    BaseHigh="White" BaseLow="#ff64576b" BaseMedium="#ffb6aabc" BaseMediumHigh="#ffcbbfd0" BaseMediumLow="#ff8d8193"
+                    ChromeAltLow="#ffcbbfd0" ChromeBlackHigh="Black" ChromeBlackLow="#ffcbbfd0" ChromeBlackMedium="Black" ChromeBlackMediumLow="Black"
+                    ChromeDisabledHigh="#ff64576b" ChromeDisabledLow="#ffb6aabc" ChromeGray="#ffa295a8" ChromeHigh="#ffa295a8" ChromeLow="#ff332041"
+                    ChromeMedium="#ff3f2e4b" ChromeMediumLow="#ff584960" ChromeWhite="White" ListLow="#ff3f2e4b" ListMedium="#ff64576b" RegionColor="#ff262738" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+
+        <!-- Global splitter look -->
+        <Style Selector="GridSplitter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                            Width="{TemplateBinding Width}"
+                            Height="{TemplateBinding Height}"
+                            Margin="0"
+                            Padding="0"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- Icon-only buttons for tool/terminal toggles -->
+        <Style Selector="Button[Tag=ToolIcon]">
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button[Tag=ToolIcon]:pointerover /template/ Border#Root">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+        </Style>
+        <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+        </Style>
     </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
+
+            <!-- Theme-aware icon paths -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <x:String x:Key="IconPath.ToolbarMenu">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-burger.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarProjectOpen">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-project-open.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarFileNew">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-file-new.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarSave">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-save.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarSaveAs">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-save-as.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarSettings">avares://skt.IDE/Assets/icons/tools/Dark/tool-bar-settings.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowExplorer">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-explorer.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowTokens">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-tokens.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowSyntaxTree">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-tree.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowIntermediateCode">avares://skt.IDE/Assets/icons/tools/Dark/tool-window-intermediate-code.svg</x:String>
+                    <x:String x:Key="IconPath.PanelTerminal">avares://skt.IDE/Assets/icons/tools/Dark/panel-terminal.svg</x:String>
+                    <x:String x:Key="IconPath.PanelOutput">avares://skt.IDE/Assets/icons/tools/Dark/panel-output.svg</x:String>
+                    <x:String x:Key="IconPath.PanelErrors">avares://skt.IDE/Assets/icons/tools/Dark/panel-errors.svg</x:String>
+                    <x:String x:Key="IconPath.PanelBuild">avares://skt.IDE/Assets/icons/tools/Dark/panel-build.svg</x:String>
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Light">
+                    <x:String x:Key="IconPath.ToolbarMenu">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-burger.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarProjectOpen">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-project-open.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarFileNew">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-file-new.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarSave">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-save.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarSaveAs">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-save-as.svg</x:String>
+                    <x:String x:Key="IconPath.ToolbarSettings">avares://skt.IDE/Assets/icons/tools/Light/tool-bar-settings.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowExplorer">avares://skt.IDE/Assets/icons/tools/Light/tool-window-explorer.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowTokens">avares://skt.IDE/Assets/icons/tools/Light/tool-window-tokens.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowSyntaxTree">avares://skt.IDE/Assets/icons/tools/Light/tool-window-tree.svg</x:String>
+                    <x:String x:Key="IconPath.ToolWindowIntermediateCode">avares://skt.IDE/Assets/icons/tools/Light/tool-window-intermediate-code.svg</x:String>
+                    <x:String x:Key="IconPath.PanelTerminal">avares://skt.IDE/Assets/icons/tools/Light/panel-terminal.svg</x:String>
+                    <x:String x:Key="IconPath.PanelOutput">avares://skt.IDE/Assets/icons/tools/Light/panel-output.svg</x:String>
+                    <x:String x:Key="IconPath.PanelErrors">avares://skt.IDE/Assets/icons/tools/Light/panel-errors.svg</x:String>
+                    <x:String x:Key="IconPath.PanelBuild">avares://skt.IDE/Assets/icons/tools/Light/panel-build.svg</x:String>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>
