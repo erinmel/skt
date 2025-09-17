@@ -11,9 +11,6 @@ public partial class TabbedEditor : UserControl
     public TabbedEditor()
     {
         InitializeComponent();
-
-        // Set default DataContext if none is provided
-        DataContext ??= new TabbedEditorViewModel();
     }
 
     private void InitializeComponent()

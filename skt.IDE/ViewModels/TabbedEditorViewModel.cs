@@ -64,9 +64,6 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         OpenCommand = new RelayCommand(async () => await OpenFileAsync());
         SaveCommand = new RelayCommand(async () => await SaveFileAsync(), () => SelectedDocument != null);
         SaveAsCommand = new RelayCommand(async () => await SaveAsFileAsync(), () => SelectedDocument != null);
-
-        // Create initial tab
-        CreateNewTab();
     }
 
     private void CreateNewTab()

@@ -110,9 +110,9 @@ public partial class MainWindowViewModel : ViewModelBase
             if (File.Exists(filePath))
             {
                 CurrentFilePath = filePath;
-                IsFileOpen = true;
-                EditorContent = await File.ReadAllTextAsync(filePath);
-                StatusMessage = $"Opened: {Path.GetFileName(filePath)}";
+                // Delegate to the TabbedEditor to handle file opening
+                await TabbedEditorViewModel.OpenFileAsync(filePath);
+
 
                 // Reset cursor position
                 CurrentLine = 1;
@@ -121,9 +121,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 // Detect encoding (simplified - assumes UTF-8 for now)
                 FileEncoding = "UTF-8";
 
-                // Notify computed properties changed
-                OnPropertyChanged(nameof(CanSave));
-                OnPropertyChanged(nameof(CanSaveAs));
             }
             else
             {
@@ -135,6 +132,33 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = $"Error opening file: {ex.Message}";
         }
     }
+
+    // Method to create a new file in the tabbed editor
+    public void CreateNewFile()
+    {
+        TabbedEditorViewModel.NewTabCommand.Execute(null);
+        StatusMessage = "New file created";
+    }
+
+    // Method to save current file via tabbed editor
+    public void SaveCurrentFile()
+    {
+        if (TabbedEditorViewModel.SelectedDocument != null)
+        {
+            TabbedEditorViewModel.SaveCommand.Execute(null);
+            StatusMessage = $"Saved: {Path.GetFileName(TabbedEditorViewModel.SelectedDocument.FilePath ?? "Untitled")}";
+        }
+    }
+
+    // Method to save as via tabbed editor
+    public void SaveAsCurrentFile()
+    {
+        if (TabbedEditorViewModel.SelectedDocument != null)
+        {
+            TabbedEditorViewModel.SaveAsCommand.Execute(null);
+        }
+    }
+
 
     public void UpdateWindowState(WindowState newState)
     {

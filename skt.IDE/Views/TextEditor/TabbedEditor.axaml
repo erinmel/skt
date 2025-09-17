@@ -28,7 +28,7 @@
 
     <!-- Tab styling for unselected and selected states -->
     <Style Selector="TextBlock.tab-title">
-      <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundSelected}"/>
+      <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundUnselected}"/>
     </Style>
 
     <!-- Selected tab styling only -->
@@ -39,7 +39,7 @@
     </Style>
 
     <Style Selector="TextBlock.tab-title.selected">
-      <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundUnselected}"/>
+      <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundSelected}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
   </UserControl.Styles>
