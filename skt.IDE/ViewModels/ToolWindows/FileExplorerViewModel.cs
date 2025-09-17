@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ public partial class FileExplorerViewModel : ViewModelBase
         if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             return;
 
-        FileNode? rootNode = null;
+        List<FileNode> childNodes = new();
         string projectName = Path.GetFileName(projectPath);
 
         // Build the file tree off the UI thread
@@ -34,25 +35,32 @@ public partial class FileExplorerViewModel : ViewModelBase
         {
             try
             {
-                rootNode = new FileNode(projectPath)
+                // Load directories first
+                foreach (var dir in Directory.GetDirectories(projectPath))
                 {
-                    IsExpanded = true
-                };
+                    childNodes.Add(new FileNode(dir));
+                }
+
+                // Load files
+                foreach (var file in Directory.GetFiles(projectPath))
+                {
+                    childNodes.Add(new FileNode(file));
+                }
             }
             catch
             {
-                rootNode = null;
+                // ignore IO errors
             }
         });
-
-        if (rootNode is null)
-            return;
 
         // Apply changes on the UI thread
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             RootNodes.Clear();
-            RootNodes.Add(rootNode);
+            foreach (var node in childNodes)
+            {
+                RootNodes.Add(node);
+            }
             ProjectName = string.IsNullOrEmpty(projectName) ? "No Project" : projectName;
         });
     }

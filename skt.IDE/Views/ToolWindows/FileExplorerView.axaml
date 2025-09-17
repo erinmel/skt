@@ -17,8 +17,12 @@
     </Grid.RowDefinitions>
 
     <!-- Project Header -->
-    <Border Grid.Row="0" Padding="8,4" Margin="2">
-      <StackPanel Orientation="Horizontal">
+    <Border
+      Grid.Row="0"
+      Padding="8,4" Margin="2"
+      BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+      BorderThickness="0,1,0,1">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
         <TextBlock Text="{Binding ProjectName}" FontWeight="Bold"/>
       </StackPanel>
     </Border>

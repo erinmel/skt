@@ -226,7 +226,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Padding="5">
+                <Border Grid.Row="0" Padding="5" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding SelectedToolWindowTitle}" FontWeight="Bold"/>
                 </Border>
 
@@ -256,7 +256,13 @@
         </Border>
 
         <!-- Tool Window (Toggle Buttons) -->
-        <Border Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+        <Border
+            Grid.Row="1"
+            Grid.Column="2"
+            Grid.RowSpan="2"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="0,1,0,1">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
