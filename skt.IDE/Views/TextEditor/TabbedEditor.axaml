@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:i="using:Avalonia.Xaml.Interactivity"
+             xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
+             xmlns:vm="using:skt.IDE.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="skt.IDE.Views.TextEditor.TabbedEditor"
+             x:DataType="vm:TabbedEditorViewModel"
+             Name="TabbedEditorRoot">
+
+  <UserControl.Styles>
+    <!-- Close button styling -->
+    <Style Selector="Button.tab-close">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="4"/>
+      <Setter Property="Width" Value="14"/>
+      <Setter Property="Height" Value="14"/>
+      <Setter Property="Margin" Value="2"/>
+    </Style>
+
+    <Style Selector="Button.tab-close:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ChromeGray}"/>
+    </Style>
+
+    <!-- Selected tab styling only -->
+    <Style Selector="Border.tab-item.selected">
+      <Setter Property="Background" Value="{DynamicResource RegionColor}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+      <Setter Property="BorderThickness" Value="0,0,0,2"/>
+    </Style>
+
+    <Style Selector="TextBlock.tab-title.selected">
+      <Setter Property="Foreground" Value="{DynamicResource BaseHigh}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Tab Header with Scrolling -->
+    <Border Grid.Row="0"
+            BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Scrollable Tab Strip -->
+        <ScrollViewer Grid.Column="0"
+                      Name="TabScrollViewer"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Documents}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DocumentViewModel">
+                <Border Name="TabBorder"
+                        Classes="tab-item"
+                        Classes.selected="{Binding IsSelected}"
+                        BorderThickness="0,0,1,0"
+                        MinWidth="120"
+                        MaxWidth="200"
+                        Height="35"
+                        Cursor="Hand">
+
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Tab Title -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Title}"
+                               Classes="tab-title"
+                               Classes.selected="{Binding IsSelected}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               Margin="12,0,4,0"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="13"/>
+
+                    <!-- Close Button -->
+                    <Button Grid.Column="1"
+                            Name="CloseButton"
+                            Classes="tab-close"
+                            ToolTip.Tip="Close Tab"
+                            Command="{Binding $parent[UserControl].DataContext.CloseTabCommand}"
+                            CommandParameter="{Binding}">
+                        <Image Source="{DynamicResource Icon.Close}" Width="8" Height="8"/>
+                    </Button>
+                  </Grid>
+
+                  <!-- Click handler for tab selection -->
+                  <i:Interaction.Behaviors>
+                    <ia:EventTriggerBehavior EventName="PointerPressed">
+                      <ia:InvokeCommandAction Command="{Binding $parent[UserControl].DataContext.SelectTabCommand}"
+                                               CommandParameter="{Binding}"/>
+                    </ia:EventTriggerBehavior>
+                  </i:Interaction.Behaviors>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Editor Content Area -->
+    <ContentControl Grid.Row="1"
+                    Content="{Binding SelectedDocument}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:DocumentViewModel">
+          <Grid>
+            <!-- Text Editor -->
+            <TextBox Text="{Binding Content}"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     TextWrapping="NoWrap"
+                     FontFamily="Consolas, 'Courier New', monospace"
+                     FontSize="14"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     Padding="12,8">
+              <!-- Add click handler for tab selection when clicking in text editor -->
+              <i:Interaction.Behaviors>
+                <ia:EventTriggerBehavior EventName="GotFocus">
+                  <ia:InvokeCommandAction Command="{Binding $parent[UserControl].DataContext.SelectTabCommand}"
+                                           CommandParameter="{Binding}"/>
+                </ia:EventTriggerBehavior>
+                <ia:EventTriggerBehavior EventName="PointerPressed">
+                  <ia:InvokeCommandAction Command="{Binding $parent[UserControl].DataContext.SelectTabCommand}"
+                                           CommandParameter="{Binding}"/>
+                </ia:EventTriggerBehavior>
+              </i:Interaction.Behaviors>
+            </TextBox>
+
+            <!-- Empty State (when no document is selected) -->
+            <Border IsVisible="{Binding $parent[UserControl].DataContext.SelectedDocument, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
+              <StackPanel VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          Opacity="0.6">
+                <TextBlock Text="📄"
+                           FontSize="48"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,16"/>
+                <TextBlock Text="No file open"
+                           FontSize="16"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Create a new file or open an existing one"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           Margin="0,4,0,0"/>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+  </Grid>
+</UserControl>

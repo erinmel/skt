@@ -70,6 +70,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public FileExplorerViewModel FileExplorer { get; } = new();
     public PhaseOutputViewModel PhaseOutput { get; } = new();
 
+    // Expose TabbedEditorViewModel for MainWindow binding
+    public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
+
     public async Task OpenProject(string folderPath)
     {
         try
