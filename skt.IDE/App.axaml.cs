@@ -5,11 +5,14 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Svg.Skia;
 using skt.IDE.ViewModels;
 using skt.IDE.Views;
+using skt.IDE.Services;
 
 namespace skt.IDE;
 
 public class App : Application
 {
+    public static IEventBus EventBus { get; private set; } = new EventBus();
+
     public override void Initialize()
     {
         // Initialize SVG support

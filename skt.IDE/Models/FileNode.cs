@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Linq;
 
 namespace skt.IDE.Models;
 
@@ -26,10 +27,6 @@ public partial class FileNode : ObservableObject
     public string IconKey => IsDirectory
         ? IconMapper.GetFolderIconKey(Name, IsExpanded)
         : IconMapper.GetFileIconKey(Name);
-
-    public FileNode()
-    {
-    }
 
     public FileNode(string path)
     {
@@ -79,6 +76,26 @@ public partial class FileNode : ObservableObject
         catch
         {
             // ignore IO errors
+        }
+    }
+
+    public void RefreshChildren()
+    {
+        if (!IsDirectory) return;
+
+        var expandedDirectories = Children
+            .Where(c => c.IsDirectory && c.IsExpanded)
+            .Select(c => c.Name)
+            .ToHashSet();
+
+        LoadChildren();
+
+        foreach (var child in Children.Where(c => c.IsDirectory))
+        {
+            if (expandedDirectories.Contains(child.Name))
+            {
+                child.IsExpanded = true;
+            }
         }
     }
 }

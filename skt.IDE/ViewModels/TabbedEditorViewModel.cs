@@ -12,6 +12,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using skt.IDE.Services;
 
 public class TabbedEditorViewModel : INotifyPropertyChanged
 {
@@ -279,15 +280,25 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
         if (topLevel != null)
         {
+            string fileType = SelectedDocument.FilePath != null
+                ? "*." + Path.GetExtension(SelectedDocument.FilePath).TrimStart('.')
+                : "*.txt";
+
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = "Save File As",
-                DefaultExtension = "txt",
+                DefaultExtension = SelectedDocument?.FilePath != null
+                    ? Path.GetExtension(SelectedDocument.FilePath).TrimStart('.')
+                    : "txt",
                 FileTypeChoices = new[]
                 {
+                    new FilePickerFileType("File")
+                    {
+                        Patterns = new [] {fileType}
+                    },
                     new FilePickerFileType("Text Files")
                     {
-                        Patterns = new[] { "*.txt" }
+                        Patterns = new[] { "*.txt", "*.md", "*.cs", "*.xaml", "*.json", "*.xml" }
                     },
                     new FilePickerFileType("All Files")
                     {
@@ -296,10 +307,17 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 }
             });
 
-            if (file != null)
+            if (file != null && SelectedDocument != null)
             {
-                SelectedDocument.FilePath = file.Path.LocalPath;
+                var oldFilePath = SelectedDocument.FilePath;
+                var newFilePath = file.Path.LocalPath;
+
+                SelectedDocument.FilePath = newFilePath;
                 await SaveDocumentAsync(SelectedDocument);
+
+                // Always publish FileCreatedEvent for Save As operations
+                System.Diagnostics.Debug.WriteLine($"Publishing FileCreatedEvent for: {newFilePath}");
+                App.EventBus.Publish(new FileCreatedEvent(newFilePath));
             }
         }
     }
@@ -315,7 +333,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            await ShowErrorDialog("Error Saving File", $"Could not open file: {ex.Message}");
+            await ShowErrorDialog("Error Saving File", $"Could not save file: {ex.Message}");
         }
     }
 
