@@ -1,18 +1,31 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace skt.IDE.Models;
 
-public class FileNode
+public partial class FileNode : ObservableObject
 {
-    public string Name { get; set; } = string.Empty;
-    public string FullPath { get; set; } = string.Empty;
-    public bool IsDirectory { get; set; }
-    public ObservableCollection<FileNode> Children { get; set; } = new();
-    public bool IsExpanded { get; set; }
+    [ObservableProperty]
+    private string _name = string.Empty;
+
+    [ObservableProperty]
+    private string _fullPath = string.Empty;
+
+    [ObservableProperty]
+    private bool _isDirectory;
+
+    [ObservableProperty]
+    private ObservableCollection<FileNode> _children = new();
+
+    [ObservableProperty]
+    private bool _isExpanded;
 
     public string DisplayName => Name;
-    public string Icon => IsDirectory ? "📁" : "📄";
+
+    public string IconPath => IsDirectory
+        ? IconMapper.GetFolderIconPath(Name, IsExpanded)
+        : IconMapper.GetFileIconPath(Name);
 
     public FileNode()
     {
@@ -26,17 +39,26 @@ public class FileNode
 
         if (IsDirectory && string.IsNullOrEmpty(Name))
         {
-            Name = Path.GetPathRoot(path) ?? path;
+            Name = Path.GetFileName(Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         }
 
-        // Load children immediately for simplicity
         if (IsDirectory)
         {
             LoadChildren();
         }
     }
 
-    public void LoadChildren()
+    partial void OnIsExpandedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IconPath));
+    }
+
+    partial void OnNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(IconPath));
+    }
+
+    private void LoadChildren()
     {
         if (!IsDirectory) return;
 
@@ -44,13 +66,11 @@ public class FileNode
 
         try
         {
-            // Add directories first
             foreach (var dir in Directory.GetDirectories(FullPath))
             {
                 Children.Add(new FileNode(dir));
             }
 
-            // Add files
             foreach (var file in Directory.GetFiles(FullPath))
             {
                 Children.Add(new FileNode(file));
@@ -58,7 +78,7 @@ public class FileNode
         }
         catch
         {
-            // Handle access denied or other exceptions silently
+            // ignore IO errors
         }
     }
 }

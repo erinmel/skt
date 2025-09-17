@@ -12,7 +12,6 @@
     <Folder Include="Assets\icons\files\" />
     <Folder Include="Assets\icons\folders\" />
     <Folder Include="Assets\icons\tools\" />
-    <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
