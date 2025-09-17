@@ -11,43 +11,39 @@ public partial class FileExplorerView : UserControl
     public FileExplorerView()
     {
         InitializeComponent();
-        FileTreeView.PointerPressed += FileTreeView_PointerPressed;
+        FileTreeView.SelectionChanged += FileTreeView_SelectionChanged;
         FileTreeView.DoubleTapped += FileTreeView_DoubleTapped;
     }
 
-    private void FileTreeView_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void FileTreeView_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        var pointProps = e.GetCurrentPoint(this).Properties;
-        if (!pointProps.IsLeftButtonPressed)
-            return;
-
-        // Single-click handling
-        if (e.ClickCount == 1)
+        // Handle single-click selection for folders
+        if (FileTreeView.SelectedItem is FileNode selectedNode && selectedNode.IsDirectory)
         {
-            if (e.Source is Control control)
-            {
-                var tvi = control.FindAncestorOfType<TreeViewItem>();
-                if (tvi?.DataContext is FileNode { IsDirectory: true } node)
-                {
-                    node.IsExpanded = !node.IsExpanded;
-                    e.Handled = true;
-                }
-            }
+            selectedNode.IsExpanded = !selectedNode.IsExpanded;
         }
     }
 
     private void FileTreeView_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (FileTreeView.SelectedItem is FileNode selectedNode && DataContext is FileExplorerViewModel viewModel && !selectedNode.IsDirectory)
+        if (FileTreeView.SelectedItem is FileNode selectedNode && DataContext is FileExplorerViewModel viewModel)
         {
-            // File double-clicked - open it
-            viewModel.NotifyFileSelected(selectedNode.FullPath);
-
-            // Find the parent MainWindow and open the file
-            var mainWindow = this.FindAncestorOfType<MainWindow>();
-            if (mainWindow?.DataContext is ViewModels.MainWindowViewModel mainViewModel)
+            if (!selectedNode.IsDirectory)
             {
-                _ = mainViewModel.OpenFile(selectedNode.FullPath);
+                // File double-clicked - open it
+                viewModel.NotifyFileSelected(selectedNode.FullPath);
+
+                // Find the parent MainWindow and open the file
+                var mainWindow = this.FindAncestorOfType<MainWindow>();
+                if (mainWindow?.DataContext is ViewModels.MainWindowViewModel mainViewModel)
+                {
+                    _ = mainViewModel.OpenFile(selectedNode.FullPath);
+                }
+            }
+            else
+            {
+                // Double-click on folder - also toggle (for redundancy)
+                selectedNode.IsExpanded = !selectedNode.IsExpanded;
             }
             e.Handled = true;
         }
