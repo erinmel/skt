@@ -149,7 +149,7 @@ public partial class MainWindow : Window
             return;
 
         var toolWindow = GetToolWindowFromButtonName(button.Name);
-        await SwitchToolWindow(toolWindow).ConfigureAwait(false);
+        await SwitchToolWindow(toolWindow);
     }
 
     private ToolWindowType GetToolWindowFromButtonName(string buttonName)
@@ -178,7 +178,7 @@ public partial class MainWindow : Window
             // Trigger compilation or analysis if needed for Tokens/SyntaxTree views
             if (toolWindow is ToolWindowType.Tokens or ToolWindowType.SyntaxTree)
             {
-                await RefreshAnalysisData().ConfigureAwait(false);
+                await RefreshAnalysisData();
             }
         }
     }
@@ -396,7 +396,7 @@ public partial class MainWindow : Window
             {
                 Title = "Select Project Folder",
                 AllowMultiple = false
-            }).ConfigureAwait(false);
+            });
 
             if (result.Count > 0)
             {
@@ -406,8 +406,8 @@ public partial class MainWindow : Window
                 var viewModel = ViewModel;
                 if (viewModel is not null)
                 {
-                    await viewModel.OpenProject(folderPath).ConfigureAwait(false);
-                    await SwitchToolWindow(ToolWindowType.FileExplorer).ConfigureAwait(false);
+                    await viewModel.OpenProject(folderPath);
+                    await SwitchToolWindow(ToolWindowType.FileExplorer);
                 }
             }
         }
@@ -438,7 +438,7 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrEmpty(viewModel.CurrentFilePath))
         {
-            await SaveCurrentFile(viewModel).ConfigureAwait(false);
+            await SaveCurrentFile(viewModel);
         }
         else
         {
@@ -451,8 +451,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            await System.IO.File.WriteAllTextAsync(viewModel.CurrentFilePath, viewModel.EditorContent)
-                .ConfigureAwait(false);
+            await System.IO.File.WriteAllTextAsync(viewModel.CurrentFilePath, viewModel.EditorContent);
             viewModel.StatusMessage = $"Saved: {System.IO.Path.GetFileName(viewModel.CurrentFilePath)}";
         }
         catch (Exception ex)
@@ -478,11 +477,11 @@ public partial class MainWindow : Window
                     new FilePickerFileType("Text Files") { Patterns = ["*.txt"] },
                     new FilePickerFileType("All Files") { Patterns = ["*"] }
                 ]
-            }).ConfigureAwait(false);
+            });
 
             if (result is not null && viewModel is not null)
             {
-                await SaveFileAs(result, viewModel).ConfigureAwait(false);
+                await SaveFileAs(result, viewModel);
             }
         }
         catch (Exception ex)
@@ -494,7 +493,7 @@ public partial class MainWindow : Window
     private async Task SaveFileAs(IStorageFile file, MainWindowViewModel viewModel)
     {
         var filePath = file.Path.LocalPath;
-        await System.IO.File.WriteAllTextAsync(filePath, viewModel.EditorContent).ConfigureAwait(false);
+        await System.IO.File.WriteAllTextAsync(filePath, viewModel.EditorContent);
         viewModel.CurrentFilePath = filePath;
         viewModel.StatusMessage = $"Saved as: {System.IO.Path.GetFileName(filePath)}";
     }
@@ -590,3 +589,4 @@ public partial class MainWindow : Window
 
     #endregion
 }
+
