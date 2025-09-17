@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia;
-using skt.IDE.ViewModels;
+using skt.IDE.Services;
 
 namespace skt.IDE.ViewModels;
 
@@ -85,6 +85,21 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             TabbedEditorViewModel.SelectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
         }
+        App.EventBus.Subscribe<FileDirtyStateChangedEvent>(OnFileDirtyStateChanged);
+        App.EventBus.Subscribe<FileOpenedEvent>(OnFileOpenedOrClosed);
+        App.EventBus.Subscribe<FileClosedEvent>(OnFileOpenedOrClosed);
+    }
+
+    private void OnFileDirtyStateChanged(FileDirtyStateChangedEvent e)
+    {
+        OnPropertyChanged(nameof(CanSave));
+        OnPropertyChanged(nameof(CanSaveAs));
+    }
+
+    private void OnFileOpenedOrClosed(object e)
+    {
+        OnPropertyChanged(nameof(CanSave));
+        OnPropertyChanged(nameof(CanSaveAs));
     }
 
     public async Task OpenProject(string folderPath)

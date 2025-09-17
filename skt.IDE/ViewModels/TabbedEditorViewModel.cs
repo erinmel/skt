@@ -430,6 +430,7 @@ public class DocumentViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(Title));
             }
+                App.EventBus.Publish(new FileDirtyStateChangedEvent(FilePath ?? "", value));
         }
     }
 

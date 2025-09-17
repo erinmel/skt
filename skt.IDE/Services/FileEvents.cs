@@ -31,3 +31,35 @@ public class ProjectLoadedEvent
         ProjectPath = projectPath;
     }
 }
+
+public class FileDirtyStateChangedEvent
+{
+    public string FilePath { get; }
+    public bool IsDirty { get; }
+
+    public FileDirtyStateChangedEvent(string filePath, bool isDirty)
+    {
+        FilePath = filePath;
+        IsDirty = isDirty;
+    }
+}
+
+public class FileOpenedEvent
+{
+    public string FilePath { get; }
+
+    public FileOpenedEvent(string filePath)
+    {
+        FilePath = filePath;
+    }
+}
+
+public class FileClosedEvent
+{
+    public string FilePath { get; }
+
+    public FileClosedEvent(string filePath)
+    {
+        FilePath = filePath;
+    }
+}
