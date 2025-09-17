@@ -122,7 +122,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://skt.IDE/Styles/IconResources.axaml"/>
+                <ResourceInclude Source="avares://skt.IDE/Styles/ToolIconResources.axaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
