@@ -16,6 +16,7 @@ using Avalonia.Platform.Storage;
 public class TabbedEditorViewModel : INotifyPropertyChanged
 {
     private DocumentViewModel? _selectedDocument;
+    private DocumentViewModel? _previousSelectedDocument;
 
     private enum UnsavedChangesResult
     {
@@ -31,6 +32,10 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         get => _selectedDocument;
         set
         {
+            // Unsubscribe from previous document
+            if (_previousSelectedDocument != null)
+                _previousSelectedDocument.PropertyChanged -= OnDocumentPropertyChanged;
+
             // Deselect previous document
             if (_selectedDocument != null)
                 _selectedDocument.IsSelected = false;
@@ -38,7 +43,13 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedDocument, value))
             {
                 if (value != null)
+                {
                     value.IsSelected = true;
+                    // Subscribe to new document changes
+                    value.PropertyChanged += OnDocumentPropertyChanged;
+                }
+
+                _previousSelectedDocument = value;
                 OnCommandCanExecuteChanged();
             }
         }
@@ -102,11 +113,6 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             // Select the tab at the same index, or the last tab if index is out of bounds
             var newIndex = Math.Min(index, Documents.Count - 1);
             SelectedDocument = Documents[newIndex];
-        }
-        else
-        {
-            // No tabs left, create a new one
-            CreateNewTab();
         }
     }
 
@@ -228,10 +234,9 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
                 var doc = new DocumentViewModel
                 {
-                    Content = content,
-                    FilePath = filePath,
-                    IsDirty = false
+                    FilePath = filePath
                 };
+                doc.SetContentFromFile(content);
                 Documents.Add(doc);
                 SelectedDocument = doc;
             }
@@ -240,6 +245,16 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 await ShowErrorDialog("Error Opening File", $"Could not open file: {ex.Message}");
             }
         }
+    }
+
+    public async Task SaveAsync()
+    {
+        await SaveFileAsync();
+    }
+
+    public async Task SaveAsAsync()
+    {
+        await SaveAsFileAsync();
     }
 
     private async Task SaveFileAsync()
@@ -340,6 +355,14 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         (SaveAsCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (CloseOtherTabsCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
+
+    private void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DocumentViewModel.IsDirty))
+        {
+            OnCommandCanExecuteChanged();
+        }
+    }
 }
 
 public class DocumentViewModel : INotifyPropertyChanged
@@ -412,6 +435,16 @@ public class DocumentViewModel : INotifyPropertyChanged
         OnPropertyChanged(propertyName);
         return true;
     }
+
+    protected internal void SetContentFromFile(string content)
+    {
+        _content = content;
+        IsDirty = false;
+        OnPropertyChanged(nameof(Content));
+    }
+
+    public bool isDirty() => _isDirty;
+    public bool isSelected() => _isSelected;
 }
 
 public class RelayCommand : ICommand

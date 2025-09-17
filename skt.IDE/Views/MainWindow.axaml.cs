@@ -436,23 +436,16 @@ public partial class MainWindow : Window
         if (viewModel is null)
             return;
 
-        if (!string.IsNullOrEmpty(viewModel.CurrentFilePath))
-        {
-            await SaveCurrentFile(viewModel);
-        }
-        else
-        {
-            // If no current file, trigger Save As
-            SaveAsButton_Click(sender, e);
-        }
-    }
-
-    private async Task SaveCurrentFile(MainWindowViewModel viewModel)
-    {
         try
         {
-            await System.IO.File.WriteAllTextAsync(viewModel.CurrentFilePath, viewModel.EditorContent);
-            viewModel.StatusMessage = $"Saved: {System.IO.Path.GetFileName(viewModel.CurrentFilePath)}";
+            if (!string.IsNullOrEmpty(viewModel.CurrentFilePath))
+            {
+                await viewModel.SaveFile();
+            }
+            else
+            {
+                SaveAsButton_Click(sender, e);
+            }
         }
         catch (Exception ex)
         {
@@ -462,40 +455,18 @@ public partial class MainWindow : Window
 
     private async void SaveAsButton_Click(object? sender, RoutedEventArgs e)
     {
+        var viewModel = ViewModel;
+        if (viewModel is null)
+            return;
+
         try
         {
-            var storageProvider = StorageProvider;
-            var viewModel = ViewModel;
-
-            var result = await storageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                Title = "Save File As",
-                SuggestedFileName = "Untitled.skt",
-                FileTypeChoices =
-                [
-                    new FilePickerFileType("SKT Files") { Patterns = ["*.skt"] },
-                    new FilePickerFileType("Text Files") { Patterns = ["*.txt"] },
-                    new FilePickerFileType("All Files") { Patterns = ["*"] }
-                ]
-            });
-
-            if (result is not null && viewModel is not null)
-            {
-                await SaveFileAs(result, viewModel);
-            }
+            await viewModel.SaveAsFile();
         }
         catch (Exception ex)
         {
-            HandleException(ex, "Error saving file");
+            HandleException(ex, "Error saving file as");
         }
-    }
-
-    private async Task SaveFileAs(IStorageFile file, MainWindowViewModel viewModel)
-    {
-        var filePath = file.Path.LocalPath;
-        await System.IO.File.WriteAllTextAsync(filePath, viewModel.EditorContent);
-        viewModel.CurrentFilePath = filePath;
-        viewModel.StatusMessage = $"Saved as: {System.IO.Path.GetFileName(filePath)}";
     }
 
     private void SettingsButton_Click(object? sender, RoutedEventArgs e)

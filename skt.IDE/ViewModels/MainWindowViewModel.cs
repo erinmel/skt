@@ -1,11 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.ViewModels.ToolWindows;
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia;
+using skt.IDE.ViewModels;
 
 namespace skt.IDE.ViewModels;
 
@@ -63,8 +65,8 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // Computed properties for button enablement
-    public bool CanSave => IsFileOpen && !string.IsNullOrEmpty(CurrentFilePath);
-    public bool CanSaveAs => IsFileOpen && !string.IsNullOrEmpty(EditorContent);
+    public bool CanSave => TabbedEditorViewModel.SelectedDocument != null && TabbedEditorViewModel.SelectedDocument.IsDirty;
+    public bool CanSaveAs => TabbedEditorViewModel.SelectedDocument != null;
     public bool CanCreateNewFile => IsProjectOpen;
 
     public FileExplorerViewModel FileExplorer { get; } = new();
@@ -72,6 +74,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
+
+    public MainWindowViewModel()
+    {
+        // Subscribe to TabbedEditor changes to keep save button states in sync
+        TabbedEditorViewModel.PropertyChanged += OnTabbedEditorPropertyChanged;
+
+        // Initial subscription if there's already a selected document
+        if (TabbedEditorViewModel.SelectedDocument != null)
+        {
+            TabbedEditorViewModel.SelectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
+        }
+    }
 
     public async Task OpenProject(string folderPath)
     {
@@ -117,14 +131,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 // Reset cursor position
                 CurrentLine = 1;
                 CurrentColumn = 1;
-
                 // Detect encoding (simplified - assumes UTF-8 for now)
                 FileEncoding = "UTF-8";
 
-            }
-            else
-            {
-                StatusMessage = "Selected file does not exist.";
             }
         }
         catch (Exception ex)
@@ -133,29 +142,63 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+
+    private DocumentViewModel? _previousSelectedDocument;
+
+    private void OnTabbedEditorPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TabbedEditorViewModel.SelectedDocument))
+        {
+            // Unsubscribe from previous document
+            if (_previousSelectedDocument != null)
+            {
+                _previousSelectedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
+            }
+
+            // Subscribe to new document
+            if (TabbedEditorViewModel.SelectedDocument != null)
+            {
+                TabbedEditorViewModel.SelectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
+            }
+
+            _previousSelectedDocument = TabbedEditorViewModel.SelectedDocument;
+
+            OnPropertyChanged(nameof(CanSave));
+            OnPropertyChanged(nameof(CanSaveAs));
+        }
+    }
+    private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DocumentViewModel.IsDirty) ||
+            e.PropertyName == nameof(DocumentViewModel.FilePath))
+        {
+            OnPropertyChanged(nameof(CanSave));
+            OnPropertyChanged(nameof(CanSaveAs));
+
+        }
+    }
+
+
     // Method to create a new file in the tabbed editor
     public void CreateNewFile()
     {
         TabbedEditorViewModel.NewTabCommand.Execute(null);
-        StatusMessage = "New file created";
+        StatusMessage = "New file created not implemented.";
     }
 
-    // Method to save current file via tabbed editor
-    public void SaveCurrentFile()
+    public async Task SaveFile()
     {
         if (TabbedEditorViewModel.SelectedDocument != null)
         {
-            TabbedEditorViewModel.SaveCommand.Execute(null);
-            StatusMessage = $"Saved: {Path.GetFileName(TabbedEditorViewModel.SelectedDocument.FilePath ?? "Untitled")}";
+            await TabbedEditorViewModel.SaveAsync();
         }
     }
 
-    // Method to save as via tabbed editor
-    public void SaveAsCurrentFile()
+    public async Task SaveAsFile()
     {
         if (TabbedEditorViewModel.SelectedDocument != null)
         {
-            TabbedEditorViewModel.SaveAsCommand.Execute(null);
+            await TabbedEditorViewModel.SaveAsAsync();
         }
     }
 
@@ -163,7 +206,6 @@ public partial class MainWindowViewModel : ViewModelBase
     public void UpdateWindowState(WindowState newState)
     {
         CurrentWindowState = newState;
-        UpdateWindowStateButton();
     }
 
     private void UpdateWindowStateButton()
@@ -179,7 +221,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 break;
         }
 
-        // Notify that the icon has changed so the UI updates
         OnPropertyChanged(nameof(WindowStateIcon));
     }
 
