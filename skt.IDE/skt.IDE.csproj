@@ -11,7 +11,6 @@
   <ItemGroup>
     <Folder Include="Assets\icons\files\" />
     <Folder Include="Assets\icons\folders\" />
-    <Folder Include="Assets\icons\tools\" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
