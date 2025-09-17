@@ -9,8 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Assets\icons\files\" />
-    <Folder Include="Assets\icons\folders\" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 

@@ -23,9 +23,9 @@ public partial class FileNode : ObservableObject
 
     public string DisplayName => Name;
 
-    public string IconPath => IsDirectory
-        ? IconMapper.GetFolderIconPath(Name, IsExpanded)
-        : IconMapper.GetFileIconPath(Name);
+    public string IconKey => IsDirectory
+        ? IconMapper.GetFolderIconKey(Name, IsExpanded)
+        : IconMapper.GetFileIconKey(Name);
 
     public FileNode()
     {
@@ -50,12 +50,12 @@ public partial class FileNode : ObservableObject
 
     partial void OnIsExpandedChanged(bool value)
     {
-        OnPropertyChanged(nameof(IconPath));
+        OnPropertyChanged(nameof(IconKey));
     }
 
     partial void OnNameChanged(string value)
     {
-        OnPropertyChanged(nameof(IconPath));
+        OnPropertyChanged(nameof(IconKey));
     }
 
     private void LoadChildren()

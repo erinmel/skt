@@ -58,7 +58,7 @@
 
                 <!-- Logo and File Operations -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center" Name="LogoPanel">
-                    <Image Source="{DynamicResource Icon.Skt}" Width="30" Height="30" VerticalAlignment="Center"/>
+                    <Image Source="{DynamicResource Icon.SktFile}" Width="30" Height="30" VerticalAlignment="Center"/>
 
                     <!-- File Menu Dropdown -->
                     <DropDownButton Name="FileMenuDropDown"

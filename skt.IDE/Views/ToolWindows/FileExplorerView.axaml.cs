@@ -18,7 +18,7 @@ public partial class FileExplorerView : UserControl
     private void FileTreeView_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         // Handle single-click selection for folders
-        if (FileTreeView.SelectedItem is FileNode selectedNode && selectedNode.IsDirectory)
+        if (FileTreeView.SelectedItem is FileNode { IsDirectory: true } selectedNode)
         {
             selectedNode.IsExpanded = !selectedNode.IsExpanded;
         }
