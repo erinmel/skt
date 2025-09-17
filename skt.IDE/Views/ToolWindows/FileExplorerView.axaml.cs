@@ -21,17 +21,17 @@ public partial class FileExplorerView : UserControl
         if (!pointProps.IsLeftButtonPressed)
             return;
 
-        // Single-click only
-        if (e.ClickCount != 1)
-            return;
-
-        if (e.Source is Control control)
+        // Single-click handling
+        if (e.ClickCount == 1)
         {
-            var tvi = control.FindAncestorOfType<TreeViewItem>();
-            if (tvi?.DataContext is FileNode { IsDirectory: true } node)
+            if (e.Source is Control control)
             {
-                node.IsExpanded = !node.IsExpanded;
-                e.Handled = true;
+                var tvi = control.FindAncestorOfType<TreeViewItem>();
+                if (tvi?.DataContext is FileNode { IsDirectory: true } node)
+                {
+                    node.IsExpanded = !node.IsExpanded;
+                    e.Handled = true;
+                }
             }
         }
     }

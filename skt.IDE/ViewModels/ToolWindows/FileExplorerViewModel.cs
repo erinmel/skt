@@ -11,24 +11,35 @@ namespace skt.IDE.ViewModels.ToolWindows;
 
 public partial class FileExplorerViewModel : ViewModelBase
 {
+    private const String NoProjectName = "Open A Project to Begin";
+    
     [ObservableProperty]
     private ObservableCollection<FileNode> _rootNodes = new();
 
     [ObservableProperty]
-    private string _projectName = "No Project";
+    private string _projectName = NoProjectName;
 
     public FileExplorerViewModel()
     {
-        ProjectName = "No Project";
+        ProjectName = NoProjectName;
     }
 
     public async Task LoadProject(string projectPath)
     {
         if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+        {
+            ProjectName = NoProjectName;
             return;
+        }
 
         List<FileNode> childNodes = new();
         string projectName = Path.GetFileName(projectPath);
+
+        // Ensure we have a valid project name
+        if (string.IsNullOrEmpty(projectName))
+        {
+            projectName = Path.GetFileName(Path.GetFullPath(projectPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
 
         // Build the file tree off the UI thread
         await Task.Run(() =>
@@ -61,7 +72,7 @@ public partial class FileExplorerViewModel : ViewModelBase
             {
                 RootNodes.Add(node);
             }
-            ProjectName = string.IsNullOrEmpty(projectName) ? "No Project" : projectName;
+            ProjectName = string.IsNullOrEmpty(projectName) ? NoProjectName : projectName;
         });
     }
 
