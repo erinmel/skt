@@ -3,6 +3,8 @@ using Avalonia.Input;
 using skt.IDE.Models;
 using skt.IDE.ViewModels.ToolWindows;
 using Avalonia.VisualTree;
+using skt.IDE; // Access App.EventBus
+using skt.IDE.Services; // Access OpenFileRequestEvent
 
 namespace skt.IDE.Views.ToolWindows;
 
@@ -30,15 +32,9 @@ public partial class FileExplorerView : UserControl
         {
             if (!selectedNode.IsDirectory)
             {
-                // File double-clicked - open it
+                // File double-clicked - publish an open request so TabbedEditor handles it
                 viewModel.NotifyFileSelected(selectedNode.FullPath);
-
-                // Find the parent MainWindow and open the file
-                var mainWindow = this.FindAncestorOfType<MainWindow>();
-                if (mainWindow?.DataContext is ViewModels.MainWindowViewModel mainViewModel)
-                {
-                    _ = mainViewModel.OpenFile(selectedNode.FullPath);
-                }
+                App.EventBus.Publish(new OpenFileRequestEvent(selectedNode.FullPath));
             }
             else
             {

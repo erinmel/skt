@@ -63,3 +63,25 @@ public class FileClosedEvent
         FilePath = filePath;
     }
 }
+
+public class OpenFileRequestEvent
+{
+    public string FilePath { get; }
+
+    public OpenFileRequestEvent(string filePath)
+    {
+        FilePath = filePath;
+    }
+}
+
+public class CreateFileRequestEvent
+{
+    public string DirectoryPath { get; }
+    public string FileName { get; }
+
+    public CreateFileRequestEvent(string directoryPath, string fileName)
+    {
+        DirectoryPath = directoryPath;
+        FileName = fileName;
+    }
+}

@@ -77,14 +77,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        // Subscribe to TabbedEditor changes to keep save button states in sync
+        // Subscribe to TabbedEditor selection changes to keep save button states in sync
         TabbedEditorViewModel.PropertyChanged += OnTabbedEditorPropertyChanged;
 
-        // Initial subscription if there's already a selected document
-        if (TabbedEditorViewModel.SelectedDocument != null)
-        {
-            TabbedEditorViewModel.SelectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
-        }
         App.EventBus.Subscribe<FileDirtyStateChangedEvent>(OnFileDirtyStateChanged);
         App.EventBus.Subscribe<FileOpenedEvent>(OnFileOpenedOrClosed);
         App.EventBus.Subscribe<FileClosedEvent>(OnFileOpenedOrClosed);
@@ -158,41 +153,14 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
 
-    private DocumentViewModel? _previousSelectedDocument;
-
     private void OnTabbedEditorPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(TabbedEditorViewModel.SelectedDocument))
         {
-            // Unsubscribe from previous document
-            if (_previousSelectedDocument != null)
-            {
-                _previousSelectedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
-            }
-
-            // Subscribe to new document
-            if (TabbedEditorViewModel.SelectedDocument != null)
-            {
-                TabbedEditorViewModel.SelectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
-            }
-
-            _previousSelectedDocument = TabbedEditorViewModel.SelectedDocument;
-
             OnPropertyChanged(nameof(CanSave));
             OnPropertyChanged(nameof(CanSaveAs));
         }
     }
-    private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(DocumentViewModel.IsDirty) ||
-            e.PropertyName == nameof(DocumentViewModel.FilePath))
-        {
-            OnPropertyChanged(nameof(CanSave));
-            OnPropertyChanged(nameof(CanSaveAs));
-
-        }
-    }
-
 
     // Method to create a new file in the tabbed editor
     public void CreateNewFile()
@@ -241,8 +209,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnEditorContentChanged(string value)
     {
-        // When editor content changes, we could trigger compilation here
-        // For now, just update status
         if (string.IsNullOrEmpty(value))
         {
             StatusMessage = "Ready";
@@ -256,7 +222,6 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = $"Modified: {Path.GetFileName(CurrentFilePath)}";
         }
 
-        // Update computed properties
         OnPropertyChanged(nameof(CanSaveAs));
     }
 

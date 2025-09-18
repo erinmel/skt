@@ -33,20 +33,30 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         get => _selectedDocument;
         set
         {
-            // Unsubscribe from previous document
-            if (_previousSelectedDocument != null)
-                _previousSelectedDocument.PropertyChanged -= OnDocumentPropertyChanged;
+            // If selecting the same document, ensure it stays selected and do nothing else
+            if (ReferenceEquals(_selectedDocument, value))
+            {
+                if (value != null && !value.IsSelected)
+                {
+                    value.IsSelected = true;
+                }
+                return;
+            }
 
-            // Deselect previous document
-            if (_selectedDocument != null)
-                _selectedDocument.IsSelected = false;
-
+            var old = _selectedDocument;
             if (SetProperty(ref _selectedDocument, value))
             {
+                // Unsubscribe and deselect old after the property actually changed
+                if (old != null)
+                {
+                    old.PropertyChanged -= OnDocumentPropertyChanged;
+                    old.IsSelected = false;
+                }
+
+                // Subscribe and select new
                 if (value != null)
                 {
                     value.IsSelected = true;
-                    // Subscribe to new document changes
                     value.PropertyChanged += OnDocumentPropertyChanged;
                 }
 
@@ -76,6 +86,17 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         OpenCommand = new RelayCommand(async () => await OpenFileAsync());
         SaveCommand = new RelayCommand(async () => await SaveFileAsync(), () => SelectedDocument != null);
         SaveAsCommand = new RelayCommand(async () => await SaveAsFileAsync(), () => SelectedDocument != null);
+
+        // Subscribe to global open file requests
+        App.EventBus.Subscribe<OpenFileRequestEvent>(OnOpenFileRequest);
+    }
+
+    private void OnOpenFileRequest(OpenFileRequestEvent e)
+    {
+        if (!string.IsNullOrWhiteSpace(e.FilePath))
+        {
+            _ = OpenFileAsync(e.FilePath);
+        }
     }
 
     private void CreateNewTab()
@@ -107,6 +128,11 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
         var index = Documents.IndexOf(document);
         Documents.Remove(document);
+
+        if (!string.IsNullOrEmpty(document.FilePath))
+        {
+            App.EventBus.Publish(new FileClosedEvent(document.FilePath));
+        }
 
         // Select adjacent tab or create new one if none left
         if (Documents.Count > 0)
@@ -145,6 +171,15 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             }
         }
 
+        // Publish close events for all open files
+        foreach (var doc in Documents.ToList())
+        {
+            if (!string.IsNullOrEmpty(doc.FilePath))
+            {
+                App.EventBus.Publish(new FileClosedEvent(doc.FilePath));
+            }
+        }
+
         Documents.Clear();
         CreateNewTab(); // Always keep at least one tab
     }
@@ -177,6 +212,10 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         foreach (var doc in otherDocs)
         {
             Documents.Remove(doc);
+            if (!string.IsNullOrEmpty(doc.FilePath))
+            {
+                App.EventBus.Publish(new FileClosedEvent(doc.FilePath));
+            }
         }
 
         // Ensure current document is still selected
@@ -240,6 +279,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 doc.SetContentFromFile(content);
                 Documents.Add(doc);
                 SelectedDocument = doc;
+
+                App.EventBus.Publish(new FileOpenedEvent(filePath));
             }
             catch (Exception ex)
             {

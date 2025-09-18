@@ -22,11 +22,26 @@ public partial class FileExplorerViewModel : ViewModelBase
 
     private string _currentProjectPath = string.Empty;
 
+    public RelayCommand<FileNode> AddNewFileCommand { get; }
+    public RelayCommand<FileNode> AddNewFolderCommand { get; }
+    public RelayCommand<FileNode> RenameResourceCommand { get; }
+    public RelayCommand<FileNode> CopyCommand { get; }
+    public RelayCommand<FileNode> CutCommand { get; }
+    public RelayCommand<FileNode> PasteCommand { get; }
+    public RelayCommand<FileNode> DeleteCommand { get; }
+
     public FileExplorerViewModel()
     {
         ProjectName = NoProjectName;
         App.EventBus.Subscribe<FileCreatedEvent>(OnFileCreated);
         App.EventBus.Subscribe<FileUpdatedEvent>(OnFileUpdated);
+        AddNewFileCommand = new RelayCommand<FileNode>(AddNewFile);
+        AddNewFolderCommand = new RelayCommand<FileNode>(AddNewFolder);
+        RenameResourceCommand = new RelayCommand<FileNode>(RenameResource);
+        CopyCommand = new RelayCommand<FileNode>(Copy);
+        CutCommand = new RelayCommand<FileNode>(Cut);
+        PasteCommand = new RelayCommand<FileNode>(Paste);
+        DeleteCommand = new RelayCommand<FileNode>(Delete);
     }
 
     private async void OnFileCreated(FileCreatedEvent fileEvent)
@@ -139,5 +154,34 @@ public partial class FileExplorerViewModel : ViewModelBase
     internal void NotifyFileSelected(string filePath)
     {
         FileSelected?.Invoke(filePath);
+    }
+
+    private void AddNewFile(FileNode? node)
+    {
+        // TODO: Implement logic
+    }
+    private void AddNewFolder(FileNode? node)
+    {
+        // TODO: Implement logic
+    }
+    private void RenameResource(FileNode? node)
+    {
+        // TODO: Implement logic
+    }
+    private void Copy(FileNode? node)
+    {
+        // TODO: Implement logic
+    }
+    private void Cut(FileNode? node)
+    {
+        // TODO: Implement logic
+    }
+    private void Paste(FileNode? node)
+    {
+        // TODO: Implement logic
+    }
+    private void Delete(FileNode? node)
+    {
+        // TODO: Implement logic
     }
 }

@@ -14,6 +14,27 @@
     <vm:FileExplorerViewModel/>
   </Design.DataContext>
 
+  <UserControl.Styles>
+    <Style Selector="MenuItem > StackPanel">
+      <Setter Property="Orientation" Value="Horizontal"/>
+      <Setter Property="Spacing" Value="3"/>
+    </Style>
+
+    <Style Selector="MenuItem /template/ Border">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="MenuItem:pointerover /template/ Border">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
+    </Style>
+
+    <Style Selector="Image">
+      <Setter Property="Width" Value="16"/>
+      <Setter Property="Height" Value="16"/>
+    </Style>
+
+  </UserControl.Styles>
+
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -36,19 +57,92 @@
               Name="FileTreeView"
               ItemsSource="{Binding RootNodes}"
               Margin="2">
+
       <TreeView.ItemTemplate>
         <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="models:FileNode">
-          <StackPanel Orientation="Horizontal" Spacing="6">
+          <StackPanel Orientation="Horizontal" Spacing="3">
             <Image Source="{Binding IconKey, Converter={StaticResource IconKeyConverter}}" Width="16" Height="16"/>
             <TextBlock Text="{Binding DisplayName}"/>
           </StackPanel>
         </TreeDataTemplate>
       </TreeView.ItemTemplate>
+
       <TreeView.Styles>
         <Style Selector="TreeViewItem" x:DataType="models:FileNode">
           <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
         </Style>
       </TreeView.Styles>
+
+      <TreeView.ContextMenu>
+        <ContextMenu>
+
+          <MenuItem Command="{Binding AddNewFileCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ToolbarFileNew}"/>
+                <TextBlock Text="Add New File"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem CommandParameter="{Binding AddNewFolderCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ToolbarProjectNew}"/>
+                <TextBlock Text="Add New Folder"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem CommandParameter="{Binding RenameResourceCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ContentRename}"/>
+                <TextBlock Text="Add New Folder"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <Separator/>
+
+          <MenuItem CommandParameter="{Binding CopyCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ContentCopy}"/>
+                <TextBlock Text="Copy"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem CommandParameter="{Binding CutCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ContentCut}"/>
+                <TextBlock Text="Cut"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem CommandParameter="{Binding PasteCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ContentPaste}"/>
+                <TextBlock Text="Paste"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem CommandParameter="{Binding DeleteCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <Image Source="{DynamicResource Icon.ToolbarDelete}"/>
+                <TextBlock Text="Delete"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+        </ContextMenu>
+      </TreeView.ContextMenu>
+
     </TreeView>
   </Grid>
 </UserControl>
