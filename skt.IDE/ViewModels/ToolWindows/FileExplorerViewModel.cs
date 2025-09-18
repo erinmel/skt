@@ -2,11 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Models;
 using Avalonia.Threading;
 using skt.IDE.Services;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using skt.IDE.Views.Dialogs;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
@@ -29,6 +34,10 @@ public partial class FileExplorerViewModel : ViewModelBase
     public RelayCommand<FileNode> CutCommand { get; }
     public RelayCommand<FileNode> PasteCommand { get; }
     public RelayCommand<FileNode> DeleteCommand { get; }
+
+    // In-memory clipboard
+    private readonly List<string> _clipboardPaths = new();
+    private bool _isCutOperation;
 
     public FileExplorerViewModel()
     {
@@ -156,32 +165,300 @@ public partial class FileExplorerViewModel : ViewModelBase
         FileSelected?.Invoke(filePath);
     }
 
-    private void AddNewFile(FileNode? node)
+    private async void AddNewFile(FileNode? node)
     {
-        // TODO: Implement logic
+        if (string.IsNullOrEmpty(_currentProjectPath)) return;
+
+        string targetDir = GetTargetDirectory(node);
+        try
+        {
+            Directory.CreateDirectory(targetDir);
+            string newPath = GetUniqueFilePath(targetDir, "New File", ".skt");
+            await Task.Run(() => File.WriteAllText(newPath, string.Empty));
+            App.EventBus.Publish(new FileCreatedEvent(newPath));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AddNewFile failed: {ex}");
+            await RefreshFileTree();
+        }
     }
-    private void AddNewFolder(FileNode? node)
+
+    private async void AddNewFolder(FileNode? node)
     {
-        // TODO: Implement logic
+        if (string.IsNullOrEmpty(_currentProjectPath)) return;
+
+        string targetDir = GetTargetDirectory(node);
+        try
+        {
+            string newDir = GetUniqueDirectoryPath(targetDir, "New Folder");
+            await Task.Run(() => Directory.CreateDirectory(newDir));
+            App.EventBus.Publish(new FileCreatedEvent(newDir));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AddNewFolder failed: {ex}");
+            await RefreshFileTree();
+        }
     }
-    private void RenameResource(FileNode? node)
+
+    private async void RenameResource(FileNode? node)
     {
-        // TODO: Implement logic
+        if (node is null) return;
+        if (string.IsNullOrEmpty(_currentProjectPath)) return;
+
+        try
+        {
+            string parentDir = Path.GetDirectoryName(node.FullPath) ?? _currentProjectPath;
+            if (string.IsNullOrWhiteSpace(parentDir) || !Directory.Exists(parentDir))
+            {
+                parentDir = _currentProjectPath;
+            }
+
+            if (node.IsDirectory)
+            {
+                var defaultName = node.Name;
+                var input = await PromptForTextAsync("Rename Folder", "Enter new folder name:", defaultName);
+                if (string.IsNullOrWhiteSpace(input)) return;
+                input = input.Trim();
+
+                string candidate = Path.Combine(parentDir, input);
+                string newDir = Directory.Exists(candidate) || File.Exists(candidate)
+                    ? GetUniqueDirectoryPath(parentDir, input)
+                    : candidate;
+
+                await Task.Run(() => Directory.Move(node.FullPath, newDir));
+                App.EventBus.Publish(new FileUpdatedEvent(newDir));
+            }
+            else
+            {
+                string currentExt = Path.GetExtension(node.Name);
+                string fileName = Path.GetFileName(node.Name);
+                var input = await PromptForTextAsync("Rename File", "Enter new file name:", fileName);
+                if (string.IsNullOrWhiteSpace(input)) return;
+                input = input.Trim();
+
+                string newName = input.Contains('.') ? input : input + currentExt;
+                string candidate = Path.Combine(parentDir, newName);
+
+                if (string.Equals(candidate, node.FullPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                string baseNameNoExt = Path.GetFileNameWithoutExtension(newName);
+                string ext = Path.GetExtension(newName);
+                string newFile = (File.Exists(candidate) || Directory.Exists(candidate))
+                    ? GetUniqueFilePath(parentDir, baseNameNoExt, ext)
+                    : candidate;
+
+                await Task.Run(() => File.Move(node.FullPath, newFile));
+                App.EventBus.Publish(new FileUpdatedEvent(newFile));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"RenameResource failed: {ex}");
+            await RefreshFileTree();
+        }
     }
+
     private void Copy(FileNode? node)
     {
-        // TODO: Implement logic
+        _clipboardPaths.Clear();
+        _isCutOperation = false;
+        if (node is null) return;
+        _clipboardPaths.Add(node.FullPath);
     }
+
     private void Cut(FileNode? node)
     {
-        // TODO: Implement logic
+        _clipboardPaths.Clear();
+        _isCutOperation = true;
+        if (node is null) return;
+        _clipboardPaths.Add(node.FullPath);
     }
-    private void Paste(FileNode? node)
+
+    private async void Paste(FileNode? node)
     {
-        // TODO: Implement logic
+        if (string.IsNullOrEmpty(_currentProjectPath)) return;
+        if (_clipboardPaths.Count == 0) return;
+
+        string destDir = GetTargetDirectory(node);
+        try
+        {
+            foreach (var src in _clipboardPaths.ToList())
+            {
+                bool isDir = Directory.Exists(src);
+                if (isDir)
+                {
+                    // Prevent moving/copying a folder into itself or its child
+                    if (_isCutOperation && destDir.StartsWith(src, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    string target = _isCutOperation
+                        ? GetUniqueDirectoryPath(Path.GetDirectoryName(destDir) == null ? destDir : destDir, Path.GetFileName(src))
+                        : GetUniqueDirectoryPath(destDir, Path.GetFileName(src) + " - Copy");
+
+                    if (_isCutOperation)
+                    {
+                        await Task.Run(() => Directory.Move(src, target));
+                        App.EventBus.Publish(new FileUpdatedEvent(target));
+                    }
+                    else
+                    {
+                        await Task.Run(() => CopyDirectoryRecursive(src, target));
+                        App.EventBus.Publish(new FileCreatedEvent(target));
+                    }
+                }
+                else if (File.Exists(src))
+                {
+                    string name = Path.GetFileName(src);
+                    string nameNoExt = Path.GetFileNameWithoutExtension(name);
+                    string ext = Path.GetExtension(name);
+                    string target = _isCutOperation
+                        ? GetUniqueFilePath(destDir, nameNoExt, ext)
+                        : GetUniqueFilePath(destDir, nameNoExt + " - Copy", ext);
+
+                    if (_isCutOperation)
+                    {
+                        await Task.Run(() => File.Move(src, target));
+                        App.EventBus.Publish(new FileUpdatedEvent(target));
+                    }
+                    else
+                    {
+                        await Task.Run(() => File.Copy(src, target));
+                        App.EventBus.Publish(new FileCreatedEvent(target));
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Paste failed: {ex}");
+        }
+        finally
+        {
+            if (_isCutOperation)
+            {
+                _clipboardPaths.Clear();
+                _isCutOperation = false;
+            }
+            await RefreshFileTree();
+        }
     }
-    private void Delete(FileNode? node)
+
+    private async void Delete(FileNode? node)
     {
-        // TODO: Implement logic
+        if (node is null) return;
+        if (string.IsNullOrEmpty(_currentProjectPath)) return;
+
+        try
+        {
+            if (node.IsDirectory)
+            {
+                await Task.Run(() => Directory.Delete(node.FullPath, true));
+            }
+            else
+            {
+                await Task.Run(() => File.Delete(node.FullPath));
+            }
+            App.EventBus.Publish(new FileUpdatedEvent(node.FullPath));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Delete failed: {ex}");
+        }
+        finally
+        {
+            await RefreshFileTree();
+        }
+    }
+
+    private string GetTargetDirectory(FileNode? node)
+    {
+        if (string.IsNullOrEmpty(_currentProjectPath)) return string.Empty;
+        string dir;
+        if (node is null)
+        {
+            dir = _currentProjectPath;
+        }
+        else if (node.IsDirectory)
+        {
+            dir = node.FullPath;
+        }
+        else
+        {
+            string? parent = Path.GetDirectoryName(node.FullPath);
+            dir = string.IsNullOrEmpty(parent) ? _currentProjectPath : parent;
+        }
+
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+        {
+            return _currentProjectPath;
+        }
+        return dir;
+    }
+
+    private async Task<string?> PromptForTextAsync(string title, string message, string defaultText)
+    {
+        var owner = GetMainWindow();
+        if (owner is null)
+        {
+            return null;
+        }
+        var dlg = new TextInputDialog();
+        dlg.Configure(title, message, defaultText);
+        return await dlg.ShowDialogAsync(owner);
+    }
+
+    private static Window? GetMainWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow;
+        }
+        return null;
+    }
+
+    private static string GetUniqueFilePath(string directory, string baseName, string extension)
+    {
+        string candidate = Path.Combine(directory, baseName + extension);
+        int counter = 1;
+        while (File.Exists(candidate) || Directory.Exists(candidate))
+        {
+            candidate = Path.Combine(directory, $"{baseName} ({counter}){extension}");
+            counter++;
+        }
+        return candidate;
+    }
+
+    private static string GetUniqueDirectoryPath(string directory, string baseName)
+    {
+        string candidate = Path.Combine(directory, baseName);
+        int counter = 1;
+        while (Directory.Exists(candidate) || File.Exists(candidate))
+        {
+            candidate = Path.Combine(directory, $"{baseName} ({counter})");
+            counter++;
+        }
+        return candidate;
+    }
+
+    private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var destFile = Path.Combine(destDir, Path.GetFileName(file));
+            File.Copy(file, destFile, overwrite: false);
+        }
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            var nextDest = Path.Combine(destDir, Path.GetFileName(dir));
+            CopyDirectoryRecursive(dir, nextDest);
+        }
     }
 }

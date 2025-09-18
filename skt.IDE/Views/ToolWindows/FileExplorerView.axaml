@@ -98,7 +98,7 @@
             <MenuItem.Header>
               <StackPanel>
                 <Image Source="{DynamicResource Icon.ContentRename}"/>
-                <TextBlock Text="Add New Folder"/>
+                <TextBlock Text="Rename"/>
               </StackPanel>
             </MenuItem.Header>
           </MenuItem>
