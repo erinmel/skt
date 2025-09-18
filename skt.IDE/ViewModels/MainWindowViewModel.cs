@@ -165,8 +165,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // Method to create a new file in the tabbed editor
     public void CreateNewFile()
     {
-        TabbedEditorViewModel.NewTabCommand.Execute(null);
-        StatusMessage = "New file created not implemented.";
+        App.EventBus.Publish(new CreateFileRequestEvent());
     }
 
     public async Task SaveFile()

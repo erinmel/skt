@@ -76,12 +76,7 @@ public class OpenFileRequestEvent
 
 public class CreateFileRequestEvent
 {
-    public string DirectoryPath { get; }
-    public string FileName { get; }
-
-    public CreateFileRequestEvent(string directoryPath, string fileName)
+    public CreateFileRequestEvent()
     {
-        DirectoryPath = directoryPath;
-        FileName = fileName;
     }
 }

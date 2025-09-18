@@ -422,11 +422,7 @@ public partial class MainWindow : Window
         var viewModel = ViewModel;
         if (viewModel is not null)
         {
-            viewModel.EditorContent = string.Empty;
-            viewModel.CurrentFilePath = string.Empty;
-            viewModel.StatusMessage = "New file created";
-            viewModel.CurrentLine = 1;
-            viewModel.CurrentColumn = 1;
+            viewModel.CreateNewFile();
         }
     }
 

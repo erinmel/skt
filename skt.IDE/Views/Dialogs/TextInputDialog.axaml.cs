@@ -9,8 +9,8 @@ public partial class TextInputDialog : Window
 {
     private TextBlock? _messageText;
     private TextBox? _inputBox;
-    private Button? _okButton;
-    private Button? _cancelButton;
+    readonly Button? _okButton;
+    readonly Button? _cancelButton;
 
     public TextInputDialog()
     {
@@ -30,7 +30,23 @@ public partial class TextInputDialog : Window
             _cancelButton.Click += (_, __) => Close(null);
         }
 
-        this.Opened += (_, __) =>
+        // Close the dialog if it loses activation (click outside)
+        Deactivated += (_, __) => Close(null);
+
+        // Global key handling for Enter and Escape
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                Close(_inputBox?.Text?.Trim());
+            }
+            else if (e.Key == Key.Escape)
+            {
+                Close(null);
+            }
+        };
+
+        Opened += (_, __) =>
         {
             if (_inputBox is not null)
             {
@@ -59,14 +75,8 @@ public partial class TextInputDialog : Window
     public void Configure(string title, string message, string defaultText)
     {
         Title = title;
-        if (_messageText is null)
-        {
-            _messageText = this.FindControl<TextBlock>("MessageText");
-        }
-        if (_inputBox is null)
-        {
-            _inputBox = this.FindControl<TextBox>("InputBox");
-        }
+        _messageText ??= this.FindControl<TextBlock>("MessageText");
+        _inputBox ??= this.FindControl<TextBox>("InputBox");
         if (_messageText is not null)
         {
             _messageText.Text = message;

@@ -12,12 +12,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
-using skt.IDE.Services;
+using Services;
 
 public class TabbedEditorViewModel : INotifyPropertyChanged
 {
     private DocumentViewModel? _selectedDocument;
-    private DocumentViewModel? _previousSelectedDocument;
 
     private enum UnsavedChangesResult
     {
@@ -26,7 +25,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         Cancel
     }
 
-    public ObservableCollection<DocumentViewModel> Documents { get; } = new();
+    public ObservableCollection<DocumentViewModel> Documents { get; set; } = new();
 
     public DocumentViewModel? SelectedDocument
     {
@@ -60,21 +59,20 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                     value.PropertyChanged += OnDocumentPropertyChanged;
                 }
 
-                _previousSelectedDocument = value;
                 OnCommandCanExecuteChanged();
             }
         }
     }
 
     // Commands
-    public ICommand NewTabCommand { get; }
-    public ICommand CloseTabCommand { get; }
-    public ICommand SelectTabCommand { get; }
-    public ICommand CloseAllTabsCommand { get; }
-    public ICommand CloseOtherTabsCommand { get; }
-    public ICommand OpenCommand { get; }
-    public ICommand SaveCommand { get; }
-    public ICommand SaveAsCommand { get; }
+    public RelayCommand NewTabCommand { get; }
+    public RelayCommand<DocumentViewModel> CloseTabCommand { get; }
+    public RelayCommand<DocumentViewModel> SelectTabCommand { get; }
+    public RelayCommand CloseAllTabsCommand { get; }
+    public RelayCommand CloseOtherTabsCommand { get; }
+    public RelayCommand OpenCommand { get; }
+    public RelayCommand SaveCommand { get; }
+    public RelayCommand SaveAsCommand { get; }
 
     public TabbedEditorViewModel()
     {
@@ -113,7 +111,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         // Check for unsaved changes
         if (document.IsDirty)
         {
-            var result = await ShowUnsavedChangesDialog(document.Title);
+            var result = await ShowUnsavedChangesDialog();
             switch (result)
             {
                 case UnsavedChangesResult.Save:
@@ -126,6 +124,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             }
         }
 
+        //Before removing document clear its content from the textBox
+        document.ClearContent();
         var index = Documents.IndexOf(document);
         Documents.Remove(document);
 
@@ -158,7 +158,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         // Check for unsaved changes in any document
         foreach (var doc in dirtyDocs)
         {
-            var result = await ShowUnsavedChangesDialog(doc.Title);
+            var result = await ShowUnsavedChangesDialog();
             switch (result)
             {
                 case UnsavedChangesResult.Save:
@@ -195,7 +195,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         // Check for unsaved changes in other documents
         foreach (var doc in dirtyOtherDocs)
         {
-            var result = await ShowUnsavedChangesDialog(doc.Title);
+            var result = await ShowUnsavedChangesDialog();
             switch (result)
             {
                 case UnsavedChangesResult.Save:
@@ -249,7 +249,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                     }
                 });
 
-                if (files?.Count > 0)
+                if (files.Count > 0)
                 {
                     filePath = files[0].Path.LocalPath;
                 }
@@ -350,7 +350,6 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
             if (file != null && SelectedDocument != null)
             {
-                var oldFilePath = SelectedDocument.FilePath;
                 var newFilePath = file.Path.LocalPath;
 
                 SelectedDocument.FilePath = newFilePath;
@@ -363,7 +362,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task SaveDocumentAsync(DocumentViewModel document)
+    private async Task SaveDocumentAsync(DocumentViewModel? document)
     {
         if (document?.FilePath == null || string.IsNullOrEmpty(document.FilePath)) return;
 
@@ -378,7 +377,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         }
     }
 
-    private Task<UnsavedChangesResult> ShowUnsavedChangesDialog(string fileName)
+    private Task<UnsavedChangesResult> ShowUnsavedChangesDialog()
     {
         // For now, return DontSave - in a real app, show a dialog
         // You can implement this with Avalonia's MessageBox or custom dialog
@@ -503,8 +502,12 @@ public class DocumentViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(Content));
     }
 
-    public bool isDirty() => _isDirty;
-    public bool isSelected() => _isSelected;
+    public void ClearContent()
+    {
+        _content = string.Empty;
+        IsDirty = false;
+        OnPropertyChanged(nameof(Content));
+    }
 }
 
 public class RelayCommand : ICommand
