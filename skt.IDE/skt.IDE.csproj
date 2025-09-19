@@ -25,4 +25,10 @@
     <PackageReference Include="Avalonia.Xaml.Interactivity" Version="11.3.0" />
     <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Assets\Icons\FilesIconResource.axaml" />
+    <AdditionalFiles Include="Assets\Icons\FoldersIconResource.axaml" />
+    <AdditionalFiles Include="Assets\Icons\ToolIconResources.axaml" />
+  </ItemGroup>
 </Project>
