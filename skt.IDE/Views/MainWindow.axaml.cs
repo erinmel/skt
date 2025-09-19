@@ -47,7 +47,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         InitializeUi();
-        InitializeTitleBarEvents();
 
         // Subscribe to window state changes to update ViewModel
         PropertyChanged += OnWindowPropertyChanged;
@@ -74,23 +73,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void InitializeTitleBarEvents()
-    {
-        // Make the drag area draggable
-        DragArea.PointerPressed += DragArea_PointerPressed;
-
-        // Handle double-click on title bar to maximize/restore
-        DragArea.DoubleTapped += DragArea_DoubleTapped;
-
-        // Also make the logo/title area draggable
-        var logoPanel = this.FindControl<StackPanel>("LogoPanel");
-        if (logoPanel != null)
-        {
-            logoPanel.PointerPressed += DragArea_PointerPressed;
-            logoPanel.DoubleTapped += DragArea_DoubleTapped;
-        }
-    }
-
     #region Custom Toolbar Window Control Events
 
     private void Minimize_Click(object? sender, RoutedEventArgs e)
@@ -114,23 +96,10 @@ public partial class MainWindow : Window
 
     #region Title Bar and Window Control Events
 
-    private void DragArea_PointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
-    }
-
     private void MaximizeRestore_Click(object? sender, RoutedEventArgs e)
     {
         ToggleWindowState();
     }
-    private void DragArea_DoubleTapped(object? sender, TappedEventArgs e)
-    {
-        ToggleWindowState();
-    }
-
     private void ToggleWindowState()
     {
         WindowState = WindowState == WindowState.Maximized
@@ -406,6 +375,8 @@ public partial class MainWindow : Window
                 var viewModel = ViewModel;
                 if (viewModel is not null)
                 {
+                    // Publish the selected folder path on the EventBus so other components can react
+                    App.EventBus.Publish(new skt.IDE.Services.ProjectFolderSelectedEvent(folderPath));
                     await viewModel.OpenProject(folderPath);
                     await SwitchToolWindow(ToolWindowType.FileExplorer);
                 }
@@ -420,10 +391,8 @@ public partial class MainWindow : Window
     private void NewFileButton_Click(object? sender, RoutedEventArgs e)
     {
         var viewModel = ViewModel;
-        if (viewModel is not null)
-        {
-            viewModel.CreateNewFile();
-        }
+        if (viewModel is null) return;
+        viewModel.CreateNewFile();
     }
 
     private async void SaveButton_Click(object? sender, RoutedEventArgs e)
@@ -556,5 +525,3 @@ public partial class MainWindow : Window
 
     #endregion
 }
-
-

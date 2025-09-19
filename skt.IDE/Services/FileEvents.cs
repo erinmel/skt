@@ -80,3 +80,13 @@ public class CreateFileRequestEvent
     {
     }
 }
+
+public class ProjectFolderSelectedEvent
+{
+    public string FolderPath { get; }
+
+    public ProjectFolderSelectedEvent(string folderPath)
+    {
+        FolderPath = folderPath;
+    }
+}

@@ -45,6 +45,7 @@ public partial class FileExplorerViewModel : ViewModelBase
         App.EventBus.Subscribe<FileCreatedEvent>(OnFileCreated);
         App.EventBus.Subscribe<FileUpdatedEvent>(OnFileUpdated);
         App.EventBus.Subscribe<CreateFileRequestEvent>(_ => AddNewFile(null));
+        App.EventBus.Subscribe<ProjectFolderSelectedEvent>(OnProjectFolderSelected);
         AddNewFileCommand = new RelayCommand<FileNode>(AddNewFile);
         AddNewFolderCommand = new RelayCommand<FileNode>(AddNewFolder);
         RenameResourceCommand = new RelayCommand<FileNode>(RenameResource);
@@ -52,6 +53,28 @@ public partial class FileExplorerViewModel : ViewModelBase
         CutCommand = new RelayCommand<FileNode>(Cut);
         PasteCommand = new RelayCommand<FileNode>(Paste);
         DeleteCommand = new RelayCommand<FileNode>(Delete);
+    }
+
+    private async void OnProjectFolderSelected(ProjectFolderSelectedEvent e)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(e.FolderPath) || !Directory.Exists(e.FolderPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"ProjectFolderSelectedEvent: invalid path '{e.FolderPath}'");
+                return;
+            }
+
+            // Ensure loading happens on the UI thread
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                await LoadProject(e.FolderPath);
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error handling ProjectFolderSelectedEvent: {ex}");
+        }
     }
 
     private async void OnFileCreated(FileCreatedEvent fileEvent)
