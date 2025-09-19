@@ -48,7 +48,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeUi();
 
-        // Subscribe to window state changes to update ViewModel
+        // Keep ViewModel in sync when the WindowState changes (toolbar may change it directly)
         PropertyChanged += OnWindowPropertyChanged;
     }
 

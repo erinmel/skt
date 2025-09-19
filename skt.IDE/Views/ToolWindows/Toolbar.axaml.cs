@@ -1,5 +1,4 @@
 using System;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -41,13 +40,21 @@ public partial class Toolbar : UserControl
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
-            SetTodoStatus("BeginMoveDrag (should call MainWindow.BeginMoveDrag)");
+            var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
+            if (top != null)
+            {
+                try { top.BeginMoveDrag(e); } catch { }
+            }
         }
     }
 
     private void DragArea_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        SetTodoStatus("ToggleWindowState (should call MainWindow.ToggleWindowState)");
+        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
+        if (top != null)
+        {
+            top.WindowState = top.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
     }
 
     private void NewProjectButton_Click(object? sender, RoutedEventArgs e)
@@ -122,17 +129,26 @@ public partial class Toolbar : UserControl
 
     private void Minimize_Click(object? sender, RoutedEventArgs e)
     {
-        SetTodoStatus("Minimize");
+        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
+        if (top != null)
+        {
+            top.WindowState = WindowState.Minimized;
+        }
     }
 
     private void Restore_Click(object? sender, RoutedEventArgs e)
     {
-        SetTodoStatus("Restore/Maximize");
+        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
+        if (top != null)
+        {
+            top.WindowState = top.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
     }
 
     private void Close_Click(object? sender, RoutedEventArgs e)
     {
-        SetTodoStatus("Close");
+        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
+        top?.Close();
     }
 
 }

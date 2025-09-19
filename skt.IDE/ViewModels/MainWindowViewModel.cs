@@ -59,7 +59,13 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            var key = CurrentWindowState == WindowState.Maximized ? "Icon.Restore" : "Icon.Maximize";
+            var key = CurrentWindowState switch
+            {
+                WindowState.Maximized => "Icon.Restore",
+                WindowState.Minimized => "Icon.Minimize",
+                _ => "Icon.Maximize"
+            };
+
             return Application.Current?.FindResource(key) as DrawingImage;
         }
     }
@@ -188,6 +194,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public void UpdateWindowState(WindowState newState)
     {
         CurrentWindowState = newState;
+        UpdateWindowStateButton();
     }
 
     private void UpdateWindowStateButton()
