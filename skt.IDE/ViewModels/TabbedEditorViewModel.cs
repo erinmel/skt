@@ -13,6 +13,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Services;
+using skt.IDE;
+using skt.IDE.Services.Buss;
 
 public class TabbedEditorViewModel : INotifyPropertyChanged
 {
@@ -315,6 +317,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         if (success && !string.IsNullOrEmpty(SelectedDocument.FilePath))
         {
             App.EventBus.Publish(new FileUpdatedEvent(SelectedDocument.FilePath));
+            // Notify status bar (3 seconds)
+            App.EventBus.Publish(new StatusBarMessageEvent("Saved", 3000));
         }
     }
 
@@ -365,6 +369,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                     // Always publish FileCreatedEvent for Save As operations (new file)
                     System.Diagnostics.Debug.WriteLine($"Publishing FileCreatedEvent for: {newFilePath}");
                     App.EventBus.Publish(new FileCreatedEvent(newFilePath));
+                    // Notify status bar (4 seconds)
+                    App.EventBus.Publish(new StatusBarMessageEvent($"Saved As: {System.IO.Path.GetFileName(newFilePath)}", 4000));
                 }
             }
         }
