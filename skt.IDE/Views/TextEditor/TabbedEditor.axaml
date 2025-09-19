@@ -5,6 +5,7 @@
              xmlns:i="using:Avalonia.Xaml.Interactivity"
              xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
              xmlns:vm="using:skt.IDE.ViewModels"
+             xmlns:te="using:skt.IDE.Views.TextEditor"
              mc:Ignorable="d"
              d:DesignWidth="800" d:DesignHeight="450"
              x:Class="skt.IDE.Views.TextEditor.TabbedEditor"
@@ -104,7 +105,7 @@
                             Name="CloseButton"
                             Classes="tab-close"
                             ToolTip.Tip="Close Tab"
-                            Command="{Binding $parent[UserControl].DataContext.CloseTabCommand}"
+                            Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.CloseTabCommand}"
                             CommandParameter="{Binding}">
                         <Image Source="{DynamicResource Icon.Close}" Width="6" Height="6"/>
                     </Button>
@@ -113,7 +114,7 @@
                   <!-- Click handler for tab selection -->
                   <i:Interaction.Behaviors>
                     <ia:EventTriggerBehavior EventName="PointerPressed">
-                      <ia:InvokeCommandAction Command="{Binding $parent[UserControl].DataContext.SelectTabCommand}"
+                      <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"
                                                CommandParameter="{Binding}"/>
                     </ia:EventTriggerBehavior>
                   </i:Interaction.Behaviors>
@@ -131,32 +132,22 @@
       <ContentControl.ContentTemplate>
         <DataTemplate x:DataType="vm:DocumentViewModel">
           <Grid>
-            <!-- Text Editor -->
-            <TextBox Text="{Binding Content}"
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     TextWrapping="NoWrap"
-                     FontFamily="Consolas, 'Courier New', monospace"
-                     FontSize="14"
-                     BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     Padding="12,8">
-              <!-- Add click handler for tab selection when clicking in text editor -->
+            <!-- Custom Text Editor -->
+            <te:TextEditor Text="{Binding Content, Mode=TwoWay}">
               <i:Interaction.Behaviors>
                 <ia:EventTriggerBehavior EventName="GotFocus">
-                  <ia:InvokeCommandAction Command="{Binding $parent[UserControl].DataContext.SelectTabCommand}"
+                  <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"
                                            CommandParameter="{Binding}"/>
                 </ia:EventTriggerBehavior>
                 <ia:EventTriggerBehavior EventName="PointerPressed">
-                  <ia:InvokeCommandAction Command="{Binding $parent[UserControl].DataContext.SelectTabCommand}"
+                  <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"
                                            CommandParameter="{Binding}"/>
                 </ia:EventTriggerBehavior>
               </i:Interaction.Behaviors>
-            </TextBox>
+            </te:TextEditor>
 
             <!-- Empty State (when no document is selected) -->
-            <Border IsVisible="{Binding $parent[UserControl].DataContext.SelectedDocument, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
+            <Border IsVisible="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectedDocument, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
               <StackPanel VerticalAlignment="Center"
                           HorizontalAlignment="Center"
                           Opacity="0.6">
