@@ -15,7 +15,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     [ObservableProperty] private string _greeting = "Welcome to Avalonia!";
 
-    [ObservableProperty] private string _statusMessage = "Ready";
+    // StatusMessage removed; status bar is driven via App.EventBus (StatusBarMessageEvent)
 
     [ObservableProperty] private int _currentLine = 1;
 
@@ -141,19 +141,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnEditorContentChanged(string value)
     {
-        if (string.IsNullOrEmpty(value))
-        {
-            StatusMessage = "Ready";
-        }
-        else if (string.IsNullOrEmpty(CurrentFilePath))
-        {
-            StatusMessage = "Modified";
-        }
-        else
-        {
-            StatusMessage = $"Modified: {Path.GetFileName(CurrentFilePath)}";
-        }
-
+        // MainWindowViewModel no longer publishes status messages. Status updates are handled by producers and the StatusBar.
         OnPropertyChanged(nameof(CanSaveAs));
     }
 

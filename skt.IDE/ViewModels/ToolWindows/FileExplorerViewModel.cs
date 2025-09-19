@@ -7,11 +7,12 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Models;
 using Avalonia.Threading;
-using skt.IDE.Services;
-using Avalonia;
 using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using skt.IDE.Views.Dialogs;
+using skt.IDE.Services;
+using skt.IDE.Services.Buss;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
@@ -139,6 +140,7 @@ public partial class FileExplorerViewModel : ViewModelBase
             _currentProjectPath = string.Empty;
             // Notify subscribers that project load failed
             App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: false, errorMessage: "Project folder does not exist."));
+            App.EventBus.Publish(new StatusBarMessageEvent("Failed to open project: Project folder does not exist.", 5000));
             return;
         }
 
@@ -188,6 +190,7 @@ public partial class FileExplorerViewModel : ViewModelBase
 
         // Publish success event so toolbar and other components can react (e.g. enable New File)
         App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: true));
+        App.EventBus.Publish(new StatusBarMessageEvent($"Project loaded: {projectName}", 3000));
     }
 
     private async Task RefreshFileTree()
@@ -219,6 +222,7 @@ public partial class FileExplorerViewModel : ViewModelBase
                 var createdPath = GetUniqueFilePath(targetDir, "New File", ".skt");
                 await Task.Run(() => File.WriteAllText(createdPath, string.Empty));
                 App.EventBus.Publish(new FileCreatedEvent(createdPath));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Created: {Path.GetFileName(createdPath)}", 3000));
 
                 // Prompt user to rename the newly created file
                 var currentExt = Path.GetExtension(createdPath);
@@ -239,6 +243,7 @@ public partial class FileExplorerViewModel : ViewModelBase
                     {
                         await Task.Run(() => File.Move(createdPath, finalPath));
                         App.EventBus.Publish(new FileUpdatedEvent(finalPath));
+                        App.EventBus.Publish(new StatusBarMessageEvent($"Created and renamed: {Path.GetFileName(finalPath)}", 3000));
                     }
                 }
 
@@ -268,6 +273,7 @@ public partial class FileExplorerViewModel : ViewModelBase
                 string createdDir = GetUniqueDirectoryPath(targetDir, "New Folder");
                 await Task.Run(() => Directory.CreateDirectory(createdDir));
                 App.EventBus.Publish(new FileCreatedEvent(createdDir));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Folder created: {Path.GetFileName(createdDir)}", 3000));
 
                 // Prompt user to rename the newly created folder
                 var defaultName = Path.GetFileName(createdDir);
@@ -284,6 +290,7 @@ public partial class FileExplorerViewModel : ViewModelBase
                     {
                         await Task.Run(() => Directory.Move(createdDir, finalDir));
                         App.EventBus.Publish(new FileUpdatedEvent(finalDir));
+                        App.EventBus.Publish(new StatusBarMessageEvent($"Folder renamed: {Path.GetFileName(finalDir)}", 3000));
                     }
                 }
 
@@ -456,11 +463,13 @@ public partial class FileExplorerViewModel : ViewModelBase
             {
                 await Task.Run(() => Directory.Move(srcPath, target));
                 App.EventBus.Publish(new FileUpdatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
             }
             else
             {
                 await Task.Run(() => CopyDirectoryRecursive(srcPath, target));
                 App.EventBus.Publish(new FileCreatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Folder copied: {Path.GetFileName(target)}", 3000));
             }
         }
         else if (File.Exists(srcPath))
@@ -476,11 +485,13 @@ public partial class FileExplorerViewModel : ViewModelBase
             {
                 await Task.Run(() => File.Move(srcPath, target));
                 App.EventBus.Publish(new FileUpdatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
             }
             else
             {
                 await Task.Run(() => File.Copy(srcPath, target));
                 App.EventBus.Publish(new FileCreatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Copied: {Path.GetFileName(target)}", 3000));
             }
         }
     }
@@ -503,6 +514,7 @@ public partial class FileExplorerViewModel : ViewModelBase
                     await Task.Run(() => File.Delete(node.FullPath));
                 }
                 App.EventBus.Publish(new FileUpdatedEvent(node.FullPath));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Deleted: {Path.GetFileName(node.FullPath)}", 3000));
             }
             catch (Exception ex)
             {

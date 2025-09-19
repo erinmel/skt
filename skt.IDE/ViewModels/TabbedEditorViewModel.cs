@@ -283,6 +283,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 SelectedDocument = doc;
 
                 App.EventBus.Publish(new FileOpenedEvent(filePath));
+                // Notify status bar about the opened file
+                App.EventBus.Publish(new StatusBarMessageEvent($"Opened: {Path.GetFileName(filePath)}", 3000));
             }
             catch (Exception ex)
             {

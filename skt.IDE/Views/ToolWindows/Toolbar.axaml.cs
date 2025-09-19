@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using skt.IDE.ViewModels;
 using skt.IDE.Services;
+using skt.IDE.Services.Buss;
 
 namespace skt.IDE.Views.ToolWindows;
 public partial class Toolbar : UserControl
@@ -49,17 +50,15 @@ public partial class Toolbar : UserControl
 
             if (!e.Success && DataContext is MainWindowViewModel vm)
             {
-                vm.StatusMessage = $"Failed to open project: {e.ErrorMessage}";
+                App.EventBus.Publish(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", 5000));
             }
         });
     }
 
     private void SetTodoStatus(string text)
     {
-        if (DataContext is MainWindowViewModel vm)
-        {
-            vm.StatusMessage = "TODO (toolbar -> main): " + text;
-        }
+        // Prefer event-based status updates so the status bar UI is the single source of truth
+        App.EventBus.Publish(new StatusBarMessageEvent("TODO (toolbar -> main): " + text, 3000));
     }
 
     private void DragArea_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -115,11 +114,8 @@ public partial class Toolbar : UserControl
                     // Publish the selected folder path on the global EventBus
                     App.EventBus.Publish(new ProjectFolderSelectedEvent(folderPath));
 
-                    // Update the status via DataContext if available
-                    if (DataContext is MainWindowViewModel vm)
-                    {
-                        vm.StatusMessage = $"Project folder selected: {System.IO.Path.GetFileName(folderPath)}";
-                    }
+                    // Publish a status update for the status bar
+                    App.EventBus.Publish(new StatusBarMessageEvent($"Project folder selected: {System.IO.Path.GetFileName(folderPath)}", 3000));
                 }
             }
             catch (System.Exception ex)
@@ -137,11 +133,7 @@ public partial class Toolbar : UserControl
     {
         // Publish a request for creating a new file; FileExplorerViewModel listens for this event
         App.EventBus.Publish(new CreateFileRequestEvent());
-
-        if (DataContext is MainWindowViewModel vm)
-        {
-            vm.StatusMessage = "New file requested";
-        }
+        App.EventBus.Publish(new StatusBarMessageEvent("New file requested", 2000));
     }
 
     private async void SaveButton_Click(object? sender, RoutedEventArgs e)
@@ -155,9 +147,9 @@ public partial class Toolbar : UserControl
 
                 // If the selected document is not dirty after the save, assume success
                 if (editor.SelectedDocument != null && !editor.SelectedDocument.IsDirty)
-                    vm.StatusMessage = "Saved";
+                    App.EventBus.Publish(new StatusBarMessageEvent("Saved", 3000));
                 else
-                    vm.StatusMessage = "Save canceled or failed";
+                    App.EventBus.Publish(new StatusBarMessageEvent("Save canceled or failed", 3000));
             }
         }
         else
@@ -176,9 +168,9 @@ public partial class Toolbar : UserControl
                 await editor.SaveAsAsync();
 
                 if (editor.SelectedDocument != null && !editor.SelectedDocument.IsDirty)
-                    vm.StatusMessage = "Saved As";
+                    App.EventBus.Publish(new StatusBarMessageEvent("Saved As", 4000));
                 else
-                    vm.StatusMessage = "Save As canceled or failed";
+                    App.EventBus.Publish(new StatusBarMessageEvent("Save As canceled or failed", 3000));
             }
         }
         else

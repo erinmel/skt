@@ -1,7 +1,5 @@
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using skt.IDE.ViewModels;
 using System;
 using System.Linq;
@@ -331,8 +329,7 @@ public partial class MainWindow : Window
         try
         {
             // TODO: Integrate with your compiler for real analysis
-            // For now, just update the status
-            viewModel.StatusMessage = "Analysis refreshed";
+            System.Diagnostics.Debug.WriteLine("Analysis refreshed (no status event published by MainWindow)");
 
             // Placeholder for actual lexical/syntax analysis
             UpdateAnalysisOutput(viewModel);
@@ -363,7 +360,8 @@ public partial class MainWindow : Window
         var viewModel = ViewModel;
         if (viewModel is not null)
         {
-            viewModel.StatusMessage = $"{context}: {ex.Message}";
+            // Main should not publish status messages; log the error for now
+            System.Diagnostics.Debug.WriteLine($"{context}: {ex.Message}");
         }
     }
 

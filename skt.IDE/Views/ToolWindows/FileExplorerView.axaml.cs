@@ -3,6 +3,8 @@ using Avalonia.Input;
 using skt.IDE.Models;
 using skt.IDE.ViewModels.ToolWindows;
 using skt.IDE.Services;
+using skt.IDE.Services.Buss;
+using System.IO;
 using System.Linq;
 using System.Windows.Input;
 
@@ -34,7 +36,9 @@ public partial class FileExplorerView : UserControl
             if (!selectedNode.IsDirectory)
             {
                 // File double-clicked - publish an open request so TabbedEditor handles it
+                // Notify local listeners and show a brief status message while the editor opens
                 viewModel.NotifyFileSelected(selectedNode.FullPath);
+                App.EventBus.Publish(new StatusBarMessageEvent($"Opening: {Path.GetFileName(selectedNode.FullPath)}", 1500));
                 App.EventBus.Publish(new OpenFileRequestEvent(selectedNode.FullPath));
             }
             else
