@@ -25,10 +25,14 @@ public class FileUpdatedEvent
 public class ProjectLoadedEvent
 {
     public string ProjectPath { get; }
+    public bool Success { get; }
+    public string? ErrorMessage { get; }
 
-    public ProjectLoadedEvent(string projectPath)
+    public ProjectLoadedEvent(string projectPath, bool success = true, string? errorMessage = null)
     {
         ProjectPath = projectPath;
+        Success = success;
+        ErrorMessage = errorMessage;
     }
 }
 

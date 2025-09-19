@@ -103,92 +103,18 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanSaveAs));
     }
 
-    public async Task OpenProject(string folderPath)
-    {
-        try
-        {
-            if (Directory.Exists(folderPath))
-            {
-                CurrentProjectPath = folderPath;
-                IsProjectOpen = true;
-                StatusMessage = $"Opened project: {Path.GetFileName(folderPath)}";
-
-                // Update the file explorer with the new project
-                await FileExplorer.LoadProject(folderPath);
-
-                // Switch to file explorer tab
-                SelectedToolWindowIndex = 0;
-
-                // Notify computed properties changed
-                OnPropertyChanged(nameof(CanCreateNewFile));
-            }
-            else
-            {
-                StatusMessage = "Selected folder does not exist.";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error opening project: {ex.Message}";
-        }
-    }
-
-    public async Task OpenFile(string filePath)
-    {
-        try
-        {
-            if (File.Exists(filePath))
-            {
-                CurrentFilePath = filePath;
-                // Delegate to the TabbedEditor to handle file opening
-                await TabbedEditorViewModel.OpenFileAsync(filePath);
-
-
-                // Reset cursor position
-                CurrentLine = 1;
-                CurrentColumn = 1;
-                // Detect encoding (simplified - assumes UTF-8 for now)
-                FileEncoding = "UTF-8";
-
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error opening file: {ex.Message}";
-        }
-    }
-
-
     private void OnTabbedEditorPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(TabbedEditorViewModel.SelectedDocument))
+        if (e?.PropertyName == nameof(TabbedEditorViewModel.SelectedDocument))
         {
             OnPropertyChanged(nameof(CanSave));
             OnPropertyChanged(nameof(CanSaveAs));
         }
     }
 
-    // Method to create a new file in the tabbed editor
-    public void CreateNewFile()
-    {
-        App.EventBus.Publish(new CreateFileRequestEvent());
-    }
+    // CreateNewFile moved to toolbar/event flow (Publish CreateFileRequestEvent) - method removed from MainWindowViewModel.
 
-    public async Task SaveFile()
-    {
-        if (TabbedEditorViewModel.SelectedDocument != null)
-        {
-            await TabbedEditorViewModel.SaveAsync();
-        }
-    }
-
-    public async Task SaveAsFile()
-    {
-        if (TabbedEditorViewModel.SelectedDocument != null)
-        {
-            await TabbedEditorViewModel.SaveAsAsync();
-        }
-    }
+    // Save and SaveAs moved to Toolbar -> TabbedEditorViewModel calls; methods removed from MainWindowViewModel.
 
 
     public void UpdateWindowState(WindowState newState)

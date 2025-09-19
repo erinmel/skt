@@ -303,13 +303,19 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
     {
         if (SelectedDocument == null) return;
 
-        if (string.IsNullOrEmpty(SelectedDocument.FilePath))
+        // If the document has no path or the file doesn't exist on disk, delegate to Save As
+        if (string.IsNullOrEmpty(SelectedDocument.FilePath) || !System.IO.File.Exists(SelectedDocument.FilePath))
         {
             await SaveAsFileAsync();
             return;
         }
 
-        await SaveDocumentAsync(SelectedDocument);
+        // Save to existing file path and publish update event on success
+        var success = await SaveDocumentAsync(SelectedDocument);
+        if (success && !string.IsNullOrEmpty(SelectedDocument.FilePath))
+        {
+            App.EventBus.Publish(new FileUpdatedEvent(SelectedDocument.FilePath));
+        }
     }
 
     private async Task SaveAsFileAsync()
@@ -353,27 +359,36 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 var newFilePath = file.Path.LocalPath;
 
                 SelectedDocument.FilePath = newFilePath;
-                await SaveDocumentAsync(SelectedDocument);
-
-                // Always publish FileCreatedEvent for Save As operations
-                System.Diagnostics.Debug.WriteLine($"Publishing FileCreatedEvent for: {newFilePath}");
-                App.EventBus.Publish(new FileCreatedEvent(newFilePath));
+                var saved = await SaveDocumentAsync(SelectedDocument);
+                if (saved)
+                {
+                    // Always publish FileCreatedEvent for Save As operations (new file)
+                    System.Diagnostics.Debug.WriteLine($"Publishing FileCreatedEvent for: {newFilePath}");
+                    App.EventBus.Publish(new FileCreatedEvent(newFilePath));
+                }
             }
         }
     }
 
-    private async Task SaveDocumentAsync(DocumentViewModel? document)
+    private async Task<bool> SaveDocumentAsync(DocumentViewModel? document)
     {
-        if (document?.FilePath == null || string.IsNullOrEmpty(document.FilePath)) return;
+        if (document?.FilePath == null || string.IsNullOrEmpty(document.FilePath)) return false;
 
         try
         {
+            // Ensure directory exists
+            var dir = Path.GetDirectoryName(document.FilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
             await File.WriteAllTextAsync(document.FilePath, document.Content);
             document.IsDirty = false;
+            return true;
         }
         catch (Exception ex)
         {
             await ShowErrorDialog("Error Saving File", $"Could not save file: {ex.Message}");
+            return false;
         }
     }
 

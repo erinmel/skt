@@ -137,6 +137,8 @@ public partial class FileExplorerViewModel : ViewModelBase
         {
             ProjectName = NoProjectName;
             _currentProjectPath = string.Empty;
+            // Notify subscribers that project load failed
+            App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: false, errorMessage: "Project folder does not exist."));
             return;
         }
 
@@ -184,7 +186,8 @@ public partial class FileExplorerViewModel : ViewModelBase
             ProjectName = string.IsNullOrEmpty(projectName) ? NoProjectName : projectName;
         });
 
-        App.EventBus.Publish(new ProjectLoadedEvent(projectPath));
+        // Publish success event so toolbar and other components can react (e.g. enable New File)
+        App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: true));
     }
 
     private async Task RefreshFileTree()

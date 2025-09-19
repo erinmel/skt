@@ -26,6 +26,32 @@ public partial class Toolbar : UserControl
             logo.PointerPressed += DragArea_PointerPressed;
             logo.DoubleTapped += DragArea_DoubleTapped;
         }
+
+        // Ensure New File is disabled until a project is successfully loaded
+        var newBtn = this.FindControl<Button>("NewFileButton");
+        if (newBtn != null)
+            newBtn.IsEnabled = false;
+
+        // React to project open so the toolbar can enable the New File button
+        App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
+        // Clean up on unload
+        Unloaded += (_, __) => App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
+    }
+
+    private void OnProjectLoaded(ProjectLoadedEvent e)
+    {
+        // Ensure UI updates happen on the UI thread
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var btn = this.FindControl<Button>("NewFileButton");
+            if (btn != null)
+                btn.IsEnabled = e.Success;
+
+            if (!e.Success && DataContext is MainWindowViewModel vm)
+            {
+                vm.StatusMessage = $"Failed to open project: {e.ErrorMessage}";
+            }
+        });
     }
 
     private void SetTodoStatus(string text)
@@ -109,17 +135,56 @@ public partial class Toolbar : UserControl
 
     private void NewFileButton_Click(object? sender, RoutedEventArgs e)
     {
-        SetTodoStatus("NewFile");
+        // Publish a request for creating a new file; FileExplorerViewModel listens for this event
+        App.EventBus.Publish(new CreateFileRequestEvent());
+
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.StatusMessage = "New file requested";
+        }
     }
 
-    private void SaveButton_Click(object? sender, RoutedEventArgs e)
+    private async void SaveButton_Click(object? sender, RoutedEventArgs e)
     {
-        SetTodoStatus("Save");
+        if (DataContext is MainWindowViewModel vm)
+        {
+            var editor = vm.TabbedEditorViewModel;
+            if (editor != null)
+            {
+                await editor.SaveAsync();
+
+                // If the selected document is not dirty after the save, assume success
+                if (editor.SelectedDocument != null && !editor.SelectedDocument.IsDirty)
+                    vm.StatusMessage = "Saved";
+                else
+                    vm.StatusMessage = "Save canceled or failed";
+            }
+        }
+        else
+        {
+            SetTodoStatus("Save");
+        }
     }
 
-    private void SaveAsButton_Click(object? sender, RoutedEventArgs e)
+    private async void SaveAsButton_Click(object? sender, RoutedEventArgs e)
     {
-        SetTodoStatus("SaveAs");
+        if (DataContext is MainWindowViewModel vm)
+        {
+            var editor = vm.TabbedEditorViewModel;
+            if (editor != null)
+            {
+                await editor.SaveAsAsync();
+
+                if (editor.SelectedDocument != null && !editor.SelectedDocument.IsDirty)
+                    vm.StatusMessage = "Saved As";
+                else
+                    vm.StatusMessage = "Save As canceled or failed";
+            }
+        }
+        else
+        {
+            SetTodoStatus("SaveAs");
+        }
     }
 
     private void SettingsButton_Click(object? sender, RoutedEventArgs e)

@@ -75,39 +75,12 @@ public partial class MainWindow : Window
 
     #region Custom Toolbar Window Control Events
 
-    private void Minimize_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
-
-    private void Restore_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
-
-    private void Close_Click(object? sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
+    // Toolbar window-control logic moved to Toolbar control; handlers removed from MainWindow.
     #endregion
 
     #region Title Bar and Window Control Events
 
-    private void MaximizeRestore_Click(object? sender, RoutedEventArgs e)
-    {
-        ToggleWindowState();
-    }
-    private void ToggleWindowState()
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-
-    }
-
+    // Title bar/window control handlers moved to Toolbar control; MainWindow keeps WindowState->ViewModel sync only.
     #endregion
 
     #region Tool Window Toggle Methods
@@ -313,136 +286,7 @@ public partial class MainWindow : Window
 
     #region Toolbar Event Handlers
 
-    private void NewProjectButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is not null)
-        {
-            viewModel.StatusMessage = "New project not implemented yet";
-        }
-    }
-
-    private async void OpenFileButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is null) return;
-
-        var storageProvider = StorageProvider;
-        var result = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open File",
-            AllowMultiple = false
-        });
-
-        if (result.Count > 0)
-        {
-            var file = result[0];
-            var filePath = file.Path.LocalPath;
-            viewModel.EditorContent = await System.IO.File.ReadAllTextAsync(filePath);
-            viewModel.CurrentFilePath = filePath;
-            viewModel.StatusMessage = $"Opened: {System.IO.Path.GetFileName(filePath)}";
-        }
-    }
-
-    private void CloseFileButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is not null)
-        {
-            viewModel.EditorContent = string.Empty;
-            viewModel.CurrentFilePath = string.Empty;
-            viewModel.StatusMessage = "File closed";
-        }
-    }
-
-    private async void OpenProjectButton_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var storageProvider = StorageProvider;
-
-            var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "Select Project Folder",
-                AllowMultiple = false
-            });
-
-            if (result.Count > 0)
-            {
-                var selectedFolder = result[0];
-                var folderPath = selectedFolder.Path.LocalPath;
-
-                var viewModel = ViewModel;
-                if (viewModel is not null)
-                {
-                    // Publish the selected folder path on the EventBus so other components can react
-                    App.EventBus.Publish(new skt.IDE.Services.ProjectFolderSelectedEvent(folderPath));
-                    await viewModel.OpenProject(folderPath);
-                    await SwitchToolWindow(ToolWindowType.FileExplorer);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            HandleException(ex, "Error opening project");
-        }
-    }
-
-    private void NewFileButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is null) return;
-        viewModel.CreateNewFile();
-    }
-
-    private async void SaveButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is null)
-            return;
-
-        try
-        {
-            if (!string.IsNullOrEmpty(viewModel.CurrentFilePath))
-            {
-                await viewModel.SaveFile();
-            }
-            else
-            {
-                SaveAsButton_Click(sender, e);
-            }
-        }
-        catch (Exception ex)
-        {
-            HandleException(ex, "Error saving file");
-        }
-    }
-
-    private async void SaveAsButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is null)
-            return;
-
-        try
-        {
-            await viewModel.SaveAsFile();
-        }
-        catch (Exception ex)
-        {
-            HandleException(ex, "Error saving file as");
-        }
-    }
-
-    private void SettingsButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var viewModel = ViewModel;
-        if (viewModel is not null)
-        {
-            viewModel.StatusMessage = "Settings dialog not implemented yet";
-        }
-    }
-
+    // Toolbar actions (OpenProject, NewFile, Save, SaveAs, Settings, window controls) moved to `Toolbar` control. Removed from MainWindow.
     #endregion
 
     #region Editor Event Handlers
