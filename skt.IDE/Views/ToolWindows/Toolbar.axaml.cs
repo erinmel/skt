@@ -50,15 +50,14 @@ public partial class Toolbar : UserControl
 
             if (!e.Success && DataContext is MainWindowViewModel vm)
             {
-                App.EventBus.Publish(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", 5000));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", true));
             }
         });
     }
 
     private void SetTodoStatus(string text)
     {
-        // Prefer event-based status updates so the status bar UI is the single source of truth
-        App.EventBus.Publish(new StatusBarMessageEvent("TODO (toolbar -> main): " + text, 3000));
+        App.EventBus.Publish(new StatusBarMessageEvent("TODO (toolbar): " + text, true));
     }
 
     private void DragArea_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -94,7 +93,8 @@ public partial class Toolbar : UserControl
             var top = TopLevel.GetTopLevel(this) as Window;
             if (top == null)
             {
-                SetTodoStatus("OpenProject: unable to get window storage provider");
+                // Sent a status bar update
+                App.EventBus.Publish(new StatusBarMessageEvent("Proflem opening the file explorer.", true));
                 return;
             }
 
@@ -120,7 +120,8 @@ public partial class Toolbar : UserControl
             }
             catch (System.Exception ex)
             {
-                SetTodoStatus($"OpenProject error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error opening folder picker: {ex}");
+                App.EventBus.Publish(new StatusBarMessageEvent("There was a problem opening the project.", true));
             }
         }
         catch (Exception ex)
@@ -133,50 +134,16 @@ public partial class Toolbar : UserControl
     {
         // Publish a request for creating a new file; FileExplorerViewModel listens for this event
         App.EventBus.Publish(new CreateFileRequestEvent());
-        App.EventBus.Publish(new StatusBarMessageEvent("New file requested", 2000));
     }
 
-    private async void SaveButton_Click(object? sender, RoutedEventArgs e)
+    private void SaveButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is MainWindowViewModel vm)
-        {
-            var editor = vm.TabbedEditorViewModel;
-            if (editor != null)
-            {
-                await editor.SaveAsync();
-
-                // If the selected document is not dirty after the save, assume success
-                if (editor.SelectedDocument != null && !editor.SelectedDocument.IsDirty)
-                    App.EventBus.Publish(new StatusBarMessageEvent("Saved", 3000));
-                else
-                    App.EventBus.Publish(new StatusBarMessageEvent("Save canceled or failed", 3000));
-            }
-        }
-        else
-        {
-            SetTodoStatus("Save");
-        }
+        App.EventBus.Publish(new SaveFileRequestEvent());
     }
 
-    private async void SaveAsButton_Click(object? sender, RoutedEventArgs e)
+    private void SaveAsButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is MainWindowViewModel vm)
-        {
-            var editor = vm.TabbedEditorViewModel;
-            if (editor != null)
-            {
-                await editor.SaveAsAsync();
-
-                if (editor.SelectedDocument != null && !editor.SelectedDocument.IsDirty)
-                    App.EventBus.Publish(new StatusBarMessageEvent("Saved As", 4000));
-                else
-                    App.EventBus.Publish(new StatusBarMessageEvent("Save As canceled or failed", 3000));
-            }
-        }
-        else
-        {
-            SetTodoStatus("SaveAs");
-        }
+        App.EventBus.Publish(new SaveAsFilesRequestEvent());
     }
 
     private void SettingsButton_Click(object? sender, RoutedEventArgs e)
@@ -186,8 +153,7 @@ public partial class Toolbar : UserControl
 
     private void Minimize_Click(object? sender, RoutedEventArgs e)
     {
-        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
-        if (top != null)
+        if (TopLevel.GetTopLevel(this) is MainWindow top)
         {
             top.WindowState = WindowState.Minimized;
         }
@@ -195,8 +161,7 @@ public partial class Toolbar : UserControl
 
     private void Restore_Click(object? sender, RoutedEventArgs e)
     {
-        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
-        if (top != null)
+        if (TopLevel.GetTopLevel(this) is MainWindow top)
         {
             top.WindowState = top.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         }

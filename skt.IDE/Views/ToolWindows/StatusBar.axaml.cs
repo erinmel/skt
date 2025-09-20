@@ -12,88 +12,67 @@ namespace skt.IDE.Views.ToolWindows;
 public partial class StatusBar : UserControl
 {
     private CancellationTokenSource? _messageCts;
-    private TextBlock? _statusTextBlock;
-    private TextBlock? _lineTextBlock;
-    private TextBlock? _colTextBlock;
-    private TextBlock? _encodingTextBlock;
+    private CancellationTokenSource? _timeAgoCts;
+    private readonly TextBlock? _lineColumCountTextBlock;
+    private readonly TextBlock? _encodingTextBlock;
+    private StatusBarMessageEvent? _currentEvent;
+    private long _messageToken;
 
     public StatusBar()
     {
         InitializeComponent();
 
-        // Cache named controls so the status bar owns its UI state
-        _statusTextBlock = this.FindControl<TextBlock>("StatusTextBlock");
-        _lineTextBlock = this.FindControl<TextBlock>("LineTextBlock");
-        _colTextBlock = this.FindControl<TextBlock>("ColTextBlock");
+        _lineColumCountTextBlock = this.FindControl<TextBlock>("LineColumCountTextBlock");
         _encodingTextBlock = this.FindControl<TextBlock>("EncodingTextBlock");
 
-        // Subscribe to status events on the global bus
         App.EventBus.Subscribe<StatusBarMessageEvent>(OnStatusBarMessage);
         App.EventBus.Subscribe<CursorPositionEvent>(OnCursorPosition);
         App.EventBus.Subscribe<FileEncodingChangedEvent>(OnFileEncodingChanged);
+        App.EventBus.Subscribe<SelectionInfoEvent>(OnSelectionInfo);
 
-        // Unsubscribe when unloaded
         Unloaded += (s, _) =>
         {
             App.EventBus.Unsubscribe<StatusBarMessageEvent>(OnStatusBarMessage);
             App.EventBus.Unsubscribe<CursorPositionEvent>(OnCursorPosition);
             App.EventBus.Unsubscribe<FileEncodingChangedEvent>(OnFileEncodingChanged);
+            App.EventBus.Unsubscribe<SelectionInfoEvent>(OnSelectionInfo);
         };
     }
 
     private void OnStatusBarMessage(StatusBarMessageEvent e)
     {
-        // Kick off the async handler on the UI thread but avoid async-void lambdas
-        Dispatcher.UIThread.Post(() => _ = HandleStatusBarMessageAsync(e));
+        // Increment token to represent a newer message; any in-flight handlers become stale
+        var token = Interlocked.Increment(ref _messageToken);
+
+        try
+        {
+            _messageCts?.Cancel();
+            _timeAgoCts?.Cancel();
+        }
+        catch (Exception)
+        {
+            // Ignored: cancellation may throw if already disposed concurrently
+        }
+
+        Dispatcher.UIThread.Post(() => _ = HandleStatusBarMessageAsync(e, token));
     }
 
-    private async Task HandleStatusBarMessageAsync(StatusBarMessageEvent e)
+    private async Task HandleStatusBarMessageAsync(StatusBarMessageEvent e, long token)
     {
         try
         {
-            // Update the status text directly so the StatusBar is the single owner of UI state
-            if (_statusTextBlock != null)
-            {
-                _statusTextBlock.Text = e.Message ?? string.Empty;
+            if (_lineColumCountTextBlock == null) return;
+            if (Interlocked.Read(ref _messageToken) != token) return;
 
-                // Cancel any existing scheduled clear
-                _messageCts?.Cancel();
-                _messageCts?.Dispose();
-                _messageCts = null;
+            _currentEvent = e;
+            _lineColumCountTextBlock.Text = e.ShowTimeAgo ? FormatTimeAgo(e.Message, 0) : (e.Message ?? string.Empty);
 
-                // If duration is null or negative -> infinite, do nothing
-                if (e.DurationMs.HasValue && e.DurationMs.Value >= 0)
-                {
-                    var cts = new CancellationTokenSource();
-                    _messageCts = cts;
-                    try
-                    {
-                        await Task.Delay(TimeSpan.FromMilliseconds(e.DurationMs.Value), cts.Token);
-                        // Only clear if message hasn't changed since
-                        if (_statusTextBlock != null && _statusTextBlock.Text == e.Message)
-                        {
-                            _statusTextBlock.Text = "Ready";
-                        }
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        // expected when a new message replaces the old one
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log unexpected exceptions without crashing the UI
-                        System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
-                    }
-                    finally
-                    {
-                        if (_messageCts == cts)
-                        {
-                            _messageCts?.Dispose();
-                            _messageCts = null;
-                        }
-                    }
-                }
-            }
+            await CancelAndClearMessageCtsAsync();
+            await CancelAndClearTimeAgoCtsAsync();
+
+            StartTimeAgoIfNeeded(e, token);
+
+            await StartDurationHandlerAsync(e, token);
         }
         catch (Exception ex)
         {
@@ -101,14 +80,139 @@ public partial class StatusBar : UserControl
         }
     }
 
+    private async Task CancelAndClearMessageCtsAsync()
+    {
+        var cts = _messageCts;
+        if (cts == null) return;
+        try
+        {
+            await cts.CancelAsync();
+        }
+        catch
+        {
+            // Ignored: cancellation may throw if already disposed concurrently
+        }
+        try
+        {
+            cts.Dispose();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
+        }
+        if (ReferenceEquals(_messageCts, cts))
+            _messageCts = null;
+    }
+
+    private async Task CancelAndClearTimeAgoCtsAsync()
+    {
+        var cts = _timeAgoCts;
+        if (cts == null) return;
+        try
+        {
+            await cts.CancelAsync();
+        }
+        catch
+        {
+            // Ignored
+        }
+        try
+        {
+            cts.Dispose();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
+        }
+        if (ReferenceEquals(_timeAgoCts, cts))
+            _timeAgoCts = null;
+    }
+
+    private void StartTimeAgoIfNeeded(StatusBarMessageEvent e, long token)
+    {
+        if (!e.ShowTimeAgo) return;
+        var timeAgoCts = new CancellationTokenSource();
+        _timeAgoCts = timeAgoCts;
+        _ = UpdateTimeAgoAsync(e, token, timeAgoCts.Token);
+    }
+
+    private async Task StartDurationHandlerAsync(StatusBarMessageEvent e, long token)
+    {
+        if (e.DurationMs is not >= 0) return;
+
+        var cts = new CancellationTokenSource();
+        _messageCts = cts;
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(e.DurationMs.Value), cts.Token);
+
+            if (_lineColumCountTextBlock != null && Interlocked.Read(ref _messageToken) == token)
+            {
+                _lineColumCountTextBlock.Text = string.Empty;
+                _currentEvent = null;
+                await CancelAndClearTimeAgoCtsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
+        }
+        finally
+        {
+            if (_messageCts == cts)
+            {
+                try
+                {
+                    _messageCts?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
+                }
+                _messageCts = null;
+            }
+        }
+    }
+
+
+    private async Task UpdateTimeAgoAsync(StatusBarMessageEvent e, long token, CancellationToken ct)
+    {
+        int minutes = 1;
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromMinutes(1), ct);
+                if (ct.IsCancellationRequested) break;
+
+                // Stop if a newer message arrived
+                if (Interlocked.Read(ref _messageToken) != token) break;
+
+                if (_lineColumCountTextBlock != null && _currentEvent == e)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (_lineColumCountTextBlock != null && _currentEvent == e && Interlocked.Read(ref _messageToken) == token)
+                        {
+                            _lineColumCountTextBlock.Text = FormatTimeAgo(e.Message, minutes);
+                        }
+                    });
+                    minutes++;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Time-ago updater error: {ex}");
+        }
+    }
+
     private void OnCursorPosition(CursorPositionEvent e)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            if (_lineTextBlock != null)
-                _lineTextBlock.Text = $"Line: {e.Line}";
-            if (_colTextBlock != null)
-                _colTextBlock.Text = $"Col: {e.Column}";
+            if (_lineColumCountTextBlock != null)
+                _lineColumCountTextBlock.Text = $"Line: {e.Line} Col: {e.Column}";
         });
     }
 
@@ -121,9 +225,24 @@ public partial class StatusBar : UserControl
         });
     }
 
-    // Example placeholder for a future click handler - publish a status message instead
-    private void OnStatusClick(object? sender, RoutedEventArgs e)
+    private void OnSelectionInfo(SelectionInfoEvent e)
     {
-        App.EventBus.Publish(new StatusBarMessageEvent("TODO: Status click forwarded to main", 3000));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_lineColumCountTextBlock == null) return;
+            if (e.CharCount <= 0)
+            {
+                _lineColumCountTextBlock.Text = string.Empty;
+                return;
+            }
+            _lineColumCountTextBlock.Text = $"{e.StartLine}:{e.StartColumn} - {e.EndLine}:{e.EndColumn} ({e.CharCount} chars, {e.LineBreakCount} line breaks)";
+        });
+    }
+
+    private static string FormatTimeAgo(string? message, int minutes)
+    {
+        var baseText = message ?? string.Empty;
+        var unit = minutes == 1 ? "minute" : "minutes";
+        return $"{baseText} ({minutes} {unit} ago)";
     }
 }

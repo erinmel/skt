@@ -94,3 +94,18 @@ public class ProjectFolderSelectedEvent
         FolderPath = folderPath;
     }
 }
+
+public class SaveFileRequestEvent
+{
+
+    public SaveFileRequestEvent()
+    {
+    }
+}
+
+public class SaveAsFilesRequestEvent
+{
+    public SaveAsFilesRequestEvent()
+    {
+    }
+}

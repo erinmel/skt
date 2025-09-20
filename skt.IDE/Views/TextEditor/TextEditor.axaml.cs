@@ -9,6 +9,7 @@ using System.Text;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Threading;
+using skt.IDE.Services.Buss;
 
 namespace skt.IDE.Views.TextEditor
 {
@@ -56,6 +57,9 @@ namespace skt.IDE.Views.TextEditor
             Dispatcher.UIThread.Post(() =>
             {
                 SetupScrollSynchronization();
+
+                // Publish initial cursor/selection status on attach
+                PublishCursorAndSelection();
             }, DispatcherPriority.Loaded);
         }
 
@@ -100,6 +104,13 @@ namespace skt.IDE.Views.TextEditor
                 SyncFontProperties();
                 UpdateLineNumbers();
             }
+
+            if (e.Property == TextBox.CaretIndexProperty ||
+                e.Property == TextBox.SelectionStartProperty ||
+                e.Property == TextBox.SelectionEndProperty)
+            {
+                PublishCursorAndSelection();
+            }
         }
 
         private void OnTextPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -112,6 +123,8 @@ namespace skt.IDE.Views.TextEditor
                     _mainEditor.Text = newText;
                 }
                 UpdateLineNumbers();
+                // When the bound text changes (e.g., open file), publish updated caret/selection
+                PublishCursorAndSelection();
             }
         }
 
@@ -207,6 +220,66 @@ namespace skt.IDE.Views.TextEditor
             {
                 SyncScrollPosition();
             }
+        }
+
+        private void PublishCursorAndSelection()
+        {
+            if (_mainEditor == null) return;
+            var text = _mainEditor.Text ?? string.Empty;
+            var caret = Math.Clamp(_mainEditor.CaretIndex, 0, text.Length);
+
+            var (line, col) = GetLineAndColumn(text, caret);
+            App.EventBus.Publish(new CursorPositionEvent(line, col));
+
+            var selStart = Math.Clamp(_mainEditor.SelectionStart, 0, text.Length);
+            var selEnd = Math.Clamp(_mainEditor.SelectionEnd, 0, text.Length);
+            if (selEnd < selStart)
+            {
+                var tmp = selStart;
+                selStart = selEnd;
+                selEnd = tmp;
+            }
+
+            var charCount = selEnd - selStart;
+            if (charCount > 0)
+            {
+                var (startLine, startCol) = GetLineAndColumn(text, selStart);
+                var (endLine, endCol) = GetLineAndColumn(text, selEnd);
+                var lineBreaks = CountLineBreaks(text, selStart, selEnd);
+                App.EventBus.Publish(new SelectionInfoEvent(startLine, startCol, endLine, endCol, charCount, lineBreaks));
+            }
+            else
+            {
+                // Clear selection info
+                App.EventBus.Publish(new SelectionInfoEvent(line, col, line, col, 0, 0));
+            }
+        }
+
+        private static (int line, int col) GetLineAndColumn(string text, int index)
+        {
+            index = Math.Clamp(index, 0, text.Length);
+            int line = 1;
+            int lastNlPos = -1;
+            for (int i = 0; i < index; i++)
+            {
+                if (text[i] == '\n')
+                {
+                    line++;
+                    lastNlPos = i;
+                }
+            }
+            int col = index - lastNlPos;
+            return (line, col);
+        }
+
+        private static int CountLineBreaks(string text, int start, int end)
+        {
+            int count = 0;
+            for (int i = Math.Max(0, start); i < Math.Min(text.Length, end); i++)
+            {
+                if (text[i] == '\n') count++;
+            }
+            return count;
         }
     }
 }

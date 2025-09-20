@@ -18,7 +18,6 @@ public partial class TabbedEditor : UserControl
         AvaloniaXamlLoader.Load(this);
     }
 
-    // Expose the ViewModel as a property for easier access
     public TabbedEditorViewModel? ViewModel => DataContext as TabbedEditorViewModel;
 
     // Method to load a file from external calls
@@ -36,7 +35,6 @@ public partial class TabbedEditor : UserControl
         ViewModel?.NewTabCommand.Execute(null);
     }
 
-    // Method to save current file from external calls
     public void SaveCurrentFile()
     {
         ViewModel?.SaveCommand.Execute(null);

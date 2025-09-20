@@ -96,7 +96,7 @@ public partial class FileExplorerViewModel : ViewModelBase
             // This is more reliable than trying to navigate the hierarchy
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                await LoadProject(_currentProjectPath);
+                await LoadProject(_currentProjectPath, announce: false);
             });
             System.Diagnostics.Debug.WriteLine("File tree refresh completed");
         }
@@ -122,7 +122,7 @@ public partial class FileExplorerViewModel : ViewModelBase
             System.Diagnostics.Debug.WriteLine("Refreshing file tree due to file update...");
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                await LoadProject(_currentProjectPath);
+                await LoadProject(_currentProjectPath, announce: false);
             });
             System.Diagnostics.Debug.WriteLine("File tree refresh completed after update");
         }
@@ -132,15 +132,14 @@ public partial class FileExplorerViewModel : ViewModelBase
         }
     }
 
-    public async Task LoadProject(string projectPath)
+    public async Task LoadProject(string projectPath, bool announce = true)
     {
         if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
         {
             ProjectName = NoProjectName;
             _currentProjectPath = string.Empty;
-            // Notify subscribers that project load failed
             App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: false, errorMessage: "Project folder does not exist."));
-            App.EventBus.Publish(new StatusBarMessageEvent("Failed to open project: Project folder does not exist.", 5000));
+            App.EventBus.Publish(new StatusBarMessageEvent("Failed to open project: Project folder does not exist.", true));
             return;
         }
 
@@ -190,14 +189,17 @@ public partial class FileExplorerViewModel : ViewModelBase
 
         // Publish success event so toolbar and other components can react (e.g. enable New File)
         App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: true));
-        App.EventBus.Publish(new StatusBarMessageEvent($"Project loaded: {projectName}", 3000));
+        if (announce)
+        {
+            App.EventBus.Publish(new StatusBarMessageEvent($"Project loaded: {projectName}", 3000));
+        }
     }
 
     private async Task RefreshFileTree()
     {
         if (!string.IsNullOrEmpty(_currentProjectPath))
         {
-            await LoadProject(_currentProjectPath);
+            await LoadProject(_currentProjectPath, announce: false);
         }
     }
 

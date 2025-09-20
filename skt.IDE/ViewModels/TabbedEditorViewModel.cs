@@ -89,6 +89,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
         // Subscribe to global open file requests
         App.EventBus.Subscribe<OpenFileRequestEvent>(OnOpenFileRequest);
+        App.EventBus.Subscribe<SaveFileRequestEvent>(OnSaveFileRequest);
+        App.EventBus.Subscribe<SaveAsFilesRequestEvent>(SaveAsFilesRequest);
     }
 
     private void OnOpenFileRequest(OpenFileRequestEvent e)
@@ -96,6 +98,22 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         if (!string.IsNullOrWhiteSpace(e.FilePath))
         {
             _ = OpenFileAsync(e.FilePath);
+        }
+    }
+
+    private void OnSaveFileRequest(SaveFileRequestEvent e)
+    {
+        if (SelectedDocument != null)
+        {
+            _ = SaveFileAsync();
+        }
+    }
+
+    private void SaveAsFilesRequest(SaveAsFilesRequestEvent e)
+    {
+        if (SelectedDocument != null)
+        {
+            _ = SaveAsFileAsync();
         }
     }
 
@@ -368,8 +386,6 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 var saved = await SaveDocumentAsync(SelectedDocument);
                 if (saved)
                 {
-                    // Always publish FileCreatedEvent for Save As operations (new file)
-                    System.Diagnostics.Debug.WriteLine($"Publishing FileCreatedEvent for: {newFilePath}");
                     App.EventBus.Publish(new FileCreatedEvent(newFilePath));
                     // Notify status bar (4 seconds)
                     App.EventBus.Publish(new StatusBarMessageEvent($"Saved As: {System.IO.Path.GetFileName(newFilePath)}", 4000));
