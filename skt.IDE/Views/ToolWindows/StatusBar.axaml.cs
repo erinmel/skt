@@ -212,7 +212,7 @@ public partial class StatusBar : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             if (_lineColumCountTextBlock != null)
-                _lineColumCountTextBlock.Text = $"Line: {e.Line} Col: {e.Column}";
+                _lineColumCountTextBlock.Text = $"{e.Line}:{e.Column}";
         });
     }
 
