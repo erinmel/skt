@@ -287,37 +287,6 @@ public partial class MainWindow : Window
     // Toolbar actions (OpenProject, NewFile, Save, SaveAs, Settings, window controls) moved to `Toolbar` control. Removed from MainWindow.
     #endregion
 
-    #region Editor Event Handlers
-
-    private void EditorTextBox_TextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (sender is not TextBox textBox)
-            return;
-
-        var viewModel = ViewModel;
-        if (viewModel is null)
-            return;
-
-        UpdateCursorPosition(textBox, viewModel);
-
-        // TODO: Trigger real-time analysis if needed
-        // This could update tokens, syntax tree, and error information
-    }
-
-    private static void UpdateCursorPosition(TextBox textBox, MainWindowViewModel viewModel)
-    {
-        var caretIndex = textBox.CaretIndex;
-        var text = textBox.Text ?? string.Empty;
-
-        var textUpToCaret = text.Substring(0, Math.Min(caretIndex, text.Length));
-        var lines = textUpToCaret.Split('\n');
-
-        viewModel.CurrentLine = lines.Length;
-        viewModel.CurrentColumn = (lines.LastOrDefault()?.Length ?? 0) + 1;
-    }
-
-    #endregion
-
     #region Helper Methods
 
     private async Task RefreshAnalysisData()
@@ -360,7 +329,6 @@ public partial class MainWindow : Window
         var viewModel = ViewModel;
         if (viewModel is not null)
         {
-            // Main should not publish status messages; log the error for now
             System.Diagnostics.Debug.WriteLine($"{context}: {ex.Message}");
         }
     }

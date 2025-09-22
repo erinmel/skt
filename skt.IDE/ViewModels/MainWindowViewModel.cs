@@ -77,6 +77,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        // No editor event subscriptions are required here; StatusBar listens to cursor and selection events.
     }
 
     public void UpdateWindowState(WindowState newState)
@@ -100,5 +101,4 @@ public partial class MainWindowViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(WindowStateIcon));
     }
-
 }
