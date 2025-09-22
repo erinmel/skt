@@ -1,4 +1,4 @@
-namespace skt.IDE.Services;
+namespace skt.IDE.Services.Buss;
 
 public class FileCreatedEvent
 {
@@ -107,5 +107,19 @@ public class SaveAsFilesRequestEvent
 {
     public SaveAsFilesRequestEvent()
     {
+    }
+}
+
+public class SelectedDocumentChangedEvent
+{
+    public string? FilePath { get; }
+    public bool HasSelection { get; }
+    public bool IsDirty { get; }
+
+    public SelectedDocumentChangedEvent(string? filePath, bool hasSelection, bool isDirty)
+    {
+        FilePath = filePath;
+        HasSelection = hasSelection;
+        IsDirty = isDirty;
     }
 }

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using skt.IDE.ViewModels;
 using skt.IDE.Services;
 using skt.IDE.Services.Buss;
@@ -33,10 +34,25 @@ public partial class Toolbar : UserControl
         if (newBtn != null)
             newBtn.IsEnabled = false;
 
+        // Ensure Save/SaveAs start disabled; toolbar will enable/disable based on selected document events
+        var saveBtn = this.FindControl<Button>("SaveButton");
+        if (saveBtn != null)
+            saveBtn.IsEnabled = false;
+        var saveAsBtn = this.FindControl<Button>("SaveAsButton");
+        if (saveAsBtn != null)
+            saveAsBtn.IsEnabled = false;
+
         // React to project open so the toolbar can enable the New File button
         App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
+        // Subscribe to selected document changes so toolbar can update Save/SaveAs without going through MainWindowViewModel
+        App.EventBus.Subscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
+
         // Clean up on unload
-        Unloaded += (_, __) => App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
+        Unloaded += (_, __) =>
+        {
+            App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
+            App.EventBus.Unsubscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
+        };
     }
 
     private void OnProjectLoaded(ProjectLoadedEvent e)
@@ -52,6 +68,21 @@ public partial class Toolbar : UserControl
             {
                 App.EventBus.Publish(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", true));
             }
+        });
+    }
+
+    private void OnSelectedDocumentChanged(SelectedDocumentChangedEvent e)
+    {
+        // Update UI elements on the UI thread
+        Dispatcher.UIThread.Post(() =>
+        {
+            var saveBtn = this.FindControl<Button>("SaveButton");
+            if (saveBtn != null)
+                saveBtn.IsEnabled = e.HasSelection && e.IsDirty;
+
+            var saveAsBtn = this.FindControl<Button>("SaveAsButton");
+            if (saveAsBtn != null)
+                saveAsBtn.IsEnabled = e.HasSelection;
         });
     }
 

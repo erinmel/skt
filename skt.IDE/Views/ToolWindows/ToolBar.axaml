@@ -39,7 +39,7 @@
                                 </MenuItem.Icon>
                             </MenuItem>
                             <Separator/>
-                            <MenuItem Header="New File" Click="NewFileButton_Click" IsEnabled="{Binding CanCreateNewFile}">
+                            <MenuItem Header="New File" Click="NewFileButton_Click">
                                 <MenuItem.Icon>
                                     <Image Source="{DynamicResource Icon.ToolbarFileNew}" Width="16" Height="16"/>
                                 </MenuItem.Icon>
@@ -80,7 +80,6 @@
                         BorderThickness="0"
                         Padding="10,5"
                         ToolTip.Tip="New File"
-                        IsEnabled="{Binding CanCreateNewFile}"
                         Click="NewFileButton_Click">
                     <Image Source="{DynamicResource Icon.ToolbarFileNew}" Width="20" Height="20"/>
                 </Button>
@@ -92,7 +91,6 @@
                         BorderThickness="0"
                         Padding="10,5"
                         ToolTip.Tip="Save"
-                        IsEnabled="{Binding CanSave}"
                         Click="SaveButton_Click">
                     <Image Source="{DynamicResource Icon.ToolbarSave}" Width="20" Height="20"/>
                 </Button>
@@ -103,7 +101,6 @@
                         BorderThickness="0"
                         Padding="10,5"
                         ToolTip.Tip="Save As"
-                        IsEnabled="{Binding CanSaveAs}"
                         Click="SaveAsButton_Click">
                     <Image Source="{DynamicResource Icon.ToolbarSaveAs}" Width="20" Height="20"/>
                 </Button>

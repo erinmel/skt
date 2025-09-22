@@ -62,6 +62,12 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 }
 
                 OnCommandCanExecuteChanged();
+
+                // Publish selected document change so other components (eg. Toolbar) can react without going through MainWindowViewModel
+                var filePath = value?.FilePath;
+                var hasSelection = value != null;
+                var isDirty = value?.IsDirty ?? false;
+                App.EventBus.Publish(new SelectedDocumentChangedEvent(filePath, hasSelection, isDirty));
             }
         }
     }
@@ -458,6 +464,15 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         if (e.PropertyName == nameof(DocumentViewModel.IsDirty))
         {
             OnCommandCanExecuteChanged();
+
+            // If the changed document is the currently selected one, publish a SelectedDocumentChangedEvent
+            if (ReferenceEquals(sender, SelectedDocument))
+            {
+                var filePath = SelectedDocument?.FilePath;
+                var hasSelection = SelectedDocument != null;
+                var isDirty = SelectedDocument?.IsDirty ?? false;
+                App.EventBus.Publish(new SelectedDocumentChangedEvent(filePath, hasSelection, isDirty));
+            }
         }
     }
 }

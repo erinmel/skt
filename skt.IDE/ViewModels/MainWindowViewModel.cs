@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia;
-using skt.IDE.Services;
 
 namespace skt.IDE.ViewModels;
 
@@ -70,11 +69,6 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    // Computed properties for button enablement
-    public bool CanSave => TabbedEditorViewModel.SelectedDocument != null && TabbedEditorViewModel.SelectedDocument.IsDirty;
-    public bool CanSaveAs => TabbedEditorViewModel.SelectedDocument != null;
-    public bool CanCreateNewFile => IsProjectOpen;
-
     public FileExplorerViewModel FileExplorer { get; } = new();
     public PhaseOutputViewModel PhaseOutput { get; } = new();
 
@@ -83,39 +77,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        // Subscribe to TabbedEditor selection changes to keep save button states in sync
-        TabbedEditorViewModel.PropertyChanged += OnTabbedEditorPropertyChanged;
-
-        App.EventBus.Subscribe<FileDirtyStateChangedEvent>(OnFileDirtyStateChanged);
-        App.EventBus.Subscribe<FileOpenedEvent>(OnFileOpenedOrClosed);
-        App.EventBus.Subscribe<FileClosedEvent>(OnFileOpenedOrClosed);
     }
-
-    private void OnFileDirtyStateChanged(FileDirtyStateChangedEvent e)
-    {
-        OnPropertyChanged(nameof(CanSave));
-        OnPropertyChanged(nameof(CanSaveAs));
-    }
-
-    private void OnFileOpenedOrClosed(object e)
-    {
-        OnPropertyChanged(nameof(CanSave));
-        OnPropertyChanged(nameof(CanSaveAs));
-    }
-
-    private void OnTabbedEditorPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e?.PropertyName == nameof(TabbedEditorViewModel.SelectedDocument))
-        {
-            OnPropertyChanged(nameof(CanSave));
-            OnPropertyChanged(nameof(CanSaveAs));
-        }
-    }
-
-    // CreateNewFile moved to toolbar/event flow (Publish CreateFileRequestEvent) - method removed from MainWindowViewModel.
-
-    // Save and SaveAs moved to Toolbar -> TabbedEditorViewModel calls; methods removed from MainWindowViewModel.
-
 
     public void UpdateWindowState(WindowState newState)
     {
@@ -139,37 +101,4 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(WindowStateIcon));
     }
 
-    partial void OnEditorContentChanged(string value)
-    {
-        // MainWindowViewModel no longer publishes status messages. Status updates are handled by producers and the StatusBar.
-        OnPropertyChanged(nameof(CanSaveAs));
-    }
-
-    partial void OnCurrentFilePathChanged(string value)
-    {
-        OnPropertyChanged(nameof(CanSave));
-    }
-
-    partial void OnIsFileOpenChanged(bool value)
-    {
-        OnPropertyChanged(nameof(CanSave));
-        OnPropertyChanged(nameof(CanSaveAs));
-    }
-
-    partial void OnIsProjectOpenChanged(bool value)
-    {
-        OnPropertyChanged(nameof(CanCreateNewFile));
-    }
-
-    partial void OnSelectedToolWindowIndexChanged(int value)
-    {
-        SelectedToolWindowTitle = value switch
-        {
-            0 => "File Explorer",
-            1 => "Tokens",
-            2 => "Syntax Tree",
-            3 => "Phase Output",
-            _ => "File Explorer"
-        };
-    }
 }
