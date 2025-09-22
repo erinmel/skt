@@ -15,6 +15,7 @@ public partial class StatusBar : UserControl
     private CancellationTokenSource? _timeAgoCts;
     private readonly TextBlock? _lineColumCountTextBlock;
     private readonly TextBlock? _encodingTextBlock;
+    private readonly TextBlock? _statusTextBlock;
     private StatusBarMessageEvent? _currentEvent;
     private long _messageToken;
 
@@ -24,6 +25,7 @@ public partial class StatusBar : UserControl
 
         _lineColumCountTextBlock = this.FindControl<TextBlock>("LineColumCountTextBlock");
         _encodingTextBlock = this.FindControl<TextBlock>("EncodingTextBlock");
+        _statusTextBlock = this.FindControl<TextBlock>("StatusTextBlock");
 
         App.EventBus.Subscribe<StatusBarMessageEvent>(OnStatusBarMessage);
         App.EventBus.Subscribe<CursorPositionEvent>(OnCursorPosition);
@@ -61,16 +63,15 @@ public partial class StatusBar : UserControl
     {
         try
         {
-            if (_lineColumCountTextBlock == null) return;
+            if (_statusTextBlock == null) return;
             if (Interlocked.Read(ref _messageToken) != token) return;
 
             _currentEvent = e;
-            _lineColumCountTextBlock.Text = e.ShowTimeAgo ? FormatTimeAgo(e.Message, 0) : (e.Message ?? string.Empty);
+            // Write general status messages to the left status area, not the line/column area.
+            _statusTextBlock.Text = e.ShowTimeAgo ? FormatTimeAgo(e.Message, 0) : (e.Message ?? string.Empty);
 
             await CancelAndClearMessageCtsAsync();
             await CancelAndClearTimeAgoCtsAsync();
-
-            StartTimeAgoIfNeeded(e, token);
 
             await StartDurationHandlerAsync(e, token);
         }
@@ -128,14 +129,6 @@ public partial class StatusBar : UserControl
             _timeAgoCts = null;
     }
 
-    private void StartTimeAgoIfNeeded(StatusBarMessageEvent e, long token)
-    {
-        if (!e.ShowTimeAgo) return;
-        var timeAgoCts = new CancellationTokenSource();
-        _timeAgoCts = timeAgoCts;
-        _ = UpdateTimeAgoAsync(e, token, timeAgoCts.Token);
-    }
-
     private async Task StartDurationHandlerAsync(StatusBarMessageEvent e, long token)
     {
         if (e.DurationMs is not >= 0) return;
@@ -146,9 +139,11 @@ public partial class StatusBar : UserControl
         {
             await Task.Delay(TimeSpan.FromMilliseconds(e.DurationMs.Value), cts.Token);
 
-            if (_lineColumCountTextBlock != null && Interlocked.Read(ref _messageToken) == token)
+            if (Interlocked.Read(ref _messageToken) == token)
             {
-                _lineColumCountTextBlock.Text = string.Empty;
+                // Clear the status text area when the message duration completes
+                if (_statusTextBlock != null)
+                    _statusTextBlock.Text = string.Empty;
                 _currentEvent = null;
                 await CancelAndClearTimeAgoCtsAsync();
             }
@@ -174,7 +169,6 @@ public partial class StatusBar : UserControl
         }
     }
 
-
     private async Task UpdateTimeAgoAsync(StatusBarMessageEvent e, long token, CancellationToken ct)
     {
         int minutes = 1;
@@ -188,13 +182,13 @@ public partial class StatusBar : UserControl
                 // Stop if a newer message arrived
                 if (Interlocked.Read(ref _messageToken) != token) break;
 
-                if (_lineColumCountTextBlock != null && _currentEvent == e)
+                if (_statusTextBlock != null && _currentEvent == e)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        if (_lineColumCountTextBlock != null && _currentEvent == e && Interlocked.Read(ref _messageToken) == token)
+                        if (_statusTextBlock != null && _currentEvent == e && Interlocked.Read(ref _messageToken) == token)
                         {
-                            _lineColumCountTextBlock.Text = FormatTimeAgo(e.Message, minutes);
+                            _statusTextBlock.Text = FormatTimeAgo(e.Message, minutes);
                         }
                     });
                     minutes++;
@@ -230,11 +224,14 @@ public partial class StatusBar : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             if (_lineColumCountTextBlock == null) return;
+
             if (e.CharCount <= 0)
             {
-                _lineColumCountTextBlock.Text = string.Empty;
+                // Show caret position when there's no selection instead of clearing the text
+                _lineColumCountTextBlock.Text = $"{e.StartLine}:{e.StartColumn}";
                 return;
             }
+
             _lineColumCountTextBlock.Text = $"{e.StartLine}:{e.StartColumn} - {e.EndLine}:{e.EndColumn} ({e.CharCount} chars, {e.LineBreakCount} line breaks)";
         });
     }
