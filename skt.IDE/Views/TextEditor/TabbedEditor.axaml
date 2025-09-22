@@ -145,25 +145,6 @@
                 </ia:EventTriggerBehavior>
               </i:Interaction.Behaviors>
             </te:TextEditor>
-
-            <!-- Empty State (when no document is selected) -->
-            <Border IsVisible="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectedDocument, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
-              <StackPanel VerticalAlignment="Center"
-                          HorizontalAlignment="Center"
-                          Opacity="0.6">
-                <TextBlock Text="📄"
-                           FontSize="48"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,16"/>
-                <TextBlock Text="No file open"
-                           FontSize="16"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Create a new file or open an existing one"
-                           FontSize="12"
-                           HorizontalAlignment="Center"
-                           Margin="0,4,0,0"/>
-              </StackPanel>
-            </Border>
           </Grid>
         </DataTemplate>
       </ContentControl.ContentTemplate>
