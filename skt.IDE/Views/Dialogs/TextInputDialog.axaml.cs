@@ -30,8 +30,7 @@ public partial class TextInputDialog : Window
             _cancelButton.Click += (_, __) => Close(null);
         }
 
-        // Close the dialog if it loses activation (click outside)
-        Deactivated += (_, __) => Close(null);
+        // Removed Deactivated event handler to prevent app minimization
 
         // Global key handling for Enter and Escape
         KeyDown += (_, e) =>
