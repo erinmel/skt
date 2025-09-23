@@ -547,6 +547,11 @@ string message = ""hello"";";
 
     #region File Output Tests
 
+    private static void WaitForDirectoryDeletion(string directoryPath, TimeSpan timeout)
+    {
+        SpinWait.SpinUntil(() => !Directory.Exists(directoryPath), timeout);
+    }
+
     [Fact]
     public void TokenizeToFile_ValidCode_CreatesTokenFile()
     {
@@ -559,7 +564,7 @@ string message = ""hello"";";
         SafeDeleteDirectory(outputDir);
 
         // Wait a moment to ensure cleanup is complete
-        Thread.Sleep(100);
+        WaitForDirectoryDeletion(outputDir, TimeSpan.FromSeconds(2));
 
         try
         {
