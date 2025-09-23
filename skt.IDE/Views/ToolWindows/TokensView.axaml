@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels"
+             x:Class="skt.IDE.Views.ToolWindows.TokensView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <ScrollViewer Name="RootScroll" VerticalScrollBarVisibility="Auto">
+        <TextBlock Text="{Binding TokensOutput}"
+                   FontFamily="Consolas,monospace"
+                   Padding="10"
+                   TextWrapping="NoWrap"/>
+    </ScrollViewer>
+</UserControl>

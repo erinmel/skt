@@ -1,8 +1,6 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using skt.IDE.ViewModels;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 
@@ -26,8 +24,6 @@ public partial class MainWindow : Window
         Other
     }
 
-    private const string SelectedCssClass = "selected";
-
     private static class ToolWindowTitles
     {
         public const string FileExplorer = "File Explorer";
@@ -48,6 +44,10 @@ public partial class MainWindow : Window
 
         // Keep ViewModel in sync when the WindowState changes (toolbar may change it directly)
         PropertyChanged += OnWindowPropertyChanged;
+
+        // Wire up decoupled ToolWindowStrip events
+        ToolWindowStripControl.ToolWindowButtonClicked += OnToolWindowStrip_ToolWindowButtonClicked;
+        ToolWindowStripControl.ToolPanelButtonClicked += OnToolWindowStrip_ToolPanelButtonClicked;
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -71,35 +71,35 @@ public partial class MainWindow : Window
         }
     }
 
-    #region Custom Toolbar Window Control Events
-
-    // Toolbar window-control logic moved to Toolbar control; handlers removed from MainWindow.
-    #endregion
-
-    #region Title Bar and Window Control Events
-
-    // Title bar/window control handlers moved to Toolbar control; MainWindow keeps WindowState->ViewModel sync only.
-    #endregion
-
-    #region Tool Window Toggle Methods
-
-    private async void ToolWindowToggle_Click(object? sender, RoutedEventArgs e)
+    private void OnToolWindowStrip_ToolWindowButtonClicked(string buttonName)
     {
-        if (sender is not Button button || string.IsNullOrEmpty(button.Name))
-            return;
+        // Fire-and-forget switch (original UI handler was async); swallow returned task
+        _ = OnToolWindowStrip_ToolWindowButtonClickedAsync(buttonName);
+    }
 
-        var toolWindow = GetToolWindowFromButtonName(button.Name);
+    private async Task OnToolWindowStrip_ToolWindowButtonClickedAsync(string buttonName)
+    {
+        var toolWindow = GetToolWindowFromButtonName(buttonName);
         await SwitchToolWindow(toolWindow);
     }
 
+    private void OnToolWindowStrip_ToolPanelButtonClicked(string buttonName)
+    {
+        var panel = GetTerminalPanelFromButtonName(buttonName);
+        ToggleTerminalPanel(panel);
+    }
+
+    #region Tool Window Toggle Methods
+
     private ToolWindowType GetToolWindowFromButtonName(string buttonName)
     {
+        // Map the button name strings from ToolWindowStrip to the enum
         return buttonName switch
         {
-            nameof(FileExplorerToggle) => ToolWindowType.FileExplorer,
-            nameof(TokensToggle) => ToolWindowType.Tokens,
-            nameof(SyntaxTreeToggle) => ToolWindowType.SyntaxTree,
-            nameof(PhaseOutputToggle) => ToolWindowType.PhaseOutput,
+            "FileExplorerToggle" => ToolWindowType.FileExplorer,
+            "TokensToggle" => ToolWindowType.Tokens,
+            "SyntaxTreeToggle" => ToolWindowType.SyntaxTree,
+            "PhaseOutputToggle" => ToolWindowType.PhaseOutput,
             _ => ToolWindowType.FileExplorer
         };
     }
@@ -137,39 +137,33 @@ public partial class MainWindow : Window
 
     private void UpdateToolWindowVisibility()
     {
-        FileExplorerContent.IsVisible = _selectedToolWindow == ToolWindowType.FileExplorer;
-        TokensContent.IsVisible = _selectedToolWindow == ToolWindowType.Tokens;
-        SyntaxTreeContent.IsVisible = _selectedToolWindow == ToolWindowType.SyntaxTree;
-        PhaseOutputContent.IsVisible = _selectedToolWindow == ToolWindowType.PhaseOutput;
+        // Find the dynamic content controls by name at runtime to avoid relying on generated fields
+        var fileExplorer = this.FindControl<Control>("FileExplorerContent");
+        var tokens = this.FindControl<Control>("TokensContent");
+        var syntax = this.FindControl<Control>("SyntaxTreeContent");
+        var phaseOutput = this.FindControl<Control>("PhaseOutputContent");
+
+        if (fileExplorer is not null) fileExplorer.IsVisible = _selectedToolWindow == ToolWindowType.FileExplorer;
+        if (tokens is not null) tokens.IsVisible = _selectedToolWindow == ToolWindowType.Tokens;
+        if (syntax is not null) syntax.IsVisible = _selectedToolWindow == ToolWindowType.SyntaxTree;
+        if (phaseOutput is not null) phaseOutput.IsVisible = _selectedToolWindow == ToolWindowType.PhaseOutput;
     }
 
     private void UpdateToolWindowSelection()
     {
-        // Remove selected class from all tool window buttons
-        RemoveSelectionFromToolWindowButtons();
-
-        // Add selected class to current tool window button
-        var selectedButton = GetSelectedToolWindowButton();
-        selectedButton?.Classes.Add(SelectedCssClass);
+        // Delegate selection styling to the ToolWindowStrip control
+        ToolWindowStripControl.SetSelectedToolWindow(GetButtonNameForToolWindow(_selectedToolWindow));
     }
 
-    private void RemoveSelectionFromToolWindowButtons()
+    private static string GetButtonNameForToolWindow(ToolWindowType toolWindow)
     {
-        FileExplorerToggle.Classes.Remove(SelectedCssClass);
-        TokensToggle.Classes.Remove(SelectedCssClass);
-        SyntaxTreeToggle.Classes.Remove(SelectedCssClass);
-        PhaseOutputToggle.Classes.Remove(SelectedCssClass);
-    }
-
-    private Button? GetSelectedToolWindowButton()
-    {
-        return _selectedToolWindow switch
+        return toolWindow switch
         {
-            ToolWindowType.FileExplorer => FileExplorerToggle,
-            ToolWindowType.Tokens => TokensToggle,
-            ToolWindowType.SyntaxTree => SyntaxTreeToggle,
-            ToolWindowType.PhaseOutput => PhaseOutputToggle,
-            _ => FileExplorerToggle
+            ToolWindowType.FileExplorer => "FileExplorerToggle",
+            ToolWindowType.Tokens => "TokensToggle",
+            ToolWindowType.SyntaxTree => "SyntaxTreeToggle",
+            ToolWindowType.PhaseOutput => "PhaseOutputToggle",
+            _ => "FileExplorerToggle"
         };
     }
 
@@ -177,23 +171,14 @@ public partial class MainWindow : Window
 
     #region Terminal Panel Toggle Methods
 
-    private void ToolPanelToggle_Click(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not Button button || string.IsNullOrEmpty(button.Name))
-            return;
-
-        var panel = GetTerminalPanelFromButtonName(button.Name);
-        ToggleTerminalPanel(panel);
-    }
-
     private TerminalPanelType GetTerminalPanelFromButtonName(string buttonName)
     {
         return buttonName switch
         {
-            nameof(TerminalToggle) => TerminalPanelType.Terminal,
-            nameof(OutputToggle) => TerminalPanelType.Errors, // Output maps to general errors
-            nameof(ErrorsToggle) => TerminalPanelType.Errors,
-            nameof(BuildToggle) => TerminalPanelType.Other, // Build output maps to other
+            "TerminalToggle" => TerminalPanelType.Terminal,
+            "OutputToggle" => TerminalPanelType.Errors, // Output maps to general errors
+            "ErrorsToggle" => TerminalPanelType.Errors,
+            "BuildToggle" => TerminalPanelType.Other, // Build output maps to other
             _ => TerminalPanelType.Terminal
         };
     }
@@ -228,34 +213,23 @@ public partial class MainWindow : Window
 
     private void UpdateTerminalPanelSelection()
     {
-        // Remove selected class from all panel buttons
-        RemoveSelectionFromPanelButtons();
-
+        // Delegate panel selection styling to the ToolWindowStrip control
+        ToolWindowStripControl.ClearPanelSelection();
         if (_isTerminalPanelVisible)
         {
-            // Add selected class to current panel button
-            var selectedButton = GetSelectedPanelButton();
-            selectedButton?.Classes.Add(SelectedCssClass);
+            ToolWindowStripControl.SetSelectedPanel(GetButtonNameForPanel(_selectedTerminalPanel));
         }
     }
 
-    private void RemoveSelectionFromPanelButtons()
+    private static string GetButtonNameForPanel(TerminalPanelType panel)
     {
-        TerminalToggle.Classes.Remove(SelectedCssClass);
-        OutputToggle.Classes.Remove(SelectedCssClass);
-        ErrorsToggle.Classes.Remove(SelectedCssClass);
-        BuildToggle.Classes.Remove(SelectedCssClass);
-    }
-
-    private Button? GetSelectedPanelButton()
-    {
-        return _selectedTerminalPanel switch
+        return panel switch
         {
-            TerminalPanelType.Terminal => TerminalToggle,
-            TerminalPanelType.Errors => ErrorsToggle,
-            TerminalPanelType.Syntax => ErrorsToggle, // Syntax errors use same button
-            TerminalPanelType.Other => BuildToggle,
-            _ => TerminalToggle
+            TerminalPanelType.Terminal => "TerminalToggle",
+            TerminalPanelType.Errors => "ErrorsToggle",
+            TerminalPanelType.Syntax => "ErrorsToggle",
+            TerminalPanelType.Other => "BuildToggle",
+            _ => "TerminalToggle"
         };
     }
 
@@ -330,6 +304,8 @@ public partial class MainWindow : Window
         if (viewModel is not null)
         {
             System.Diagnostics.Debug.WriteLine($"{context}: {ex.Message}");
+            // Append to OtherErrors so it appears in the UI terminal/other errors tab
+            viewModel.OtherErrors = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {context}: {ex.Message}\n" + viewModel.OtherErrors;
         }
     }
 

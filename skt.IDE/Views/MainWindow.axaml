@@ -80,18 +80,10 @@
                     <toolviews:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
 
                     <!-- Tokens View -->
-                    <ScrollViewer Name="TokensContent" IsVisible="False">
-                        <TextBlock Text="{Binding TokensOutput}"
-                                  FontFamily="Consolas,monospace"
-                                  Padding="10"/>
-                    </ScrollViewer>
+                    <toolviews:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding}"/>
 
                     <!-- Syntax Tree View -->
-                    <ScrollViewer Name="SyntaxTreeContent" IsVisible="False">
-                        <TextBlock Text="{Binding SyntaxTreeOutput}"
-                                  FontFamily="Consolas,monospace"
-                                  Padding="10"/>
-                    </ScrollViewer>
+                    <toolviews:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding}"/>
 
                     <!-- Phase Output View -->
                     <toolviews:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
@@ -100,118 +92,7 @@
         </Border>
 
         <!-- Tool Window (Toggle Buttons) -->
-        <Border
-            Grid.Row="1"
-            Grid.Column="2"
-            Grid.RowSpan="2"
-            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-            BorderThickness="0,1,0,1">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <!-- Top Section - Tool Window Toggles -->
-                <StackPanel Grid.Row="0" Orientation="Vertical" HorizontalAlignment="Center" Margin="3,5">
-                    <Button Name="FileExplorerToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="File Explorer"
-                            Click="ToolWindowToggle_Click">
-                        <Image Source="{DynamicResource Icon.ToolWindowExplorer}" Width="20" Height="20"/>
-                    </Button>
-
-                    <Button Name="TokensToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Tokens View"
-                            Click="ToolWindowToggle_Click">
-                        <Image Source="{DynamicResource Icon.ToolWindowTokens}" Width="20" Height="20"/>
-                    </Button>
-
-                    <Button Name="SyntaxTreeToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Syntax Tree"
-                            Click="ToolWindowToggle_Click">
-                        <Image Source="{DynamicResource Icon.ToolWindowSyntaxTree}" Width="20" Height="20"/>
-                    </Button>
-
-                    <Button Name="PhaseOutputToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Phase Output"
-                            Click="ToolWindowToggle_Click">
-                        <Image Source="{DynamicResource Icon.ToolWindowIntermediateCode}" Width="20" Height="20"/>
-                    </Button>
-                </StackPanel>
-
-                <!-- Flexible Spacer with a thin divider centered -->
-                <Grid Grid.Row="1" Margin="5,10"/>
-
-                <!-- Bottom Section - Terminal Panel Toggles -->
-                <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="3,5">
-                    <Button Name="TerminalToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Terminal"
-                            Click="ToolPanelToggle_Click">
-                        <Image Source="{DynamicResource Icon.PanelTerminal}" Width="20" Height="20"/>
-                    </Button>
-
-                    <Button Name="OutputToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Output"
-                            Click="ToolPanelToggle_Click">
-                        <Image Source="{DynamicResource Icon.PanelOutput}" Width="20" Height="20"/>
-                    </Button>
-
-                    <Button Name="ErrorsToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Errors"
-                            Click="ToolPanelToggle_Click">
-                        <Image Source="{DynamicResource Icon.PanelErrors}" Width="20" Height="20"/>
-                    </Button>
-
-                    <Button Name="BuildToggle"
-                            Tag="ToolIcon"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6,6"
-                            Margin="0,3"
-                            ToolTip.Tip="Build"
-                            Click="ToolPanelToggle_Click">
-                        <Image Source="{DynamicResource Icon.PanelBuild}" Width="20" Height="20"/>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <toolviews:ToolWindowStrip Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Name="ToolWindowStripControl" />
 
         <!-- Terminal/Errors -->
         <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="2">
