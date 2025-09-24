@@ -363,6 +363,23 @@
         </DrawingImage.Drawing>
     </DrawingImage>
 
+    <DrawingImage x:Key="Icon.FolderPlugin">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#0288d1">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry Figures="m13.844 7.536-1.288-1.072A2 2 0 0 0 11.276 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H15.124a2 2 0 0 1-1.28-.464"/>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#b3e5fc">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry Figures="M30.107 20H32v-4a2 2 0 0 0-2-2h-4v-2a2 2 0 0 0-4 0v2h-4a2 2 0 0 0-2 2v4h-2a2 2 0 0 0 0 4h2v4a2 2 0 0 0 2 2h4v-1.893a2.074 2.074 0 0 1 1.664-2.08A2 2 0 0 1 26 28v2h4a2 2 0 0 0 2-2v-4h-2a2 2 0 0 1-1.973-2.336A2.074 2.074 0 0 1 30.107 20"/>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
     <DrawingImage x:Key="Icon.FolderPowershellOpen">
         <DrawingImage.Drawing>
             <DrawingGroup>
@@ -912,4 +929,74 @@
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
+
+    <DrawingImage x:Key="Icon.FolderGitOpen">
+      <DrawingImage.Drawing>
+        <DrawingGroup>
+          <GeometryDrawing Brush="#ff7043">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="M28.967 12H9.442a2 2 0 0 0-1.898 1.368L4 24V10h24a2 2 0 0 0-2-2H15.124a2 2 0 0 1-1.28-.464l-1.288-1.072A2 2 0 0 0 11.276 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h22l4.805-11.212A2 2 0 0 0 28.967 12"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+          <GeometryDrawing Brush="#ffccbc">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="m12.593 18.589 5.784-5.794 1.692 1.7a1.98 1.98 0 0 0 .93 2.233v5.544a1.99 1.99 0 0 0-1 1.731 2.002 2.002 0 0 0 4.003 0A1.99 1.99 0 0 0 23 22.272v-4.864l2.071 2.092a1.2 1.2 0 0 0-.07.5 2.002 2.002 0 1 0 2.002-2.002 1.2 1.2 0 0 0-.5.07l-2.573-2.571a1.98 1.98 0 0 0-1.15-2.342 2.1 2.1 0 0 0-1.281-.09l-1.702-1.692.791-.78a1.975 1.975 0 0 1 2.822 0l7.996 7.996a1.975 1.975 0 0 1 0 2.822l-7.996 7.996a1.975 1.975 0 0 1-2.822 0l-7.996-7.996a1.975 1.975 0 0 1 0-2.822Z"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+        </DrawingGroup>
+      </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <DrawingImage x:Key="Icon.FolderGit">
+      <DrawingImage.Drawing>
+        <DrawingGroup>
+          <GeometryDrawing Brush="#ff7043">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="m13.844 7.536-1.288-1.072A2 2 0 0 0 11.276 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H15.124a2 2 0 0 1-1.28-.464"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+          <GeometryDrawing Brush="#ffccbc">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="m12.593 18.589 5.784-5.794 1.692 1.7a1.98 1.98 0 0 0 .93 2.233v5.544a1.99 1.99 0 0 0-1 1.731 2.002 2.002 0 0 0 4.003 0A1.99 1.99 0 0 0 23 22.272v-4.864l2.071 2.092a1.2 1.2 0 0 0-.07.5 2.002 2.002 0 1 0 2.002-2.002 1.2 1.2 0 0 0-.5.07l-2.573-2.571a1.98 1.98 0 0 0-1.15-2.342 2.1 2.1 0 0 0-1.281-.09l-1.702-1.692.791-.78a1.975 1.975 0 0 1 2.822 0l7.996 7.996a1.975 1.975 0 0 1 0 2.822l-7.996 7.996a1.975 1.975 0 0 1-2.822 0l-7.996-7.996a1.975 1.975 0 0 1 0-2.822Z"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+        </DrawingGroup>
+      </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <DrawingImage x:Key="Icon.FolderGithubOpen">
+      <DrawingImage.Drawing>
+        <DrawingGroup>
+          <GeometryDrawing Brush="#546e7a">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="M28.967 12H9.442a2 2 0 0 0-1.898 1.368L4 24V10h24a2 2 0 0 0-2-2H15.124a2 2 0 0 1-1.28-.464l-1.288-1.072A2 2 0 0 0 11.276 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h22l4.805-11.212A2 2 0 0 0 28.967 12"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+          <GeometryDrawing Brush="#eceff1">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="M23 10a9.03 9.03 0 0 0-9 9.063 9.08 9.08 0 0 0 6.157 8.609c.45.072.593-.21.593-.453v-1.532c-2.493.544-3.024-1.214-3.024-1.214a2.42 2.42 0 0 0-.998-1.333c-.82-.561.062-.544.062-.544a1.9 1.9 0 0 1 1.377.933 1.925 1.925 0 0 0 2.62.754 1.96 1.96 0 0 1 .566-1.215c-1.998-.227-4.094-1.007-4.094-4.459a3.52 3.52 0 0 1 .927-2.456 3.26 3.26 0 0 1 .09-2.392s.754-.245 2.474.924a8.6 8.6 0 0 1 4.5 0c1.718-1.169 2.476-.924 2.476-.924a3.26 3.26 0 0 1 .088 2.392 3.52 3.52 0 0 1 .927 2.456c0 3.462-2.105 4.223-4.112 4.45a2.17 2.17 0 0 1 .622 1.676v2.484c0 .244.143.533.602.453A9.08 9.08 0 0 0 23 10"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+        </DrawingGroup>
+      </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <DrawingImage x:Key="Icon.FolderGithub">
+      <DrawingImage.Drawing>
+        <DrawingGroup>
+          <GeometryDrawing Brush="#546e7a">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="m13.844 7.536-1.288-1.072A2 2 0 0 0 11.276 6H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H15.124a2 2 0 0 1-1.28-.464"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+          <GeometryDrawing Brush="#eceff1">
+            <GeometryDrawing.Geometry>
+              <PathGeometry Figures="M23 10a9.03 9.03 0 0 0-9 9.063 9.08 9.08 0 0 0 6.157 8.609c.45.072.593-.21.593-.453v-1.532c-2.493.544-3.024-1.214-3.024-1.214a2.42 2.42 0 0 0-.998-1.333c-.82-.561.062-.544.062-.544a1.9 1.9 0 0 1 1.377.933 1.925 1.925 0 0 0 2.62.754 1.96 1.96 0 0 1 .566-1.215c-1.998-.227-4.094-1.007-4.094-4.459a3.52 3.52 0 0 1 .927-2.456 3.26 3.26 0 0 1 .09-2.392s.754-.245 2.474.924a8.6 8.6 0 0 1 4.5 0c1.718-1.169 2.476-.924 2.476-.924a3.26 3.26 0 0 1 .088 2.392 3.52 3.52 0 0 1 .927 2.456c0 3.462-2.105 4.223-4.112 4.45a2.17 2.17 0 0 1 .622 1.676v2.484c0 .244.143.533.602.453A9.08 9.08 0 0 0 23 10"/>
+            </GeometryDrawing.Geometry>
+          </GeometryDrawing>
+        </DrawingGroup>
+      </DrawingImage.Drawing>
+    </DrawingImage>
+
+
 </ResourceDictionary>

@@ -1,0 +1,93 @@
+namespace skt.IDE.Models;
+
+public static class IconKeys
+{
+    public const string Document = "Icon.Document";
+    public const string Log = "Icon.Log";
+    public const string Pdf = "Icon.Pdf";
+    public const string Json = "Icon.Json";
+    public const string Yaml = "Icon.Yaml";
+    public const string Xml = "Icon.Xml";
+    public const string Markdown = "Icon.Markdown";
+    public const string Favicon = "Icon.Favicon";
+    public const string Html = "Icon.Html";
+    public const string Javascript = "Icon.Javascript";
+    public const string Table = "Icon.Table";
+    public const string Font = "Icon.Font";
+    public const string Database = "Icon.Database";
+    public const string Zip = "Icon.Zip";
+    public const string Audio = "Icon.Audio";
+    public const string Video = "Icon.Video";
+    public const string Image = "Icon.Image";
+    public const string Powershell = "Icon.Powershell";
+    public const string Assembly = "Icon.Assembly";
+    public const string SktFile = "Icon.SktFile";
+    public const string SvgFile = "Icon.SvgFile";
+
+    // App-specific
+    public const string Docker = "Icon.Docker";
+    public const string Readme = "Icon.Readme";
+    public const string Git = "Icon.Git";
+    public const string Gitlab = "Icon.Gitlab";
+    public const string Settings = "Icon.Settings";
+    public const string Jsconfig = "Icon.Jsconfig";
+    public const string Http = "Icon.Http";
+    public const string GithubActionsWorkflow = "Icon.GithubActionsWorkflow";
+    public const string Lock = "Icon.Lock";
+
+    // Folders
+    public const string FolderBase = "Icon.FolderBase";
+    public const string FolderBaseOpen = "Icon.FolderBaseOpen";
+    public const string FolderSrc = "Icon.FolderSrc";
+    public const string FolderSrcOpen = "Icon.FolderSrcOpen";
+    public const string FolderTest = "Icon.FolderTest";
+    public const string FolderTestOpen = "Icon.FolderTestOpen";
+    public const string FolderImages = "Icon.FolderImages";
+    public const string FolderImagesOpen = "Icon.FolderImagesOpen";
+    public const string FolderSvg = "Icon.FolderSvg";
+    public const string FolderSvgOpen = "Icon.FolderSvgOpen";
+    public const string FolderLib = "Icon.FolderLib";
+    public const string FolderLibOpen = "Icon.FolderLibOpen";
+    public const string FolderInclude = "Icon.FolderInclude";
+    public const string FolderIncludeOpen = "Icon.FolderIncludeOpen";
+    public const string FolderLog = "Icon.FolderLog";
+    public const string FolderLogOpen = "Icon.FolderLogOpen";
+    public const string FolderTools = "Icon.FolderTools";
+    public const string FolderToolsOpen = "Icon.FolderToolsOpen";
+    public const string FolderScripts = "Icon.FolderScripts";
+    public const string FolderScriptsOpen = "Icon.FolderScriptsOpen";
+    public const string FolderUtils = "Icon.FolderUtils";
+    public const string FolderUtilsOpen = "Icon.FolderUtilsOpen";
+    public const string FolderTemp = "Icon.FolderTemp";
+    public const string FolderTempOpen = "Icon.FolderTempOpen";
+    public const string FolderTarget = "Icon.FolderTarget";
+    public const string FolderTargetOpen = "Icon.FolderTargetOpen";
+    public const string FolderTheme = "Icon.FolderTheme";
+    public const string FolderThemeOpen = "Icon.FolderThemeOpen";
+    public const string FolderPlugin = "Icon.FolderPlugin";
+    public const string FolderPluginOpen = "Icon.FolderPluginOpen";
+    public const string FolderPublic = "Icon.FolderPublic";
+    public const string FolderPublicOpen = "Icon.FolderPublicOpen";
+    public const string FolderPrivate = "Icon.FolderPrivate";
+    public const string FolderPrivateOpen = "Icon.FolderPrivateOpen";
+    public const string FolderDocker = "Icon.FolderDocker";
+    public const string FolderDockerOpen = "Icon.FolderDockerOpen";
+    public const string FolderJson = "Icon.FolderJson";
+    public const string FolderJsonOpen = "Icon.FolderJsonOpen";
+    public const string FolderPdf = "Icon.FolderPdf";
+    public const string FolderPdfOpen = "Icon.FolderPdfOpen";
+    public const string FolderImport = "Icon.FolderImport";
+    public const string FolderImportOpen = "Icon.FolderImportOpen";
+    public const string FolderTrash = "Icon.FolderTrash";
+    public const string FolderTrashOpen = "Icon.FolderTrashOpen";
+    public const string FolderTemplate = "Icon.FolderTemplate";
+    public const string FolderTemplateOpen = "Icon.FolderTemplateOpen";
+    public const string FolderOther = "Icon.FolderOther";
+    public const string FolderOtherOpen = "Icon.FolderOtherOpen";
+    public const string FolderPowershell = "Icon.FolderPowershell";
+    public const string FolderPowershellOpen = "Icon.FolderPowershellOpen";
+    public const string FolderGit = "Icon.FolderGit";
+    public const string FolderGitOpen = "Icon.FolderGitOpen";
+    public const string FolderGithub = "Icon.FolderGithub";
+    public const string FolderGithubOpen = "Icon.FolderGithubOpen";
+}
