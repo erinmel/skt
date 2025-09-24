@@ -11,12 +11,11 @@ using Avalonia.Controls;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using skt.IDE.Views.Dialogs;
-using skt.IDE.Services;
 using skt.IDE.Services.Buss;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
-public partial class FileExplorerViewModel : ViewModelBase
+public partial class FileExplorerViewModel : ObservableObject
 {
     private const String NoProjectName = "Open A Project to Begin";
     

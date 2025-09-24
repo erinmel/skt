@@ -1,4 +1,3 @@
-// ...existing code...
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System;
@@ -39,9 +38,9 @@ public partial class ToolWindowStrip : UserControl
             if (errors is not null) errors.Click += ToolPanelToggle_Click;
             if (build is not null) build.Click += ToolPanelToggle_Click;
         }
-        catch
+        catch(Exception ex)
         {
-            // Swallow - FindControl may fail at design-time; safe to ignore
+            System.Diagnostics.Debug.WriteLine($"Error wiring up ToolWindowStrip buttons: {ex.Message}");
         }
     }
 
@@ -50,7 +49,7 @@ public partial class ToolWindowStrip : UserControl
         if (sender is not Button button || string.IsNullOrEmpty(button.Name))
             return;
 
-        ToolWindowButtonClicked?.Invoke(button.Name);
+        OnToolWindowButtonClicked(button.Name);
     }
 
     private void ToolPanelToggle_Click(object? sender, RoutedEventArgs e)
@@ -58,10 +57,21 @@ public partial class ToolWindowStrip : UserControl
         if (sender is not Button button || string.IsNullOrEmpty(button.Name))
             return;
 
-        ToolPanelButtonClicked?.Invoke(button.Name);
+        OnToolPanelButtonClicked(button.Name);
     }
 
-    public void ClearToolWindowSelection()
+    // Standard protected raiser methods so static analyzers can detect the event being raised
+    protected virtual void OnToolWindowButtonClicked(string buttonName)
+    {
+        ToolWindowButtonClicked?.Invoke(buttonName);
+    }
+
+    protected virtual void OnToolPanelButtonClicked(string buttonName)
+    {
+        ToolPanelButtonClicked?.Invoke(buttonName);
+    }
+
+    private void ClearToolWindowSelection()
     {
         FileExplorerToggle.Classes.Remove(SelectedCssClass);
         TokensToggle.Classes.Remove(SelectedCssClass);

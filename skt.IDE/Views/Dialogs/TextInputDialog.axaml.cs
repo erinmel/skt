@@ -23,11 +23,11 @@ public partial class TextInputDialog : Window
 
         if (_okButton is not null)
         {
-            _okButton.Click += (_, __) => Close(_inputBox?.Text?.Trim());
+            _okButton.Click += (_, _) => Close(_inputBox?.Text?.Trim());
         }
         if (_cancelButton is not null)
         {
-            _cancelButton.Click += (_, __) => Close(null);
+            _cancelButton.Click += (_, _) => Close(null);
         }
 
         // Removed Deactivated event handler to prevent app minimization
@@ -45,7 +45,7 @@ public partial class TextInputDialog : Window
             }
         };
 
-        Opened += (_, __) =>
+        Opened += (_, _) =>
         {
             if (_inputBox is not null)
             {

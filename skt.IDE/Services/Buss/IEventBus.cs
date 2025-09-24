@@ -1,6 +1,6 @@
 using System;
 
-namespace skt.IDE.Services;
+namespace skt.IDE.Services.Buss;
 
 public interface IEventBus
 {

@@ -2,9 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Threading;
-using skt.IDE.ViewModels;
 using skt.IDE.Services.Buss;
 
 namespace skt.IDE.Views.ToolWindows;
@@ -13,10 +11,11 @@ public partial class StatusBar : UserControl
 {
     private CancellationTokenSource? _messageCts;
     private CancellationTokenSource? _timeAgoCts;
+    private Task? _durationTask;
+    private Task? _timeAgoTask;
     private readonly TextBlock? _lineColumCountTextBlock;
     private readonly TextBlock? _encodingTextBlock;
     private readonly TextBlock? _statusTextBlock;
-    private StatusBarMessageEvent? _currentEvent;
     private long _messageToken;
 
     public StatusBar()
@@ -32,7 +31,7 @@ public partial class StatusBar : UserControl
         App.EventBus.Subscribe<FileEncodingChangedEvent>(OnFileEncodingChanged);
         App.EventBus.Subscribe<SelectionInfoEvent>(OnSelectionInfo);
 
-        Unloaded += (s, _) =>
+        Unloaded += (_, _) =>
         {
             App.EventBus.Unsubscribe<StatusBarMessageEvent>(OnStatusBarMessage);
             App.EventBus.Unsubscribe<CursorPositionEvent>(OnCursorPosition);
@@ -41,92 +40,105 @@ public partial class StatusBar : UserControl
         };
     }
 
-    private void OnStatusBarMessage(StatusBarMessageEvent e)
+    private async void OnStatusBarMessage(StatusBarMessageEvent e)
     {
         // Increment token to represent a newer message; any in-flight handlers become stale
         var token = Interlocked.Increment(ref _messageToken);
 
-        try
-        {
-            _messageCts?.Cancel();
-            _timeAgoCts?.Cancel();
-        }
-        catch (Exception)
-        {
-            // Ignored: cancellation may throw if already disposed concurrently
-        }
+        // Ensure any previous handlers are cancelled and disposed before starting a new one
+        await CancelAndClearMessageCtsAsync();
+        await CancelAndClearTimeAgoCtsAsync();
 
-        Dispatcher.UIThread.Post(() => _ = HandleStatusBarMessageAsync(e, token));
+        var receivedAt = DateTimeOffset.UtcNow;
+        _ = HandleStatusBarMessageAsync(e, token, receivedAt);
     }
 
-    private async Task HandleStatusBarMessageAsync(StatusBarMessageEvent e, long token)
+    private Task HandleStatusBarMessageAsync(StatusBarMessageEvent e, long token, DateTimeOffset receivedAt)
     {
         try
         {
-            if (_statusTextBlock == null) return;
-            if (Interlocked.Read(ref _messageToken) != token) return;
+            if (_statusTextBlock == null || Interlocked.Read(ref _messageToken) != token)
+            {
+                return Task.CompletedTask;
+            }
+            _statusTextBlock.Text = e.ShowTimeAgo ? FormatTimeAgo(e.Message, 0) : (e.Message);
 
-            _currentEvent = e;
-            // Write general status messages to the left status area, not the line/column area.
-            _statusTextBlock.Text = e.ShowTimeAgo ? FormatTimeAgo(e.Message, 0) : (e.Message ?? string.Empty);
+            if (e.ShowTimeAgo)
+            {
+                _timeAgoTask = StartTimeAgoHandlerAsync(e, token, receivedAt);
+            }
 
-            await CancelAndClearMessageCtsAsync();
-            await CancelAndClearTimeAgoCtsAsync();
-
-            await StartDurationHandlerAsync(e, token);
+            _durationTask = StartDurationHandlerAsync(e, token);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Unhandled error in HandleStatusBarMessageAsync: {ex}");
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task CancelAndClearMessageCtsAsync()
     {
-        var cts = _messageCts;
-        if (cts == null) return;
         try
         {
+            var cts = _messageCts;
+            if (cts == null)
+            {
+                var dt = _durationTask;
+                if (dt == null) return;
+                await dt;
+                _durationTask = null;
+                return;
+            }
+
             await cts.CancelAsync();
-        }
-        catch
-        {
-            // Ignored: cancellation may throw if already disposed concurrently
-        }
-        try
-        {
+
+            var running = _durationTask;
+            if (running != null)
+            {
+                 await running;
+                _durationTask = null;
+            }
+
             cts.Dispose();
+            if (ReferenceEquals(_messageCts, cts))
+                _messageCts = null;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
         }
-        if (ReferenceEquals(_messageCts, cts))
-            _messageCts = null;
     }
 
     private async Task CancelAndClearTimeAgoCtsAsync()
     {
         var cts = _timeAgoCts;
-        if (cts == null) return;
+        var running = _timeAgoTask;
+        if (cts == null && running == null)
+            return;
+
         try
         {
-            await cts.CancelAsync();
-        }
-        catch
-        {
-            // Ignored
-        }
-        try
-        {
-            cts.Dispose();
+            if (cts != null)
+                await cts.CancelAsync();
+
+            if (running != null)
+                await running;
+
+            _timeAgoTask = null;
+
+            if (cts != null)
+            {
+                cts.Dispose();
+                if (ReferenceEquals(_timeAgoCts, cts))
+                    _timeAgoCts = null;
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
         }
-        if (ReferenceEquals(_timeAgoCts, cts))
-            _timeAgoCts = null;
     }
 
     private async Task StartDurationHandlerAsync(StatusBarMessageEvent e, long token)
@@ -144,7 +156,6 @@ public partial class StatusBar : UserControl
                 // Clear the status text area when the message duration completes
                 if (_statusTextBlock != null)
                     _statusTextBlock.Text = string.Empty;
-                _currentEvent = null;
                 await CancelAndClearTimeAgoCtsAsync();
             }
         }
@@ -169,36 +180,63 @@ public partial class StatusBar : UserControl
         }
     }
 
-    private async Task UpdateTimeAgoAsync(StatusBarMessageEvent e, long token, CancellationToken ct)
+    private async Task StartTimeAgoHandlerAsync(StatusBarMessageEvent e, long token, DateTimeOffset receivedAt)
     {
-        int minutes = 1;
+        var cts = new CancellationTokenSource();
+        _timeAgoCts = cts;
+
         try
         {
-            while (!ct.IsCancellationRequested)
+            while (!cts.Token.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromMinutes(1), ct);
-                if (ct.IsCancellationRequested) break;
-
-                // Stop if a newer message arrived
-                if (Interlocked.Read(ref _messageToken) != token) break;
-
-                if (_statusTextBlock != null && _currentEvent == e)
+                try
                 {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        if (_statusTextBlock != null && _currentEvent == e && Interlocked.Read(ref _messageToken) == token)
-                        {
-                            _statusTextBlock.Text = FormatTimeAgo(e.Message, minutes);
-                        }
-                    });
-                    minutes++;
+                    if (Interlocked.Read(ref _messageToken) != token) break;
+
+                    TryUpdateTimeAgo(e, token, receivedAt);
+
+                    await Task.Delay(TimeSpan.FromSeconds(60), cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Time-ago updater error: {ex}");
+            System.Diagnostics.Debug.WriteLine($"Status bar time-ago handler error: {ex}");
         }
+        finally
+        {
+            if (_timeAgoCts == cts)
+            {
+                try
+                {
+                    _timeAgoCts?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Status bar handler error: {ex}");
+                }
+                _timeAgoCts = null;
+            }
+        }
+    }
+
+    private void TryUpdateTimeAgo(StatusBarMessageEvent e, long token, DateTimeOffset receivedAt)
+    {
+        var minutes = (int)Math.Floor((DateTimeOffset.UtcNow - receivedAt).TotalMinutes);
+        if (minutes < 0) minutes = 0;
+
+        if (Interlocked.Read(ref _messageToken) != token) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Interlocked.Read(ref _messageToken) != token) return;
+            if (_statusTextBlock == null) return;
+
+            _statusTextBlock.Text = FormatTimeAgo(e.Message, minutes);
+        });
     }
 
     private void OnCursorPosition(CursorPositionEvent e)

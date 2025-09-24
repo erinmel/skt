@@ -44,7 +44,7 @@ public partial class FileNode : ObservableObject
             LoadChildren();
         }
     }
-
+    
     partial void OnIsExpandedChanged(bool value)
     {
         OnPropertyChanged(nameof(IconKey));

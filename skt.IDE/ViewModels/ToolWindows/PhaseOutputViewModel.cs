@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
-public partial class PhaseOutputViewModel : ViewModelBase
+public partial class PhaseOutputViewModel : ObservableObject
 {
     [ObservableProperty]
     private ObservableCollection<string> _outputLines = new();

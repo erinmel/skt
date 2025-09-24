@@ -4,7 +4,6 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 using System.Linq;
-using Avalonia.Media.TextFormatting;
 using System.Text;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
@@ -118,10 +117,7 @@ namespace skt.IDE.Views.TextEditor
             if (e.Property == TextProperty && _mainEditor != null)
             {
                 var newText = GetValue(TextProperty);
-                if (_mainEditor.Text != newText)
-                {
-                    _mainEditor.Text = newText;
-                }
+                _mainEditor.Text = newText;
                 UpdateLineNumbers();
                 // When the bound text changes (e.g., open file), publish updated caret/selection
                 PublishCursorAndSelection();
@@ -169,10 +165,7 @@ namespace skt.IDE.Views.TextEditor
             }
 
             var newText = sb.ToString();
-            if (_lineNumbers.Text != newText)
-            {
-                _lineNumbers.Text = newText;
-            }
+            _lineNumbers.Text = newText;
 
             // After updating line numbers, sync scroll position
             SyncScrollPosition();

@@ -2,12 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
              xmlns:models="using:skt.IDE.Models"
-             xmlns:converters="using:skt.IDE.Converters"
+             xmlns:converters1="clr-namespace:skt.IDE.Services.Converters"
              x:Class="skt.IDE.Views.ToolWindows.FileExplorerView"
              x:DataType="vm:FileExplorerViewModel">
 
   <UserControl.Resources>
-    <converters:IconKeyToResourceConverter x:Key="IconKeyConverter"/>
+    <converters1:IconKeyToResourceConverter x:Key="IconKeyConverter"/>
   </UserControl.Resources>
 
   <Design.DataContext>

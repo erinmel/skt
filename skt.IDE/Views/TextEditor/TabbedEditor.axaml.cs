@@ -29,7 +29,6 @@ public partial class TabbedEditor : UserControl
         }
     }
 
-    // Method to create a new tab from external calls
     public void NewTab()
     {
         ViewModel?.NewTabCommand.Execute(null);

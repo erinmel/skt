@@ -78,37 +78,16 @@ public class OpenFileRequestEvent
     }
 }
 
-public class CreateFileRequestEvent
+public class CreateFileRequestEvent;
+
+public class ProjectFolderSelectedEvent(string folderPath)
 {
-    public CreateFileRequestEvent()
-    {
-    }
+    public string FolderPath { get; } = folderPath;
 }
 
-public class ProjectFolderSelectedEvent
-{
-    public string FolderPath { get; }
+public class SaveFileRequestEvent;
 
-    public ProjectFolderSelectedEvent(string folderPath)
-    {
-        FolderPath = folderPath;
-    }
-}
-
-public class SaveFileRequestEvent
-{
-
-    public SaveFileRequestEvent()
-    {
-    }
-}
-
-public class SaveAsFilesRequestEvent
-{
-    public SaveAsFilesRequestEvent()
-    {
-    }
-}
+public class SaveAsFilesRequestEvent;
 
 public class SelectedDocumentChangedEvent
 {

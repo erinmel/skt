@@ -4,8 +4,7 @@
              x:Class="skt.IDE.Views.ToolWindows.Toolbar"
              x:DataType="vm:MainWindowViewModel">
 
-    <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
-            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+    <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
             x:Name="TitleBar">
         <Grid>
             <Grid.ColumnDefinitions>

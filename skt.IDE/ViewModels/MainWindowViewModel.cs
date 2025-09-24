@@ -1,16 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.ViewModels.ToolWindows;
-using System;
-using System.ComponentModel;
-using System.IO;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia;
 
 namespace skt.IDE.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ObservableObject
 {
     [ObservableProperty] private string _greeting = "Welcome to Avalonia!";
 
@@ -74,11 +70,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
-
-    public MainWindowViewModel()
-    {
-        // No editor event subscriptions are required here; StatusBar listens to cursor and selection events.
-    }
 
     public void UpdateWindowState(WindowState newState)
     {

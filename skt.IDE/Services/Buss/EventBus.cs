@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 
-namespace skt.IDE.Services;
+namespace skt.IDE.Services.Buss;
 
 public class EventBus : IEventBus
 {
     private readonly Dictionary<Type, List<Delegate>> _subscribers = new();
 
-    public void Publish<T>(T eventData) where T : class
+    public void Publish<T>(T? eventData) where T : class
     {
         if (eventData == null) return;
 
@@ -28,7 +28,7 @@ public class EventBus : IEventBus
         }
     }
 
-    public void Subscribe<T>(Action<T> handler) where T : class
+    public void Subscribe<T>(Action<T>? handler) where T : class
     {
         if (handler == null) return;
 
@@ -41,7 +41,7 @@ public class EventBus : IEventBus
         _subscribers[eventType].Add(handler);
     }
 
-    public void Unsubscribe<T>(Action<T> handler) where T : class
+    public void Unsubscribe<T>(Action<T>? handler) where T : class
     {
         if (handler == null) return;
 

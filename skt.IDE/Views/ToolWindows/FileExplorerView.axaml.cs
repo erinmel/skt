@@ -2,7 +2,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using skt.IDE.Models;
 using skt.IDE.ViewModels.ToolWindows;
-using skt.IDE.Services;
 using skt.IDE.Services.Buss;
 using System.IO;
 using System.Linq;
@@ -52,39 +51,49 @@ public partial class FileExplorerView : UserControl
 
     private void AttachContextMenuHandlers()
     {
-        if (FileTreeView?.ContextMenu is not ContextMenu ctx)
+        if (FileTreeView?.ContextMenu is not { } ctx)
             return;
 
-        // Ensure we set the selected node as parameter for commands and wire click for items using CommandParameter to hold the ICommand.
-        ctx.Opened += (_, __) =>
+        ctx.Opened += (_, _) => HandleContextMenuOpened(ctx);
+    }
+
+    private void HandleContextMenuOpened(ContextMenu ctx)
+    {
+        var selectedNode = FileTreeView.SelectedItem as FileNode;
+
+        foreach (var item in ctx.Items.OfType<MenuItem>())
         {
-            var selectedNode = FileTreeView.SelectedItem as FileNode;
+            SetCommandParameterIfBound(item, selectedNode);
+            WireCommandParameterICommandClick(item);
+        }
+    }
 
-            foreach (var item in ctx.Items.OfType<MenuItem>())
+    private void SetCommandParameterIfBound(MenuItem item, FileNode? selectedNode)
+    {
+        if (item.Command is not null)
+        {
+            item.CommandParameter = selectedNode;
+        }
+    }
+
+    private void WireCommandParameterICommandClick(MenuItem item)
+    {
+        if (item.CommandParameter is ICommand && item.Tag as string != "wired")
+        {
+            item.Click += (_, _) => ExecuteMenuItemCommand(item);
+            item.Tag = "wired";
+        }
+    }
+
+    private void ExecuteMenuItemCommand(MenuItem item)
+    {
+        if (item.CommandParameter is ICommand cmd)
+        {
+            var param = FileTreeView.SelectedItem as FileNode;
+            if (cmd.CanExecute(param))
             {
-                // If Command is bound, ensure the selected node is passed as CommandParameter
-                if (item.Command is not null)
-                {
-                    item.CommandParameter = selectedNode;
-                }
-
-                // If CommandParameter is actually an ICommand (per existing XAML), invoke it on click with the selected node as parameter
-                if (item.CommandParameter is ICommand && item.Tag as string != "wired")
-                {
-                    item.Click += (_, ___) =>
-                    {
-                        if (item.CommandParameter is ICommand cmd)
-                        {
-                            var param = FileTreeView.SelectedItem as FileNode;
-                            if (cmd.CanExecute(param))
-                            {
-                                cmd.Execute(param);
-                            }
-                        }
-                    };
-                    item.Tag = "wired";
-                }
+                cmd.Execute(param);
             }
-        };
+        }
     }
 }

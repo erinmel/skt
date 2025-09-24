@@ -5,7 +5,6 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using skt.IDE.ViewModels;
-using skt.IDE.Services;
 using skt.IDE.Services.Buss;
 
 namespace skt.IDE.Views.ToolWindows;
@@ -48,7 +47,7 @@ public partial class Toolbar : UserControl
         App.EventBus.Subscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
 
         // Clean up on unload
-        Unloaded += (_, __) =>
+        Unloaded += (_, _) =>
         {
             App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
             App.EventBus.Unsubscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
@@ -57,14 +56,13 @@ public partial class Toolbar : UserControl
 
     private void OnProjectLoaded(ProjectLoadedEvent e)
     {
-        // Ensure UI updates happen on the UI thread
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(() =>
         {
             var btn = this.FindControl<Button>("NewFileButton");
             if (btn != null)
                 btn.IsEnabled = e.Success;
 
-            if (!e.Success && DataContext is MainWindowViewModel vm)
+            if (!e.Success && DataContext is MainWindowViewModel)
             {
                 App.EventBus.Publish(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", true));
             }
@@ -78,7 +76,7 @@ public partial class Toolbar : UserControl
         {
             var saveBtn = this.FindControl<Button>("SaveButton");
             if (saveBtn != null)
-                saveBtn.IsEnabled = e.HasSelection && e.IsDirty;
+                saveBtn.IsEnabled = e is { HasSelection: true, IsDirty: true };
 
             var saveAsBtn = this.FindControl<Button>("SaveAsButton");
             if (saveAsBtn != null)
@@ -93,31 +91,32 @@ public partial class Toolbar : UserControl
 
     private void DragArea_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        try
         {
-            var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
-            if (top != null)
-            {
-                try { top.BeginMoveDrag(e); } catch { }
-            }
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+            if (TopLevel.GetTopLevel(this) is not MainWindow top) return;
+            top.BeginMoveDrag(e);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error during window drag: {ex}");
         }
     }
 
     private void DragArea_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
-        if (top != null)
+        if (TopLevel.GetTopLevel(this) is MainWindow top)
         {
             top.WindowState = top.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         }
     }
 
-    private void NewProjectButton_Click(object? sender, RoutedEventArgs e)
+    private void NewProjectButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         SetTodoStatus("NewProject");
     }
 
-    private async void OpenProjectButton_Click(object? sender, RoutedEventArgs e)
+    private async void OpenProjectButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         try
         {
@@ -125,7 +124,7 @@ public partial class Toolbar : UserControl
             if (top == null)
             {
                 // Sent a status bar update
-                App.EventBus.Publish(new StatusBarMessageEvent("Proflem opening the file explorer.", true));
+                App.EventBus.Publish(new StatusBarMessageEvent("Problem opening the file explorer.", true));
                 return;
             }
 
@@ -149,7 +148,7 @@ public partial class Toolbar : UserControl
                     App.EventBus.Publish(new StatusBarMessageEvent($"Project folder selected: {System.IO.Path.GetFileName(folderPath)}", 3000));
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error opening folder picker: {ex}");
                 App.EventBus.Publish(new StatusBarMessageEvent("There was a problem opening the project.", true));
@@ -161,28 +160,28 @@ public partial class Toolbar : UserControl
         }
     }
 
-    private void NewFileButton_Click(object? sender, RoutedEventArgs e)
+    private void NewFileButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         // Publish a request for creating a new file; FileExplorerViewModel listens for this event
         App.EventBus.Publish(new CreateFileRequestEvent());
     }
 
-    private void SaveButton_Click(object? sender, RoutedEventArgs e)
+    private void SaveButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         App.EventBus.Publish(new SaveFileRequestEvent());
     }
 
-    private void SaveAsButton_Click(object? sender, RoutedEventArgs e)
+    private void SaveAsButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         App.EventBus.Publish(new SaveAsFilesRequestEvent());
     }
 
-    private void SettingsButton_Click(object? sender, RoutedEventArgs e)
+    private void SettingsButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         SetTodoStatus("Settings");
     }
 
-    private void Minimize_Click(object? sender, RoutedEventArgs e)
+    private void Minimize_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         if (TopLevel.GetTopLevel(this) is MainWindow top)
         {
@@ -190,7 +189,7 @@ public partial class Toolbar : UserControl
         }
     }
 
-    private void Restore_Click(object? sender, RoutedEventArgs e)
+    private void Restore_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
         if (TopLevel.GetTopLevel(this) is MainWindow top)
         {
@@ -198,9 +197,9 @@ public partial class Toolbar : UserControl
         }
     }
 
-    private void Close_Click(object? sender, RoutedEventArgs e)
+    private void Close_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        var top = TopLevel.GetTopLevel(this) as skt.IDE.Views.MainWindow;
+        var top = TopLevel.GetTopLevel(this) as MainWindow;
         top?.Close();
     }
 
