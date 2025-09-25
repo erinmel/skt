@@ -68,6 +68,17 @@ public class FileClosedEvent
     }
 }
 
+public class FileRenamedEvent
+{
+    public string OldPath { get; }
+    public string NewPath { get; }
+    public FileRenamedEvent(string oldPath, string newPath)
+    {
+        OldPath = oldPath;
+        NewPath = newPath;
+    }
+}
+
 public class OpenFileRequestEvent
 {
     public string FilePath { get; }

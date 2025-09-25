@@ -82,9 +82,20 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
     public RelayCommand SaveCommand { get; }
     public RelayCommand SaveAsCommand { get; }
 
+    public bool HasDocuments => Documents.Count > 0;
+
     public TabbedEditorViewModel()
     {
-        NewTabCommand = new RelayCommand(CreateNewTab);
+        Documents.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasDocuments));
+            if (SelectedDocument == null && Documents.Count > 0)
+                SelectedDocument = Documents[0];
+            if (Documents.Count == 0)
+                SelectedDocument = null;
+        };
+
+        NewTabCommand = new RelayCommand(() => _ = CreateNewTabAsync());
         CloseTabCommand = new RelayCommand<DocumentViewModel>(async doc => await CloseTabAsync(doc), doc => doc != null);
         SelectTabCommand = new RelayCommand<DocumentViewModel>(SelectTab, doc => doc != null);
         CloseAllTabsCommand = new RelayCommand(async () => await CloseAllTabsAsync());
@@ -97,6 +108,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         App.EventBus.Subscribe<OpenFileRequestEvent>(OnOpenFileRequest);
         App.EventBus.Subscribe<SaveFileRequestEvent>(OnSaveFileRequest);
         App.EventBus.Subscribe<SaveAsFilesRequestEvent>(SaveAsFilesRequest);
+        App.EventBus.Subscribe<FileRenamedEvent>(OnFileRenamed); // new subscription
     }
 
     private void OnOpenFileRequest(OpenFileRequestEvent e)
@@ -123,11 +135,92 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         }
     }
 
-    private void CreateNewTab()
+    private void OnFileRenamed(FileRenamedEvent e)
     {
-        var doc = new DocumentViewModel();
+        if (string.IsNullOrEmpty(e.OldPath) || string.IsNullOrEmpty(e.NewPath)) return;
+        bool targetIsDirectory;
+        try { targetIsDirectory = Directory.Exists(e.NewPath); } catch { targetIsDirectory = false; }
+
+        string oldBase = e.OldPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string newBase = e.NewPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        bool anyChanged = false;
+
+        foreach (var doc in Documents)
+        {
+            var path = doc.FilePath;
+            if (string.IsNullOrEmpty(path)) continue;
+
+            if (targetIsDirectory)
+            {
+                if (path.Equals(oldBase, StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith(oldBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                {
+                    var relative = path.Length == oldBase.Length ? string.Empty : path.Substring(oldBase.Length);
+                    var updated = newBase + relative;
+                    doc.FilePath = updated;
+                    anyChanged = true;
+                }
+            }
+            else
+            {
+                if (path.Equals(oldBase, StringComparison.OrdinalIgnoreCase))
+                {
+                    doc.FilePath = newBase;
+                    anyChanged = true;
+                }
+            }
+        }
+
+        if (anyChanged && SelectedDocument != null)
+        {
+            App.EventBus.Publish(new SelectedDocumentChangedEvent(SelectedDocument.FilePath, true, SelectedDocument.IsDirty));
+        }
+    }
+
+    private async Task CreateNewTabAsync()
+    {
+        // Prompt user to create a new file (Save dialog). Cancel => no tab.
+        var topLevel = TopLevel.GetTopLevel(Application.Current?.ApplicationLifetime
+            is IClassicDesktopStyleApplicationLifetime desktop ? desktop.MainWindow : null);
+        if (topLevel == null) return;
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Create New File",
+            DefaultExtension = "skt",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("Source File") { Patterns = new[] { "*.skt", "*.txt" } },
+                new FilePickerFileType("All Files") { Patterns = new[] { "*.*" } }
+            }
+        });
+
+        if (file == null) return; // user cancelled
+        var newPath = file.Path.LocalPath;
+        try
+        {
+            if (!File.Exists(newPath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(newPath)!);
+                await File.WriteAllTextAsync(newPath, string.Empty);
+                App.EventBus.Publish(new FileCreatedEvent(newPath));
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorDialog("Error Creating File", ex.Message);
+            return;
+        }
+
+        var doc = new DocumentViewModel { FilePath = newPath };
+        doc.SetContentFromFile(string.Empty);
         Documents.Add(doc);
         SelectedDocument = doc;
+        App.EventBus.Publish(new StatusBarMessageEvent($"Created: {Path.GetFileName(newPath)}", 3000));
+    }
+
+    private void CreateNewTab()
+    {
     }
 
     private async Task CloseTabAsync(DocumentViewModel? document)
@@ -198,16 +291,15 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         }
 
         // Publish close events for all open files
-        foreach (var doc in Documents.ToList())
-        {
-            if (!string.IsNullOrEmpty(doc.FilePath))
+        Documents.Where(d => !string.IsNullOrEmpty(d.FilePath))
+            .ToList()
+            .ForEach(d =>
             {
-                App.EventBus.Publish(new FileClosedEvent(doc.FilePath));
-            }
-        }
+                if (d?.FilePath != null)
+                    App.EventBus.Publish(new FileClosedEvent(d.FilePath));
+            });
 
         Documents.Clear();
-        CreateNewTab(); // Always keep at least one tab
     }
 
     private async Task CloseOtherTabsAsync()

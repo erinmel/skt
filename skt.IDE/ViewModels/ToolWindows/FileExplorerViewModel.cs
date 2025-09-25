@@ -126,6 +126,13 @@ public partial class FileExplorerViewModel : ObservableObject
             _pendingPaths.Add(e.FullPath);
             _pendingPaths.Add(e.OldFullPath);
         }
+        // Emit rename event if both old and new paths are inside current project (external rename)
+        if (!string.IsNullOrEmpty(_currentProjectPath)
+            && e.OldFullPath.StartsWith(_currentProjectPath, StringComparison.OrdinalIgnoreCase)
+            && e.FullPath.StartsWith(_currentProjectPath, StringComparison.OrdinalIgnoreCase))
+        {
+            App.EventBus.Publish(new FileRenamedEvent(e.OldFullPath, e.FullPath));
+        }
         _debounceTimer.Stop();
         _debounceTimer.Start();
     }
@@ -661,6 +668,7 @@ public partial class FileExplorerViewModel : ObservableObject
             _suppressWatcherReloads = false;
             node.FullPath = newPath;
             node.CompleteInlineEdit();
+            App.EventBus.Publish(new FileRenamedEvent(oldPath, newPath));
             App.EventBus.Publish(new FileUpdatedEvent(newPath));
             App.EventBus.Publish(new StatusBarMessageEvent($"Renamed to: {rawNewName}", 2000));
         }
