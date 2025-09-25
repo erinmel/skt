@@ -4,13 +4,10 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Models;
 using Avalonia.Threading;
-using Avalonia.Controls;
-using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
-using skt.IDE.Views.Dialogs;
 using skt.IDE.Services.Buss;
 
 namespace skt.IDE.ViewModels.ToolWindows;
@@ -24,6 +21,9 @@ public partial class FileExplorerViewModel : ObservableObject
 
     [ObservableProperty]
     private string _projectName = NoProjectName;
+
+    [ObservableProperty]
+    private string _selectedPath = string.Empty; // last selected path
 
     private string _currentProjectPath = string.Empty;
 
@@ -39,6 +39,25 @@ public partial class FileExplorerViewModel : ObservableObject
     private readonly List<string> _clipboardPaths = new();
     private bool _isCutOperation;
 
+    public event Action<FileNode>? InlineRenameStarted;
+
+    // Visual state exchange with the view
+    // View should set this delegate to return current selected path and current vertical scroll offset
+    public Func<(string? selectedPath, double verticalOffset)>? RequestVisualState { get; set; }
+    // View should subscribe to this to restore selection/scroll after a reload
+    public event Action<string?, double>? RestoreVisualStateRequested;
+
+    private readonly Dictionary<string, TreeState> _savedStates = new();
+
+    private FileSystemWatcher? _watcher;
+    private readonly Timer _debounceTimer;
+
+    // When true, filesystem watcher events are ignored (used for internal operations)
+    private volatile bool _suppressWatcherReloads;
+
+    private readonly HashSet<string> _pendingPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _pendingLock = new();
+
     public FileExplorerViewModel()
     {
         ProjectName = NoProjectName;
@@ -53,6 +72,247 @@ public partial class FileExplorerViewModel : ObservableObject
         CutCommand = new RelayCommand<FileNode>(Cut);
         PasteCommand = new RelayCommand<FileNode>(Paste);
         DeleteCommand = new RelayCommand<FileNode>(Delete);
+
+        _debounceTimer = new Timer(500) { AutoReset = false };
+        _debounceTimer.Elapsed += DebounceTimer_Elapsed;
+    }
+
+    private void EnsureWatcherStarted(string folder)
+    {
+        try
+        {
+            if (_watcher != null)
+            {
+                if (string.Equals(_watcher.Path, folder, StringComparison.OrdinalIgnoreCase)) return;
+                _watcher.EnableRaisingEvents = false;
+                _watcher.Dispose();
+                _watcher = null;
+            }
+
+            _watcher = new FileSystemWatcher(folder)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite
+            };
+
+            _watcher.Changed += OnFsEvent;
+            _watcher.Created += OnFsEvent;
+            _watcher.Deleted += OnFsEvent;
+            _watcher.Renamed += OnFsRenamed;
+            _watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to start FileSystemWatcher: {ex}");
+        }
+    }
+
+    private void OnFsEvent(object sender, FileSystemEventArgs e)
+    {
+        if (_suppressWatcherReloads) return;
+        lock (_pendingLock)
+        {
+            _pendingPaths.Add(e.FullPath);
+        }
+        _debounceTimer.Stop();
+        _debounceTimer.Start();
+    }
+
+    private void OnFsRenamed(object sender, RenamedEventArgs e)
+    {
+        if (_suppressWatcherReloads) return;
+        lock (_pendingLock)
+        {
+            _pendingPaths.Add(e.FullPath);
+            _pendingPaths.Add(e.OldFullPath);
+        }
+        _debounceTimer.Stop();
+        _debounceTimer.Start();
+    }
+
+    private void DebounceTimer_Elapsed(object? sender, ElapsedEventArgs e)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                await ProcessPendingFileChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error processing pending FS changes: {ex}");
+                // fallback to full reload if something went wrong
+                await HandleExternalChangesAsync();
+            }
+        });
+    }
+
+    private async Task ProcessPendingFileChangesAsync()
+    {
+        if (string.IsNullOrEmpty(_currentProjectPath) || !Directory.Exists(_currentProjectPath)) return;
+
+        List<string> paths;
+        lock (_pendingLock)
+        {
+            if (_pendingPaths.Count == 0) return;
+            paths = _pendingPaths.ToList();
+            _pendingPaths.Clear();
+        }
+
+        // large batch or too many distinct directories -> full reload
+        if (paths.Count > 50)
+        {
+            await HandleExternalChangesAsync();
+            return;
+        }
+
+        // capture visual state once
+        var requested = RequestVisualState?.Invoke();
+        SaveTreeState(requested?.selectedPath, requested?.verticalOffset ?? 0.0);
+
+        bool didFullReload = false;
+
+        foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(path)) continue;
+            string parentDir;
+            try
+            {
+                parentDir = Directory.Exists(path) ? path : Path.GetDirectoryName(path) ?? _currentProjectPath;
+            }
+            catch { continue; }
+
+            if (string.IsNullOrEmpty(parentDir)) continue;
+
+            // If change affects project root, fallback to full reload once
+            if (string.Equals(parentDir, _currentProjectPath, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!didFullReload)
+                {
+                    await LoadProject(_currentProjectPath, announce: false);
+                    didFullReload = true;
+                }
+                continue;
+            }
+
+            if (didFullReload) continue; // skip fine-grained if already reloaded
+
+            // Find parent node among existing roots
+            FileNode? parentNode = null;
+            foreach (var root in RootNodes)
+            {
+                parentNode = root.FindNodeByPath(parentDir);
+                if (parentNode != null) break;
+            }
+
+            // If not found, fallback to single full reload
+            if (parentNode == null)
+            {
+                if (!didFullReload)
+                {
+                    await LoadProject(_currentProjectPath, announce: false);
+                    didFullReload = true;
+                }
+                continue;
+            }
+
+            if (parentNode.IsDirectory)
+            {
+                parentNode.MergeChildrenWithFileSystem();
+            }
+        }
+
+        if (!didFullReload)
+        {
+            RestoreTreeState();
+        }
+        else
+        {
+            RestoreTreeState();
+        }
+    }
+
+    private async Task HandleExternalChangesAsync()
+    {
+        if (string.IsNullOrEmpty(_currentProjectPath) || !Directory.Exists(_currentProjectPath)) return;
+
+        var requested = RequestVisualState?.Invoke();
+        string? selected = requested?.selectedPath;
+        double offset = requested?.verticalOffset ?? 0.0;
+
+        SaveTreeState(selected, offset);
+
+        // Reload project and restore state after load
+        await LoadProject(_currentProjectPath, announce: false);
+        RestoreTreeState();
+    }
+
+    private void SaveTreeState(string? selectedPath, double verticalOffset)
+    {
+        var expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in RootNodes)
+        {
+            CollectExpanded(node, expanded);
+        }
+
+        var state = new TreeState
+        {
+            ExpandedPaths = expanded,
+            SelectedPath = selectedPath,
+            VerticalOffset = verticalOffset
+        };
+
+        if (!string.IsNullOrEmpty(_currentProjectPath))
+        {
+            _savedStates[_currentProjectPath] = state;
+        }
+    }
+
+    private void CollectExpanded(FileNode node, HashSet<string> outSet)
+    {
+        if (node.IsExpanded)
+        {
+            outSet.Add(node.FullPath);
+        }
+        foreach (var child in node.Children)
+        {
+            CollectExpanded(child, outSet);
+        }
+    }
+
+    private void RestoreTreeState()
+    {
+        if (string.IsNullOrEmpty(_currentProjectPath)) return;
+        if (!_savedStates.TryGetValue(_currentProjectPath, out var state)) return;
+
+        // restore expanded flags by matching paths
+        foreach (var node in RootNodes)
+        {
+            ApplyExpandedState(node, state.ExpandedPaths);
+        }
+
+        // update selected path in VM; view will perform selection+scroll when signaled
+        SelectedPath = state.SelectedPath ?? string.Empty;
+
+        // request the view to restore visual selection and scroll
+        RestoreVisualStateRequested?.Invoke(state.SelectedPath, state.VerticalOffset);
+    }
+
+    private void ApplyExpandedState(FileNode node, HashSet<string> expanded)
+    {
+        node.IsExpanded = expanded.Contains(node.FullPath);
+        foreach (var child in node.Children)
+        {
+            ApplyExpandedState(child, expanded);
+        }
+    }
+
+    // TreeState structure
+    private class TreeState
+    {
+        public HashSet<string> ExpandedPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public string? SelectedPath { get; set; }
+        public double VerticalOffset { get; set; }
     }
 
     private async void OnProjectFolderSelected(ProjectFolderSelectedEvent e)
@@ -142,7 +402,19 @@ public partial class FileExplorerViewModel : ObservableObject
             return;
         }
 
+        // Save current visual state before we reload the tree
+        try
+        {
+            var visual = RequestVisualState?.Invoke();
+            SaveTreeState(visual?.selectedPath, visual?.verticalOffset ?? 0.0);
+        }
+        catch { }
+
         _currentProjectPath = projectPath;
+
+        // ensure watcher is started for this project
+        EnsureWatcherStarted(projectPath);
+
         List<FileNode> childNodes = new();
         string projectName = Path.GetFileName(projectPath);
 
@@ -153,21 +425,16 @@ public partial class FileExplorerViewModel : ObservableObject
         }
 
         // Build the file tree off the UI thread
+        // Get top-level directory and file paths from disk on a background thread
+        List<string> topPaths = new();
         await Task.Run(() =>
         {
             try
             {
-                // Load directories first
-                foreach (var dir in Directory.GetDirectories(projectPath))
-                {
-                    childNodes.Add(new FileNode(dir));
-                }
-
-                // Load files
-                foreach (var file in Directory.GetFiles(projectPath))
-                {
-                    childNodes.Add(new FileNode(file));
-                }
+                var dirs = Directory.GetDirectories(projectPath).OrderBy(p => p);
+                var files = Directory.GetFiles(projectPath).OrderBy(p => p);
+                topPaths.AddRange(dirs);
+                topPaths.AddRange(files);
             }
             catch
             {
@@ -175,11 +442,32 @@ public partial class FileExplorerViewModel : ObservableObject
             }
         });
 
-        // Apply changes on the UI thread
+        // Update RootNodes on UI thread but reuse existing FileNode instances when possible to avoid flashing
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            var existingByPath = RootNodes.ToDictionary(n => n.FullPath, n => n, StringComparer.OrdinalIgnoreCase);
+            var newRootList = new List<FileNode>(topPaths.Count);
+
+            foreach (var path in topPaths)
+            {
+                if (existingByPath.TryGetValue(path, out var existing))
+                {
+                    newRootList.Add(existing);
+                    // if it's a directory and was expanded, merge its children to keep instances
+                    if (existing.IsDirectory && existing.IsExpanded)
+                    {
+                        existing.MergeChildrenWithFileSystem();
+                    }
+                }
+                else
+                {
+                    newRootList.Add(new FileNode(path));
+                }
+            }
+
+            // replace RootNodes contents in-place
             RootNodes.Clear();
-            foreach (var node in childNodes)
+            foreach (var node in newRootList)
             {
                 RootNodes.Add(node);
             }
@@ -192,6 +480,9 @@ public partial class FileExplorerViewModel : ObservableObject
         {
             App.EventBus.Publish(new StatusBarMessageEvent($"Project loaded: {projectName}", 3000));
         }
+
+        // After loading, restore any saved tree state
+        RestoreTreeState();
     }
 
     private async Task RefreshFileTree()
@@ -221,38 +512,18 @@ public partial class FileExplorerViewModel : ObservableObject
             {
                 Directory.CreateDirectory(targetDir);
                 var createdPath = GetUniqueFilePath(targetDir, "New File", ".skt");
+                _suppressWatcherReloads = true;
                 await Task.Run(() => File.WriteAllText(createdPath, string.Empty));
                 App.EventBus.Publish(new FileCreatedEvent(createdPath));
                 App.EventBus.Publish(new StatusBarMessageEvent($"Created: {Path.GetFileName(createdPath)}", 3000));
-
-                // Prompt user to rename the newly created file
-                var currentExt = Path.GetExtension(createdPath);
-                var defaultNameNoExt = Path.GetFileNameWithoutExtension(createdPath);
-                var input = await PromptForTextAsync("Rename File", "Enter new file name (extension optional):", defaultNameNoExt);
-                if (!string.IsNullOrWhiteSpace(input))
-                {
-                    input = input.Trim();
-                    var newName = input.Contains('.') ? input : input + currentExt;
-                    var candidate = Path.Combine(targetDir, newName);
-                    var baseNameNoExt = Path.GetFileNameWithoutExtension(newName);
-                    var ext = Path.GetExtension(newName);
-                    var finalPath = (File.Exists(candidate) || Directory.Exists(candidate))
-                        ? GetUniqueFilePath(targetDir, baseNameNoExt, ext)
-                        : candidate;
-
-                    if (!string.Equals(finalPath, createdPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        await Task.Run(() => File.Move(createdPath, finalPath));
-                        App.EventBus.Publish(new FileUpdatedEvent(finalPath));
-                        App.EventBus.Publish(new StatusBarMessageEvent($"Created and renamed: {Path.GetFileName(finalPath)}", 3000));
-                    }
-                }
-
-                await RefreshFileTree();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"AddNewFile failed: {ex}");
+            }
+            finally
+            {
+                _suppressWatcherReloads = false;
                 await RefreshFileTree();
             }
         }
@@ -272,34 +543,18 @@ public partial class FileExplorerViewModel : ObservableObject
             try
             {
                 string createdDir = GetUniqueDirectoryPath(targetDir, "New Folder");
+                _suppressWatcherReloads = true;
                 await Task.Run(() => Directory.CreateDirectory(createdDir));
                 App.EventBus.Publish(new FileCreatedEvent(createdDir));
                 App.EventBus.Publish(new StatusBarMessageEvent($"Folder created: {Path.GetFileName(createdDir)}", 3000));
-
-                // Prompt user to rename the newly created folder
-                var defaultName = Path.GetFileName(createdDir);
-                var input = await PromptForTextAsync("Rename Folder", "Enter new folder name:", defaultName);
-                if (!string.IsNullOrWhiteSpace(input))
-                {
-                    input = input.Trim();
-                    string candidate = Path.Combine(targetDir, input);
-                    string finalDir = (Directory.Exists(candidate) || File.Exists(candidate))
-                        ? GetUniqueDirectoryPath(targetDir, input)
-                        : candidate;
-
-                    if (!string.Equals(finalDir, createdDir, StringComparison.OrdinalIgnoreCase))
-                    {
-                        await Task.Run(() => Directory.Move(createdDir, finalDir));
-                        App.EventBus.Publish(new FileUpdatedEvent(finalDir));
-                        App.EventBus.Publish(new StatusBarMessageEvent($"Folder renamed: {Path.GetFileName(finalDir)}", 3000));
-                    }
-                }
-
-                await RefreshFileTree();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"AddNewFolder failed: {ex}");
+            }
+            finally
+            {
+                _suppressWatcherReloads = false;
                 await RefreshFileTree();
             }
         }
@@ -309,81 +564,116 @@ public partial class FileExplorerViewModel : ObservableObject
         }
     }
 
-    private async void RenameResource(FileNode? node)
+    private void RenameResource(FileNode? node)
     {
         try
         {
             if (node is null || string.IsNullOrEmpty(_currentProjectPath)) return;
-
-            try
-            {
-                string parentDir = Path.GetDirectoryName(node.FullPath) ?? _currentProjectPath;
-                if (string.IsNullOrWhiteSpace(parentDir) || !Directory.Exists(parentDir))
-                {
-                    parentDir = _currentProjectPath;
-                }
-
-                if (node.IsDirectory)
-                {
-                    await RenameDirectoryAsync(node, parentDir);
-                }
-                else
-                {
-                    await RenameFileAsync(node, parentDir);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"RenameResource failed: {ex}");
-                await RefreshFileTree();
-            }
+            node.BeginInlineEdit();
+            InlineRenameStarted?.Invoke(node);
         }
         catch (Exception e)
         {
-            System.Diagnostics.Debug.WriteLine($"Error handling FileCreatedEvent: {e}");
+            System.Diagnostics.Debug.WriteLine($"Error initiating inline rename: {e}");
         }
     }
 
-    private async Task RenameDirectoryAsync(FileNode dirNode, string dirParent)
+    public void CancelInlineRename(FileNode node)
     {
-        var defaultName = dirNode.Name;
-        var input = await PromptForTextAsync("Rename Folder", "Enter new folder name:", defaultName);
-        if (string.IsNullOrWhiteSpace(input)) return;
-        input = input.Trim();
-
-        string candidate = Path.Combine(dirParent, input);
-        string newDir = Directory.Exists(candidate) || File.Exists(candidate)
-            ? GetUniqueDirectoryPath(dirParent, input)
-            : candidate;
-
-        await Task.Run(() => Directory.Move(dirNode.FullPath, newDir));
-        App.EventBus.Publish(new FileUpdatedEvent(newDir));
+        if (node == null) return;
+        node.CancelInlineEdit();
     }
 
-    private async Task RenameFileAsync(FileNode fileNode, string fileParent)
+    public async void CommitInlineRename(FileNode node)
     {
-        string currentExt = Path.GetExtension(fileNode.Name);
-        string fileName = Path.GetFileName(fileNode.Name);
-        var input = await PromptForTextAsync("Rename File", "Enter new file name:", fileName);
-        if (string.IsNullOrWhiteSpace(input)) return;
-        input = input.Trim();
-
-        string newName = input.Contains('.') ? input : input + currentExt;
-        string candidate = Path.Combine(fileParent, newName);
-
-        if (string.Equals(candidate, fileNode.FullPath, StringComparison.OrdinalIgnoreCase))
+        if (node == null) return;
+        var rawNewName = node.Name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(rawNewName))
         {
+            node.CancelInlineEdit();
             return;
         }
 
-        string baseNameNoExt = Path.GetFileNameWithoutExtension(newName);
-        string ext = Path.GetExtension(newName);
-        string newFile = (File.Exists(candidate) || Directory.Exists(candidate))
-            ? GetUniqueFilePath(fileParent, baseNameNoExt, ext)
-            : candidate;
+        foreach (var invalidChar in Path.GetInvalidFileNameChars())
+        {
+            if (rawNewName.Contains(invalidChar))
+            {
+                App.EventBus.Publish(new StatusBarMessageEvent("Invalid characters in name", true));
+                node.CancelInlineEdit();
+                return;
+            }
+        }
 
-        await Task.Run(() => File.Move(fileNode.FullPath, newFile));
-        App.EventBus.Publish(new FileUpdatedEvent(newFile));
+        var parentDir = Path.GetDirectoryName(node.FullPath);
+        if (string.IsNullOrEmpty(parentDir))
+        {
+            node.CancelInlineEdit();
+            return;
+        }
+
+        var oldPath = node.FullPath;
+        var newPath = Path.Combine(parentDir, rawNewName);
+
+        bool onlyCaseChanged = !string.Equals(oldPath, newPath, StringComparison.Ordinal) && string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase);
+
+        if (string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && !onlyCaseChanged)
+        {
+            node.CompleteInlineEdit();
+            return;
+        }
+
+        if (!onlyCaseChanged && (Directory.Exists(newPath) || File.Exists(newPath)))
+        {
+            App.EventBus.Publish(new StatusBarMessageEvent("A file or folder with that name already exists", true));
+            node.CancelInlineEdit();
+            return;
+        }
+
+        try
+        {
+            _suppressWatcherReloads = true;
+            if (node.IsDirectory)
+            {
+                if (onlyCaseChanged)
+                {
+                    var temp = newPath + "__temp_case_rename__";
+                    Directory.Move(oldPath, temp);
+                    Directory.Move(temp, newPath);
+                }
+                else
+                {
+                    Directory.Move(oldPath, newPath);
+                }
+            }
+            else
+            {
+                if (onlyCaseChanged)
+                {
+                    var temp = newPath + "__temp_case_rename__";
+                    File.Move(oldPath, temp);
+                    File.Move(temp, newPath);
+                }
+                else
+                {
+                    File.Move(oldPath, newPath);
+                }
+            }
+            _suppressWatcherReloads = false;
+            node.FullPath = newPath;
+            node.CompleteInlineEdit();
+            App.EventBus.Publish(new FileUpdatedEvent(newPath));
+            App.EventBus.Publish(new StatusBarMessageEvent($"Renamed to: {rawNewName}", 2000));
+        }
+        catch (Exception ex)
+        {
+            _suppressWatcherReloads = false;
+            System.Diagnostics.Debug.WriteLine($"Rename failed: {ex}");
+            App.EventBus.Publish(new StatusBarMessageEvent("Rename failed", true));
+            node.CancelInlineEdit();
+            return;
+        }
+
+        await RefreshFileTree();
     }
 
     private void Copy(FileNode? node)
@@ -462,13 +752,17 @@ public partial class FileExplorerViewModel : ObservableObject
 
             if (_isCutOperation)
             {
+                _suppressWatcherReloads = true;
                 await Task.Run(() => Directory.Move(srcPath, target));
+                _suppressWatcherReloads = false;
                 App.EventBus.Publish(new FileUpdatedEvent(target));
                 App.EventBus.Publish(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
             }
             else
             {
+                _suppressWatcherReloads = true;
                 await Task.Run(() => CopyDirectoryRecursive(srcPath, target));
+                _suppressWatcherReloads = false;
                 App.EventBus.Publish(new FileCreatedEvent(target));
                 App.EventBus.Publish(new StatusBarMessageEvent($"Folder copied: {Path.GetFileName(target)}", 3000));
             }
@@ -484,13 +778,17 @@ public partial class FileExplorerViewModel : ObservableObject
 
             if (_isCutOperation)
             {
+                _suppressWatcherReloads = true;
                 await Task.Run(() => File.Move(srcPath, target));
+                _suppressWatcherReloads = false;
                 App.EventBus.Publish(new FileUpdatedEvent(target));
                 App.EventBus.Publish(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
             }
             else
             {
+                _suppressWatcherReloads = true;
                 await Task.Run(() => File.Copy(srcPath, target));
+                _suppressWatcherReloads = false;
                 App.EventBus.Publish(new FileCreatedEvent(target));
                 App.EventBus.Publish(new StatusBarMessageEvent($"Copied: {Path.GetFileName(target)}", 3000));
             }
@@ -506,6 +804,7 @@ public partial class FileExplorerViewModel : ObservableObject
 
             try
             {
+                _suppressWatcherReloads = true;
                 if (node.IsDirectory)
                 {
                     await Task.Run(() => Directory.Delete(node.FullPath, true));
@@ -523,6 +822,7 @@ public partial class FileExplorerViewModel : ObservableObject
             }
             finally
             {
+                _suppressWatcherReloads = false;
                 await RefreshFileTree();
             }
         }
@@ -557,26 +857,6 @@ public partial class FileExplorerViewModel : ObservableObject
         return dir;
     }
 
-    private async Task<string?> PromptForTextAsync(string title, string message, string defaultText)
-    {
-        var owner = GetMainWindow();
-        if (owner is null)
-        {
-            return null;
-        }
-        var dlg = new TextInputDialog();
-        dlg.Configure(title, message, defaultText);
-        return await dlg.ShowDialogAsync(owner);
-    }
-
-    private static Window? GetMainWindow()
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            return desktop.MainWindow;
-        }
-        return null;
-    }
 
     private static string GetUniqueFilePath(string directory, string baseName, string extension)
     {
