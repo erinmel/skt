@@ -27,7 +27,7 @@ public partial class FileExplorerView : UserControl
         AttachContextMenuHandlers();
     }
 
-    private void FileExplorerView_DataContextChanged(object? sender, System.EventArgs e)
+    private void FileExplorerView_DataContextChanged(object? sender, EventArgs e)
     {
         if (DataContext is FileExplorerViewModel vm)
         {
@@ -76,7 +76,6 @@ public partial class FileExplorerView : UserControl
             {
                 node.IsExpanded = false;
                 e.Handled = true;
-                return;
             }
         }
     }
@@ -160,7 +159,7 @@ public partial class FileExplorerView : UserControl
 
         if (e.Key == Key.Enter)
         {
-            vm.CommitInlineRename(node);
+            _ = vm.CommitInlineRename(node);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -170,13 +169,13 @@ public partial class FileExplorerView : UserControl
         }
     }
 
-    private void InlineEditor_LostFocus(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    private void InlineEditor_LostFocus(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is not TextBox tb || tb.DataContext is not FileNode node || DataContext is not FileExplorerViewModel vm)
             return;
         if (node.IsEditing)
         {
-            vm.CommitInlineRename(node);
+            _ = vm.CommitInlineRename(node);
         }
     }
 
@@ -207,8 +206,9 @@ public partial class FileExplorerView : UserControl
                         editor.SelectionEnd = text.Length;
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    System.Diagnostics.Debug.WriteLine($"FocusInlineEditor selection failed: {ex}");
                 }
             }
         });
@@ -216,64 +216,68 @@ public partial class FileExplorerView : UserControl
 
     private void RestoreVisualState(string? selectedPath, double verticalOffset)
     {
-        // run after layout pass to ensure TreeViewItems are generated
-        Dispatcher.UIThread.Post(async () =>
+        Dispatcher.UIThread.Post(() => _ = RestoreVisualStateAsync(selectedPath, verticalOffset));
+    }
+
+    private async Task RestoreVisualStateAsync(string? selectedPath, double verticalOffset)
+    {
+        try
         {
-            try
+            if (string.IsNullOrEmpty(selectedPath))
             {
-                if (string.IsNullOrEmpty(selectedPath))
-                {
-                    // still restore scroll if possible
-                    var scrollViewer = FileTreeView.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-                    if (scrollViewer != null)
-                    {
-                        scrollViewer.Offset = new Vector(scrollViewer.Offset.X, verticalOffset);
-                    }
-                    return;
-                }
-
-                if (DataContext is not FileExplorerViewModel vm) return;
-
-                // Find the FileNode by path in the VM's tree
-                var rootNodes = vm.RootNodes;
-                var target = FindNodeByPath(rootNodes, selectedPath);
-                if (target == null)
-                {
-                    // couldn't find, still try to restore scroll
-                    var scroll2 = FileTreeView.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-                    if (scroll2 != null)
-                    {
-                        scroll2.Offset = new Vector(scroll2.Offset.X, verticalOffset);
-                    }
-                    return;
-                }
-
-                // Expand ancestors
-                ExpandAncestorsForPath(rootNodes, selectedPath);
-
-                // Wait a tick for visuals to be realized
-                await Task.Delay(50);
-
-                // Find corresponding TreeViewItem and select it
-                var tvi = FileTreeView.GetVisualDescendants().OfType<TreeViewItem>().FirstOrDefault(tv => tv.DataContext == target);
-                if (tvi != null)
-                {
-                    tvi.IsSelected = true;
-                    tvi.BringIntoView();
-                }
-
-                // Restore scroll offset
-                var scroll = FileTreeView.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-                if (scroll != null)
-                {
-                    scroll.Offset = new Vector(scroll.Offset.X, verticalOffset);
-                }
+                SetScrollOffset(verticalOffset);
+                return;
             }
-            catch (Exception ex)
+
+            if (DataContext is not FileExplorerViewModel vm)
+                return;
+
+            var rootNodes = vm.RootNodes;
+            var target = FindNodeByPath(rootNodes, selectedPath);
+            if (target == null)
             {
-                System.Diagnostics.Debug.WriteLine($"RestoreVisualState failed: {ex}");
+                SetScrollOffset(verticalOffset);
+                return;
             }
-        });
+
+            ExpandAncestorsForPath(rootNodes, selectedPath);
+
+            await Task.Delay(50);
+
+            SelectTreeItemForNode(target);
+
+            SetScrollOffset(verticalOffset);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"RestoreVisualState failed: {ex}");
+        }
+    }
+
+    private void SetScrollOffset(double verticalOffset)
+    {
+        var scrollViewer = GetScrollViewer();
+        if (scrollViewer != null)
+        {
+            scrollViewer.Offset = new Vector(scrollViewer.Offset.X, verticalOffset);
+        }
+    }
+
+    private ScrollViewer? GetScrollViewer()
+    {
+        return FileTreeView.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+    }
+
+    private void SelectTreeItemForNode(FileNode target)
+    {
+        var item = FileTreeView.GetVisualDescendants()
+            .OfType<TreeViewItem>()
+            .FirstOrDefault(tv => tv.DataContext == target);
+        if (item != null)
+        {
+            item.IsSelected = true;
+            item.BringIntoView();
+        }
     }
 
     private FileNode? FindNodeByPath(IEnumerable<FileNode> nodes, string path)
@@ -281,7 +285,7 @@ public partial class FileExplorerView : UserControl
         foreach (var node in nodes)
         {
             if (string.Equals(node.FullPath, path, StringComparison.OrdinalIgnoreCase)) return node;
-            if (node.Children?.Count > 0)
+            if (node.Children.Count > 0)
             {
                 var found = FindNodeByPath(node.Children, path);
                 if (found != null) return found;
@@ -292,19 +296,18 @@ public partial class FileExplorerView : UserControl
 
     private void ExpandAncestorsForPath(IEnumerable<FileNode> nodes, string path)
     {
-        // recursively expand a node's ancestors by comparing path prefixes
-        foreach (var node in nodes)
+        var matchingNodes = nodes
+            .Where(n => path.StartsWith(n.FullPath, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var node in matchingNodes)
         {
-            if (path.StartsWith(node.FullPath, StringComparison.OrdinalIgnoreCase))
+            node.IsExpanded = true;
+            if (string.Equals(node.FullPath, path, StringComparison.OrdinalIgnoreCase))
             {
-                node.IsExpanded = true;
-                // if exact match we can stop after expanding current
-                if (string.Equals(node.FullPath, path, StringComparison.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-                ExpandAncestorsForPath(node.Children, path);
+                return;
             }
+            ExpandAncestorsForPath(node.Children, path);
         }
     }
 }

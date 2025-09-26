@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -83,8 +84,6 @@ public partial class FileNode : ObservableObject
         OnPropertyChanged(nameof(IconKey));
     }
 
-    partial void OnNameChanged(string value) => OnPropertyChanged(nameof(IconKey));
-
     public void BeginInlineEdit()
     {
         if (IsEditing) return;
@@ -146,9 +145,9 @@ public partial class FileNode : ObservableObject
             .Select(c => c.Name)
             .ToHashSet();
         ReloadChildrenIfLoaded();
-        foreach (var child in Children.Where(c => c.IsDirectory))
+        foreach (var child in Children.Where(c => c.IsDirectory && expandedDirectories.Contains(c.Name)))
         {
-            if (expandedDirectories.Contains(child.Name)) child.IsExpanded = true;
+            child.IsExpanded = true;
         }
     }
 
@@ -165,14 +164,17 @@ public partial class FileNode : ObservableObject
             dirPaths = Directory.GetDirectories(FullPath).OrderBy(p => p).ToList();
             filePaths = Directory.GetFiles(FullPath).OrderBy(p => p).ToList();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"MergeChildrenWithFileSystem failed: {ex}");
+        }
 
         var expectedPaths = new List<string>(dirPaths.Count + filePaths.Count);
         expectedPaths.AddRange(dirPaths);
         expectedPaths.AddRange(filePaths);
 
         var existingByPath = Children.Where(c => !c.IsPlaceholder)
-            .ToDictionary(c => c.FullPath, c => c, System.StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(c => c.FullPath, c => c, StringComparer.OrdinalIgnoreCase);
         var newChildren = new ObservableCollection<FileNode>();
 
         foreach (var path in expectedPaths)
@@ -195,7 +197,7 @@ public partial class FileNode : ObservableObject
 
     public FileNode? FindNodeByPath(string path)
     {
-        if (string.Equals(FullPath, path, System.StringComparison.OrdinalIgnoreCase)) return this;
+        if (string.Equals(FullPath, path, StringComparison.OrdinalIgnoreCase)) return this;
         EnsureChildrenLoaded();
         foreach (var child in Children.Where(c => !c.IsPlaceholder))
         {
