@@ -113,3 +113,15 @@ public class SelectedDocumentChangedEvent
         IsDirty = isDirty;
     }
 }
+
+public class SetCaretPositionRequestEvent
+{
+    public string FilePath { get; }
+    public int CaretIndex { get; }
+
+    public SetCaretPositionRequestEvent(string filePath, int caretIndex)
+    {
+        FilePath = filePath;
+        CaretIndex = caretIndex;
+    }
+}

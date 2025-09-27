@@ -28,11 +28,13 @@ namespace skt.IDE.Views.TextEditor
         private TextBox? _mainEditor;
         private TextBox? _lineNumbers;
         private bool _isSyncingScroll;
+        private bool _isSubscribed;
 
         public TextEditor()
         {
             InitializeComponent();
             AttachedToVisualTree += OnAttached;
+            DetachedFromVisualTree += OnDetached;
             PropertyChanged += OnTextPropertyChanged;
         }
 
@@ -52,6 +54,12 @@ namespace skt.IDE.Views.TextEditor
 
             _mainEditor.PropertyChanged += MainEditor_PropertyChanged;
 
+            if (!_isSubscribed)
+            {
+                App.EventBus.Subscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
+                _isSubscribed = true;
+            }
+
             // We need to wait for the template to be applied to get the ScrollViewers
             Dispatcher.UIThread.Post(() =>
             {
@@ -60,6 +68,35 @@ namespace skt.IDE.Views.TextEditor
                 // Publish initial cursor/selection status on attach
                 PublishCursorAndSelection();
             }, DispatcherPriority.Loaded);
+        }
+
+        private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
+        {
+            if (_isSubscribed)
+            {
+                App.EventBus.Unsubscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
+                _isSubscribed = false;
+            }
+        }
+
+        private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
+        {
+            if (_mainEditor == null) return;
+            // Match by file path through DataContext if possible
+            if (DataContext is ViewModels.DocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+            {
+                if (string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    var length = _mainEditor.Text?.Length ?? 0;
+                    var caret = Math.Clamp(e.CaretIndex, 0, length);
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _mainEditor.CaretIndex = caret;
+                        _mainEditor.Focus();
+                        PublishCursorAndSelection();
+                    });
+                }
+            }
         }
 
         private void SetupScrollSynchronization()

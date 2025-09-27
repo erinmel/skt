@@ -6,6 +6,9 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using skt.IDE.ViewModels;
 using skt.IDE.Services.Buss;
+using System.IO;
+using System.Threading.Tasks;
+using skt.IDE.Views.Dialogs;
 
 namespace skt.IDE.Views.ToolWindows;
 public partial class Toolbar : UserControl
@@ -111,9 +114,69 @@ public partial class Toolbar : UserControl
         }
     }
 
-    private void NewProjectButton_Click(object? sender, RoutedEventArgs routedEventArgs)
+    private async void NewProjectButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        SetTodoStatus("NewProject");
+        await CreateNewProjectAsync();
+    }
+
+    private async Task CreateNewProjectAsync()
+    {
+        try
+        {
+            if (TopLevel.GetTopLevel(this) is not Window owner)
+            {
+                App.EventBus.Publish(new StatusBarMessageEvent("Cannot open project dialog.", true));
+                return;
+            }
+
+            var dialog = new ProjectCreationDialog();
+            var result = await dialog.ShowAsync(owner);
+            if (result == null) return;
+
+            var basePath = result.BasePath;
+            var projectName = result.ProjectName;
+            var finalPath = result.FinalPath;
+
+            try
+            {
+                if (!Directory.Exists(basePath)) Directory.CreateDirectory(basePath);
+                if (Directory.Exists(finalPath))
+                {
+                    App.EventBus.Publish(new StatusBarMessageEvent("Project already exists.", true));
+                    return;
+                }
+                Directory.CreateDirectory(finalPath);
+                var mainFilePath = Path.Combine(finalPath, "main.skt");
+                var template = "main {\n\n}\n";
+                File.WriteAllText(mainFilePath, template);
+                App.EventBus.Publish(new FileCreatedEvent(mainFilePath));
+
+                // Open project
+                App.EventBus.Publish(new ProjectFolderSelectedEvent(finalPath));
+                // Open main file
+                App.EventBus.Publish(new OpenFileRequestEvent(mainFilePath));
+                // Set caret after file open (schedule slight delay)
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var caretIndex = template.IndexOf("<- carete here", StringComparison.Ordinal);
+                    if (caretIndex >= 0)
+                    {
+                        App.EventBus.Publish(new SetCaretPositionRequestEvent(mainFilePath, caretIndex));
+                    }
+                }, Avalonia.Threading.DispatcherPriority.Background);
+
+                App.EventBus.Publish(new StatusBarMessageEvent($"Created project: {projectName}", 3000));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating project: {ex}");
+                App.EventBus.Publish(new StatusBarMessageEvent("Failed to create project.", true));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in CreateNewProjectAsync: {ex}");
+        }
     }
 
     private async void OpenProjectButton_Click(object? sender, RoutedEventArgs routedEventArgs)
@@ -123,7 +186,6 @@ public partial class Toolbar : UserControl
             var top = TopLevel.GetTopLevel(this) as Window;
             if (top == null)
             {
-                // Sent a status bar update
                 App.EventBus.Publish(new StatusBarMessageEvent("Problem opening the file explorer.", true));
                 return;
             }

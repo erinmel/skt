@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="skt.IDE.Views.Dialogs.ProjectCreationDialog"
+        Title="Create New Project"
+        Width="520"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="BorderOnly">
+  <Window.Styles>
+    <!-- Surface container -->
+    <Style Selector="Border.Surface">
+      <Setter Property="Padding" Value="16"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <!-- Text -->
+    <Style Selector="TextBlock">
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+    <Style Selector="TextBlock#WarningText">
+      <Setter Property="Foreground" Value="Red"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <!-- Dialog-local button styling to bring back Fluent system colors -->
+    <Style Selector="Button">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ Border#Root">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+    <Style Selector="Button:pressed /template/ Border#Root">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
+    </Style>
+    <!-- Accent for default (Create) button -->
+    <Style Selector="Button[IsDefault=True]">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundAltHighBrush}"/>
+    </Style>
+    <Style Selector="Button[IsDefault=True]:pointerover /template/ Border#Root">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+      <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+    <Style Selector="Button[IsDefault=True]:pressed /template/ Border#Root">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+      <Setter Property="Opacity" Value="0.8"/>
+    </Style>
+  </Window.Styles>
+  <Border Classes="Surface">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,* ,Auto" ColumnSpacing="8" RowSpacing="10">
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="Base Path" VerticalAlignment="Center"/>
+      <TextBox Grid.Row="0" Grid.Column="1" Name="BasePathTextBox"/>
+      <Button Grid.Row="0" Grid.Column="2" Name="BrowseButton">Browse...</Button>
+
+      <TextBlock Grid.Row="1" Grid.Column="0" Text="Project Name" VerticalAlignment="Center"/>
+      <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Name="ProjectNameTextBox"/>
+
+      <TextBlock Grid.Row="2" Grid.Column="0" Text="Final Path" VerticalAlignment="Center"/>
+      <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="FinalPathText" TextWrapping="Wrap"/>
+
+      <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Name="WarningText"/>
+
+      <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Name="CancelButton" IsCancel="True">Cancel</Button>
+        <Button Name="CreateButton" IsDefault="True">Create</Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
