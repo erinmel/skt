@@ -239,7 +239,8 @@ public partial class MainWindow : Window
             return;
 
         var tabIndex = GetTabIndexForPanel(_selectedTerminalPanel);
-        TerminalTabView.SelectedIndex = tabIndex;
+        // Delegate tab selection to the TerminalPanel control
+        TerminalPanelControl?.SetSelectedTab(tabIndex);
     }
 
     private static int GetTabIndexForPanel(TerminalPanelType panelType)
