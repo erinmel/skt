@@ -4,46 +4,60 @@
              xmlns:toolviews="using:skt.IDE.Views.ToolWindows"
              x:Class="skt.IDE.Views.ToolWindows.TerminalPanel"
              x:DataType="vm:MainWindowViewModel">
-    <Border Margin="2">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" Padding="5">
-                <TextBlock Text="Terminal &amp; Errors" FontWeight="Bold"/>
-            </Border>
-
-            <TabControl Grid.Row="1" Name="TerminalTabView">
-                <TabItem Header="Terminal">
-                    <ScrollViewer>
-                        <TextBox AcceptsReturn="True"
-                                 FontFamily="Consolas,monospace"
-                                 Watermark="Terminal output will appear here..."
-                                 IsReadOnly="True"/>
-                    </ScrollViewer>
-                </TabItem>
-                <TabItem Header="Lexical Errors">
-                    <toolviews:ErrorsView DataContext="{Binding Errors}" />
-                </TabItem>
-                <TabItem Header="Syntax Errors">
-                    <ScrollViewer>
-                        <TextBox AcceptsReturn="True"
-                                 FontFamily="Consolas,monospace"
-                                 Text="{Binding SyntaxErrors}"
-                                 IsReadOnly="True"/>
-                    </ScrollViewer>
-                </TabItem>
-                <TabItem Header="Other Errors">
-                    <ScrollViewer>
-                        <TextBox AcceptsReturn="True"
-                                 FontFamily="Consolas,monospace"
-                                 Text="{Binding OtherErrors}"
-                                 IsReadOnly="True"/>
-                    </ScrollViewer>
-                </TabItem>
-            </TabControl>
-        </Grid>
-    </Border>
+  <UserControl.Styles>
+    <Style Selector="TabControl#TerminalTabView">
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="Padding" Value="6,2"/>
+      <Setter Property="FontSize" Value="18"/>
+    </Style>
+    <Style Selector="ScrollViewer">
+      <Setter Property="Padding" Value="4"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="toolviews|ErrorsView TextBlock">
+      <Setter Property="TextAlignment" Value="Left"/>
+    </Style>
+  </UserControl.Styles>
+  <Border Margin="2">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <TabControl Grid.Row="0" Name="TerminalTabView">
+        <TabItem Header="Terminal">
+          <ScrollViewer>
+            <TextBox AcceptsReturn="True"
+                     FontFamily="Consolas,monospace"
+                     Watermark="Terminal output will appear here..."
+                     IsReadOnly="True"/>
+          </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Lexical Errors">
+          <toolviews:ErrorsView DataContext="{Binding Errors}" />
+        </TabItem>
+        <TabItem Header="Syntax Errors">
+          <ScrollViewer>
+            <TextBox AcceptsReturn="True"
+                     FontFamily="Consolas,monospace"
+                     Text="{Binding SyntaxErrors}"
+                     IsReadOnly="True"/>
+          </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Other Errors">
+          <ScrollViewer>
+            <TextBox AcceptsReturn="True"
+                     FontFamily="Consolas,monospace"
+                     Text="{Binding OtherErrors}"
+                     IsReadOnly="True"/>
+          </ScrollViewer>
+        </TabItem>
+      </TabControl>
+    </Grid>
+  </Border>
 </UserControl>
