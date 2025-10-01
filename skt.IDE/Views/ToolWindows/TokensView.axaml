@@ -6,6 +6,11 @@
   <Design.DataContext>
     <vm:TokensViewModel/>
   </Design.DataContext>
+  <UserControl.Styles>
+    <Style Selector="">
+
+    </Style>
+  </UserControl.Styles>
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -18,6 +23,6 @@
       <TextBlock Text="Errors:" FontWeight="Bold" Margin="20,0,0,0"/>
       <TextBlock Text="{Binding ErrorCount}"/>
     </StackPanel>
-    <TreeDataGrid Grid.Row="1" Source="{Binding Source}" AutoDragDropRows="False"/>
+    <TreeDataGrid Grid.Row="1" Source="{Binding Source}" CanUserSortColumns="True"/>
   </Grid>
 </UserControl>

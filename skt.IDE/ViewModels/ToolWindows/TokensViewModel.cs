@@ -45,7 +45,6 @@ public partial class TokensViewModel : ObservableObject
     {
         Columns =
         {
-            new TextColumn<TokenRow, int>("#", x => x.Index),
             new TextColumn<TokenRow, string>("Type", x => x.Type),
             new TextColumn<TokenRow, string>("Value", x => x.Value),
             new TextColumn<TokenRow, string>("Start", x => x.StartPos),
@@ -91,29 +90,24 @@ public partial class TokensViewModel : ObservableObject
 
     private void OnFileClosed(FileClosedEvent e)
     {
-        if (_tokenCache.ContainsKey(e.FilePath))
-            _tokenCache.Remove(e.FilePath);
-        if (string.Equals(CurrentFile, e.FilePath, StringComparison.OrdinalIgnoreCase))
-        {
-            CurrentFile = string.Empty;
-            Clear();
-        }
+        _tokenCache.Remove(e.FilePath);
+        if (!string.Equals(CurrentFile, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
+        CurrentFile = string.Empty;
+        Clear();
     }
 
     private void OnFileRenamed(FileRenamedEvent e)
     {
-        if (_tokenCache.TryGetValue(e.OldPath, out var data))
+        if (_tokenCache.Remove(e.OldPath, out var data))
         {
-            _tokenCache.Remove(e.OldPath);
             _tokenCache[e.NewPath] = data;
         }
-        if (string.Equals(CurrentFile, e.OldPath, StringComparison.OrdinalIgnoreCase))
+
+        if (!string.Equals(CurrentFile, e.OldPath, StringComparison.OrdinalIgnoreCase)) return;
+        CurrentFile = e.NewPath;
+        if (_tokenCache.TryGetValue(e.NewPath, out var cached))
         {
-            CurrentFile = e.NewPath;
-            if (_tokenCache.TryGetValue(e.NewPath, out var cached))
-            {
-                LoadTokens(cached.tokens, cached.errors);
-            }
+            LoadTokens(cached.tokens, cached.errors);
         }
     }
 
@@ -121,7 +115,6 @@ public partial class TokensViewModel : ObservableObject
     {
         if (!string.IsNullOrEmpty(e.FilePath))
             CurrentFile = e.FilePath;
-        // Do not clear existing tokens unless this failure belongs to the active file
         if (e.FilePath == CurrentFile)
         {
             Clear();
@@ -150,10 +143,9 @@ public partial class TokensViewModel : ObservableObject
             return;
         }
         _rows.Clear();
-        for (int i = 0; i < tokens.Count; i++)
+        foreach (var t in tokens)
         {
-            var t = tokens[i];
-            _rows.Add(new TokenRow(i, t.Type.ToString(), t.Value, t.Line, t.Column, t.EndLine, t.EndColumn));
+            _rows.Add(new TokenRow( t.Type.ToString(), t.Value, t.Line, t.Column, t.EndLine, t.EndColumn));
         }
         TokenCount = tokens.Count;
         ErrorCount = errors.Count;

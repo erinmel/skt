@@ -55,19 +55,45 @@ public class LexicalAnalyzer
 
     private void Advance()
     {
-        if (!AtEnd())
+        if (AtEnd()) return;
+        char ch = _code[_position];
+
+        // Normalize Windows CRLF to a single newline movement
+        if (ch == '\r')
         {
-            if (CurrentChar() == '\n')
+            if (_position + 1 < _codeLength && _code[_position + 1] == '\n')
             {
-                _line++;
-                _column = 1;
+                _position += 2;
             }
             else
             {
-                _column++;
+                _position++;
             }
-            _position++;
+            _line++;
+            _column = 1;
+            return;
         }
+
+        if (ch == '\n')
+        {
+            _position++;
+            _line++;
+            _column = 1;
+            return;
+        }
+
+        if (ch == '\t')
+        {
+            _position++;
+            int tabWidth = 4;
+            int zeroBased = _column - 1;
+            int nextStop = ((zeroBased / tabWidth) + 1) * tabWidth;
+            _column = nextStop + 1;
+            return;
+        }
+
+        _position++;
+        _column++;
     }
 
     private void HandleWhitespace()
