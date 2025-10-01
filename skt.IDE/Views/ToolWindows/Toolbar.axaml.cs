@@ -43,6 +43,9 @@ public partial class Toolbar : UserControl
         var saveAsBtn = this.FindControl<Button>("SaveAsButton");
         if (saveAsBtn != null)
             saveAsBtn.IsEnabled = false;
+        var lexMenuItem = this.FindControl<MenuItem>("LexicalAnalysisMenuItem");
+        if (lexMenuItem != null)
+            lexMenuItem.IsEnabled = false;
 
         // React to project open so the toolbar can enable the New File button
         App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
@@ -84,6 +87,10 @@ public partial class Toolbar : UserControl
             var saveAsBtn = this.FindControl<Button>("SaveAsButton");
             if (saveAsBtn != null)
                 saveAsBtn.IsEnabled = e.HasSelection;
+
+            var lexMenuItem = this.FindControl<MenuItem>("LexicalAnalysisMenuItem");
+            if (lexMenuItem != null)
+                lexMenuItem.IsEnabled = e.HasSelection && !string.IsNullOrEmpty(e.FilePath);
         });
     }
 
@@ -269,6 +276,23 @@ public partial class Toolbar : UserControl
     {
         var top = TopLevel.GetTopLevel(this) as MainWindow;
         top?.Close();
+    }
+
+    private void LexicalAnalysisMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            App.EventBus.Publish(new StatusBarMessageEvent("No context for lexical analysis", true));
+            return;
+        }
+        var path = vm.TabbedEditorViewModel.SelectedDocument?.FilePath;
+        if (string.IsNullOrEmpty(path))
+        {
+            App.EventBus.Publish(new StatusBarMessageEvent("No file selected to tokenize", true));
+            return;
+        }
+        App.EventBus.Publish(new TokenizeFileRequestEvent(path, writeTokenFile: false));
+        App.EventBus.Publish(new StatusBarMessageEvent("Lexical analysis started (file)", 2000));
     }
 
 }

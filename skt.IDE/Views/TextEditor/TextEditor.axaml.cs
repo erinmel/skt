@@ -29,6 +29,7 @@ namespace skt.IDE.Views.TextEditor
         private TextBox? _lineNumbers;
         private bool _isSyncingScroll;
         private bool _isSubscribed;
+        private string _lastLexSnapshot = string.Empty; // snapshot for duplicate suppression
 
         public TextEditor()
         {
@@ -60,13 +61,11 @@ namespace skt.IDE.Views.TextEditor
                 _isSubscribed = true;
             }
 
-            // We need to wait for the template to be applied to get the ScrollViewers
             Dispatcher.UIThread.Post(() =>
             {
                 SetupScrollSynchronization();
-
-                // Publish initial cursor/selection status on attach
                 PublishCursorAndSelection();
+                PublishBufferLexical(); // tokenize immediately after attach (file just opened or created)
             }, DispatcherPriority.Loaded);
         }
 
@@ -123,6 +122,7 @@ namespace skt.IDE.Views.TextEditor
                     SetValue(TextProperty, _mainEditor.Text);
                 }
                 UpdateLineNumbers();
+                PublishBufferLexical(); // tokenize on every text mutation
             }
 
             if (e.Property == TextBox.FontSizeProperty ||
@@ -152,8 +152,8 @@ namespace skt.IDE.Views.TextEditor
                 var newText = GetValue(TextProperty);
                 _mainEditor.Text = newText;
                 UpdateLineNumbers();
-                // When the bound text changes (e.g., open file), publish updated caret/selection
                 PublishCursorAndSelection();
+                PublishBufferLexical(); // tokenize when external binding updates (e.g. file load)
             }
         }
 
@@ -306,6 +306,18 @@ namespace skt.IDE.Views.TextEditor
                 if (text[i] == '\n') count++;
             }
             return count;
+        }
+
+        private void PublishBufferLexical()
+        {
+            if (_mainEditor == null) return;
+            var text = _mainEditor.Text ?? string.Empty;
+            if (text == _lastLexSnapshot) return; // avoid duplicate publish
+            _lastLexSnapshot = text;
+            string? filePath = null;
+            if (DataContext is ViewModels.DocumentViewModel doc)
+                filePath = doc.FilePath;
+            App.EventBus.Publish(new TokenizeBufferRequestEvent(text, filePath));
         }
     }
 }

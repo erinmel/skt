@@ -17,8 +17,7 @@ public sealed class BoolInvertConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is bool b) return !b;
-        return value;
+        return Convert(value, targetType, parameter, culture);
     }
 }
 

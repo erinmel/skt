@@ -13,6 +13,7 @@ namespace skt.IDE;
 public class App : Application
 {
     public static IEventBus EventBus { get; private set; } = new EventBus();
+    private CompilerBridge? _compilerBridge; // keep reference
 
     public override void Initialize()
     {
@@ -21,6 +22,7 @@ public class App : Application
         GC.KeepAlive(typeof(Avalonia.Svg.Skia.Svg).Assembly);
 
         AvaloniaXamlLoader.Load(this);
+        _compilerBridge ??= new CompilerBridge(EventBus);
     }
 
     public override void OnFrameworkInitializationCompleted()

@@ -25,4 +25,14 @@
     <PackageReference Include="Avalonia.Xaml.Interactivity" Version="11.3.0" />
     <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Added reference to compiler project for lexical analysis integration -->
+    <ProjectReference Include="..\skt.Compiler\skt.Compiler.csproj" />
+    <ProjectReference Include="..\skt.Shared\skt.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\skt.Shared\skt.Shared.csproj" />
+  </ItemGroup>
 </Project>

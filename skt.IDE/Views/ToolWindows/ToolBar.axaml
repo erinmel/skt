@@ -53,6 +53,23 @@
                     </DropDownButton.Flyout>
                 </DropDownButton>
 
+                <!-- Compiler Menu Dropdown -->
+                <DropDownButton Name="CompilerMenuDropDown"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,5">
+                    <DropDownButton.Content>
+                        <TextBlock Text="Compiler"/>
+                    </DropDownButton.Content>
+                    <DropDownButton.Flyout>
+                        <MenuFlyout>
+                            <MenuItem Header="Lexical" Name="LexicalAnalysisMenuItem" Click="LexicalAnalysisMenuItem_Click"/>
+                            <MenuItem Header="Syntactic" IsEnabled="False"/>
+                            <MenuItem Header="Semantic" IsEnabled="False"/>
+                        </MenuFlyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
+
                 <!-- Open Project Button -->
                 <Button Name="OpenProjectButton"
                         Background="Transparent"
