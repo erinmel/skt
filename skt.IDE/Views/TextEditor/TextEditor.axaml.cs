@@ -1,323 +1,361 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using Avalonia.VisualTree;
-using System.Linq;
-using System.Text;
-using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.Styling;
 using skt.IDE.Services.Buss;
+using skt.Shared;
+using AvaloniaEdit;
+using AvaloniaEdit.Document;
+using AvaloniaEdit.Rendering;
 
-namespace skt.IDE.Views.TextEditor
+namespace skt.IDE.Views.TextEditor;
+
+public partial class TextEditor : UserControl
 {
-    public partial class TextEditor : UserControl
+    public static readonly StyledProperty<string?> TextProperty =
+        AvaloniaProperty.Register<TextEditor, string?>(nameof(Text), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+
+    public string? Text
     {
-        public static readonly StyledProperty<string?> TextProperty =
-            AvaloniaProperty.Register<TextEditor, string?>(nameof(Text), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+        get => GetValue(TextProperty);
+        set => SetValue(TextProperty, value);
+    }
 
-        public string? Text
+    private AvaloniaEdit.TextEditor? _editor;
+    private bool _isSubscribed;
+    private string _lastLexSnapshot = string.Empty;
+    private readonly List<Token> _currentTokens = new();
+    private readonly List<ErrorToken> _currentErrors = new();
+    private SemanticColorizer? _colorizer;
+
+    public TextEditor()
+    {
+        InitializeComponent();
+        AttachedToVisualTree += OnAttached;
+        DetachedFromVisualTree += OnDetached;
+        PropertyChanged += OnTextPropertyChanged;
+    }
+
+    private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
+
+    private void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        _editor = this.FindControl<AvaloniaEdit.TextEditor>("Editor");
+        if (_editor == null) return;
+
+        if (_editor.Document == null)
+            _editor.Document = new TextDocument(Text ?? string.Empty);
+        else if (Text != _editor.Document.Text)
+            _editor.Document.Text = Text ?? string.Empty;
+
+        _colorizer = new SemanticColorizer();
+        _editor.TextArea.TextView.LineTransformers.Add(_colorizer);
+        _editor.TextArea.TextView.BackgroundRenderers.Add(_colorizer);
+
+        _editor.TextChanged += OnEditorTextChanged;
+        _editor.TextArea.Caret.PositionChanged += OnCaretChanged;
+        _editor.TextArea.SelectionChanged += OnSelectionChanged;
+
+        if (!_isSubscribed)
         {
-            get => GetValue(TextProperty);
-            set => SetValue(TextProperty, value);
+            App.EventBus.Subscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
+            App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
+            App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
+            _isSubscribed = true;
         }
 
-        private ScrollViewer? _mainScroll;
-        private ScrollViewer? _lineNumbersScroll;
-        private TextBox? _mainEditor;
-        private TextBox? _lineNumbers;
-        private bool _isSyncingScroll;
-        private bool _isSubscribed;
-        private string _lastLexSnapshot = string.Empty; // snapshot for duplicate suppression
-
-        public TextEditor()
+        Dispatcher.UIThread.Post(() =>
         {
-            InitializeComponent();
-            AttachedToVisualTree += OnAttached;
-            DetachedFromVisualTree += OnDetached;
-            PropertyChanged += OnTextPropertyChanged;
+            PublishCursor();
+            PublishSelection();
+            PublishBufferLexical();
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (_editor != null)
+        {
+            _editor.TextChanged -= OnEditorTextChanged;
+            _editor.TextArea.Caret.PositionChanged -= OnCaretChanged;
+            _editor.TextArea.SelectionChanged -= OnSelectionChanged;
         }
-
-        private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
-
-        private void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
+        if (_isSubscribed)
         {
-            _mainEditor = this.FindControl<TextBox>("MainEditorTextBox");
-            _lineNumbers = this.FindControl<TextBox>("LineNumbersTextBox");
+            App.EventBus.Unsubscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
+            App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
+            App.EventBus.Unsubscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
+            _isSubscribed = false;
+        }
+    }
 
-            if (_mainEditor is null || _lineNumbers is null)
-                return;
+    private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
+    {
+        if (_editor == null) return;
+        if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath)) return;
+        if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
+        var docText = _editor.Document?.Text ?? string.Empty;
+        var caret = Math.Clamp(e.CaretIndex, 0, docText.Length);
+        Dispatcher.UIThread.Post(() =>
+        {
+            _editor.CaretOffset = caret;
+            _editor.Focus();
+            PublishCursor();
+            PublishSelection();
+        });
+    }
 
-            // Initial setup
-            UpdateLineNumbers();
-            SyncFontProperties();
+    private void OnEditorTextChanged(object? sender, EventArgs e)
+    {
+        if (_editor == null) return;
+        var docText = _editor.Document?.Text ?? string.Empty;
+        if (GetValue(TextProperty) != docText)
+            SetValue(TextProperty, docText);
+        PublishBufferLexical();
+    }
 
-            _mainEditor.PropertyChanged += MainEditor_PropertyChanged;
+    private void OnCaretChanged(object? sender, EventArgs e)
+    {
+        PublishCursor();
+        PublishSelection();
+    }
 
-            if (!_isSubscribed)
+    private void OnSelectionChanged(object? sender, EventArgs e)
+    {
+        PublishSelection();
+    }
+
+    private void OnTextPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == TextProperty && _editor?.Document != null)
+        {
+            var newText = GetValue(TextProperty) ?? string.Empty;
+            if (_editor.Document.Text != newText)
             {
-                App.EventBus.Subscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
-                _isSubscribed = true;
+                _editor.Document.Text = newText;
+                PublishCursor();
+                PublishSelection();
+                PublishBufferLexical();
             }
+        }
+    }
 
-            Dispatcher.UIThread.Post(() =>
-            {
-                SetupScrollSynchronization();
-                PublishCursorAndSelection();
-                PublishBufferLexical(); // tokenize immediately after attach (file just opened or created)
-            }, DispatcherPriority.Loaded);
+    private void PublishBufferLexical()
+    {
+        if (_editor?.Document == null) return;
+        var text = _editor.Document.Text;
+        if (text == _lastLexSnapshot) return;
+        _lastLexSnapshot = text;
+        string? filePath = null;
+        if (DataContext is ViewModels.DocumentViewModel doc) filePath = doc.FilePath;
+        App.EventBus.Publish(new TokenizeBufferRequestEvent(text, filePath));
+    }
+
+    private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
+    {
+        if (_editor == null || _colorizer == null) return;
+        if (DataContext is ViewModels.DocumentViewModel doc)
+        {
+            if (!string.Equals(doc.FilePath ?? string.Empty, e.FilePath ?? string.Empty, StringComparison.OrdinalIgnoreCase) && !e.FromBuffer) return;
+        }
+        _currentTokens.Clear();
+        _currentTokens.AddRange(e.Tokens);
+        _currentErrors.Clear();
+        _currentErrors.AddRange(e.Errors);
+        bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
+        _colorizer.Update(_currentTokens, _currentErrors, isDark);
+        _editor.TextArea.TextView.Redraw();
+    }
+
+    private void OnLexicalFailed(LexicalAnalysisFailedEvent e)
+    {
+    }
+
+    private void PublishCursor()
+    {
+        if (_editor?.Document == null) return;
+        var offset = _editor.CaretOffset;
+        offset = Math.Clamp(offset, 0, _editor.Document.TextLength);
+        var loc = _editor.Document.GetLocation(offset);
+        App.EventBus.Publish(new CursorPositionEvent(loc.Line, loc.Column));
+    }
+
+    private void PublishSelection()
+    {
+        if (_editor?.Document == null) return;
+        int start = _editor.SelectionStart;
+        int length = _editor.SelectionLength;
+        int end = start + length;
+        start = Math.Clamp(start, 0, _editor.Document.TextLength);
+        end = Math.Clamp(end, 0, _editor.Document.TextLength);
+        if (length <= 0)
+        {
+            var loc = _editor.Document.GetLocation(_editor.CaretOffset);
+            App.EventBus.Publish(new SelectionInfoEvent(loc.Line, loc.Column, loc.Line, loc.Column, 0, 0));
+            return;
+        }
+        var startLoc = _editor.Document.GetLocation(start);
+        var endLoc = _editor.Document.GetLocation(end);
+        int lineBreaks = CountLineBreaks(_editor.Document, start, end);
+        App.EventBus.Publish(new SelectionInfoEvent(startLoc.Line, startLoc.Column, endLoc.Line, endLoc.Column, length, lineBreaks));
+    }
+
+    private static int CountLineBreaks(TextDocument doc, int start, int end)
+    {
+        int count = 0;
+        for (int i = start; i < end && i < doc.TextLength; i++)
+        {
+            if (doc.GetCharAt(i) == '\n') count++;
+        }
+        return count;
+    }
+
+    private class SemanticColorizer : DocumentColorizingTransformer, IBackgroundRenderer
+    {
+        private readonly List<Token> _tokens = new();
+        private readonly List<ErrorToken> _errors = new();
+        private bool _isDark;
+        // Fallback colors if resource lookup fails
+        private static readonly Dictionary<TokenType, (Color dark, Color light)> Fallback = new()
+        {
+            { TokenType.Integer, (Color.FromRgb(0x4F,0xC1,0xFF), Color.FromRgb(0x00,0x55,0x99)) },
+            { TokenType.Real, (Color.FromRgb(0x4F,0xC1,0xFF), Color.FromRgb(0x00,0x55,0x99)) },
+            { TokenType.Boolean, (Color.FromRgb(0xC5,0xAE,0xFF), Color.FromRgb(0x64,0x2C,0x99)) },
+            { TokenType.String, (Color.FromRgb(0xCE,0x91,0x78), Color.FromRgb(0x8B,0x2F,0x00)) },
+            { TokenType.Identifier, (Color.FromRgb(0xE0,0xE0,0xE0), Color.FromRgb(0x20,0x20,0x20)) },
+            { TokenType.ReservedWord, (Color.FromRgb(0xB4,0x8E,0xF0), Color.FromRgb(0x53,0x19,0x95)) },
+            { TokenType.Comment, (Color.FromRgb(0x57,0xA6,0x4A), Color.FromRgb(0x2F,0x63,0x26)) },
+            { TokenType.ArithmeticOperator, (Color.FromRgb(0xFF,0xC1,0x6B), Color.FromRgb(0xB0,0x42,0x00)) },
+            { TokenType.RelationalOperator, (Color.FromRgb(0xFF,0xC1,0x6B), Color.FromRgb(0xB0,0x42,0x00)) },
+            { TokenType.LogicalOperator, (Color.FromRgb(0xFF,0xC1,0x6B), Color.FromRgb(0xB0,0x42,0x00)) },
+            { TokenType.AssignmentOperator, (Color.FromRgb(0xFF,0xC1,0x6B), Color.FromRgb(0xB0,0x42,0x00)) },
+            { TokenType.ShiftOperator, (Color.FromRgb(0xFF,0xC1,0x6B), Color.FromRgb(0xB0,0x42,0x00)) },
+            { TokenType.Symbol, (Color.FromRgb(0xA9,0xA9,0xA9), Color.FromRgb(0x44,0x44,0x44)) },
+            { TokenType.Error, (Color.FromRgb(0xFF,0x55,0x55), Color.FromRgb(0xC5,0x00,0x00)) }
+        };
+
+        public void Update(IEnumerable<Token> tokens, IEnumerable<ErrorToken> errors, bool isDark)
+        {
+            _tokens.Clear();
+            _tokens.AddRange(tokens);
+            _errors.Clear();
+            _errors.AddRange(errors);
+            _isDark = isDark;
         }
 
-        private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
+        protected override void ColorizeLine(DocumentLine line)
         {
-            if (_isSubscribed)
+            if (line.IsDeleted) return;
+            int lineNumber = line.LineNumber;
+            foreach (var t in _tokens)
             {
-                App.EventBus.Unsubscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
-                _isSubscribed = false;
+                if (t.EndLine < lineNumber || t.Line > lineNumber) continue;
+                int startCol = (t.Line == lineNumber) ? t.Column : 1;
+                int endColExclusive = (t.EndLine == lineNumber) ? t.EndColumn : int.MaxValue;
+                ApplySpan(line, startCol, endColExclusive, t.Type, false);
+            }
+            foreach (var e in _errors)
+            {
+                if (e.EndLine < lineNumber || e.Line > lineNumber) continue;
+                int startCol = (e.Line == lineNumber) ? e.Column : 1;
+                int endColExclusive = (e.EndLine == lineNumber) ? e.EndColumn : int.MaxValue;
+                ApplySpan(line, startCol, endColExclusive, TokenType.Error, true);
             }
         }
 
-        private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
+        private void ApplySpan(DocumentLine line, int startCol, int endColExclusive, TokenType type, bool error)
         {
-            if (_mainEditor == null) return;
-            if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath)) return;
-            if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
-
-            var length = _mainEditor.Text?.Length ?? 0;
-            var caret = Math.Clamp(e.CaretIndex, 0, length);
-            Dispatcher.UIThread.Post(() =>
-            {
-                _mainEditor.CaretIndex = caret;
-                _mainEditor.Focus();
-                PublishCursorAndSelection();
-            });
+            if (startCol <= 0) startCol = 1;
+            if (endColExclusive <= startCol) return;
+            var doc = CurrentContext?.Document;
+            if (doc == null) return;
+            int lineStartOffset = line.Offset;
+            int lineEndOffset = line.EndOffset;
+            int spanStartOffset = lineStartOffset + startCol - 1;
+            int spanEndOffset = endColExclusive == int.MaxValue ? lineEndOffset : lineStartOffset + endColExclusive - 1;
+            spanStartOffset = Math.Clamp(spanStartOffset, lineStartOffset, lineEndOffset);
+            spanEndOffset = Math.Clamp(spanEndOffset, spanStartOffset, lineEndOffset);
+            if (spanEndOffset <= spanStartOffset) return;
+            var brush = GetBrush(type);
+            ChangeLinePart(spanStartOffset, spanEndOffset, el => { el.TextRunProperties.SetForegroundBrush(brush); });
         }
 
-        private void SetupScrollSynchronization()
+        private IBrush GetBrush(TokenType type)
         {
-            // Find the ScrollViewers inside the TextBoxes
-            _mainScroll = _mainEditor?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-            _lineNumbersScroll = _lineNumbers?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-
-            if (_mainScroll != null)
+            string suffix = _isDark ? "Dark" : "Light";
+            string key = type switch
             {
-                _mainScroll.ScrollChanged += MainScroll_ScrollChanged;
-            }
-
-            if (_lineNumbersScroll != null)
-            {
-                _lineNumbersScroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
-                _lineNumbersScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
-            }
+                TokenType.Integer => $"Tok.Integer.{suffix}",
+                TokenType.Real => $"Tok.Real.{suffix}",
+                TokenType.Boolean => $"Tok.Boolean.{suffix}",
+                TokenType.String => $"Tok.String.{suffix}",
+                TokenType.Identifier => $"Tok.Identifier.{suffix}",
+                TokenType.ReservedWord => $"Tok.Reserved.{suffix}",
+                TokenType.Comment => $"Tok.Comment.{suffix}",
+                TokenType.ArithmeticOperator => $"Tok.Operator.{suffix}",
+                TokenType.RelationalOperator => $"Tok.Operator.{suffix}",
+                TokenType.LogicalOperator => $"Tok.Operator.{suffix}",
+                TokenType.AssignmentOperator => $"Tok.Operator.{suffix}",
+                TokenType.ShiftOperator => $"Tok.Operator.{suffix}",
+                TokenType.Symbol => $"Tok.Symbol.{suffix}",
+                TokenType.Error => $"Tok.Error.{suffix}",
+                _ => string.Empty
+            };
+            if (!string.IsNullOrEmpty(key) && Application.Current != null && Application.Current.TryFindResource(key, out var res) && res is IBrush b)
+                return b;
+            if (Fallback.TryGetValue(type, out var fb))
+                return new SolidColorBrush(_isDark ? fb.dark : fb.light);
+            return _isDark ? Brushes.White : Brushes.Black;
         }
 
-        private void MainEditor_PropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+        public KnownLayer Layer => KnownLayer.Selection; // draw over selection for underline
+
+        public void Draw(TextView textView, DrawingContext drawingContext)
         {
-            if (e.Property == TextBox.TextProperty)
+            if (_errors.Count == 0) return;
+            var doc = textView.Document;
+            if (doc == null) return;
+            foreach (var e in _errors)
             {
-                // Update the Text property binding
-                if (_mainEditor != null && GetValue(TextProperty) != _mainEditor.Text)
+                for (int line = e.Line; line <= e.EndLine; line++)
                 {
-                    SetValue(TextProperty, _mainEditor.Text);
-                }
-                UpdateLineNumbers();
-                PublishBufferLexical(); // tokenize on every text mutation
-            }
-
-            if (e.Property == TextBox.FontSizeProperty ||
-                e.Property == TextBox.FontFamilyProperty ||
-                e.Property == TextBox.FontStyleProperty ||
-                e.Property == TextBox.FontWeightProperty ||
-                e.Property == TextBox.FontStretchProperty ||
-                e.Property == TextBox.PaddingProperty ||
-                e.Property == TextBox.LineHeightProperty)
-            {
-                SyncFontProperties();
-                UpdateLineNumbers();
-            }
-
-            if (e.Property == TextBox.CaretIndexProperty ||
-                e.Property == TextBox.SelectionStartProperty ||
-                e.Property == TextBox.SelectionEndProperty)
-            {
-                PublishCursorAndSelection();
-            }
-        }
-
-        private void OnTextPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            if (e.Property == TextProperty && _mainEditor != null)
-            {
-                var newText = GetValue(TextProperty);
-                _mainEditor.Text = newText;
-                UpdateLineNumbers();
-                PublishCursorAndSelection();
-                PublishBufferLexical(); // tokenize when external binding updates (e.g. file load)
-            }
-        }
-
-        private void SyncFontProperties()
-        {
-            if (_lineNumbers == null || _mainEditor == null)
-                return;
-
-            _lineNumbers.FontSize = _mainEditor.FontSize;
-            _lineNumbers.FontFamily = _mainEditor.FontFamily;
-            _lineNumbers.FontStyle = _mainEditor.FontStyle;
-            _lineNumbers.FontWeight = _mainEditor.FontWeight;
-            _lineNumbers.FontStretch = _mainEditor.FontStretch;
-            _lineNumbers.Padding = _mainEditor.Padding;
-            _lineNumbers.LineHeight = _mainEditor.LineHeight;
-
-            // Ensure same text rendering properties
-            _lineNumbers.TextAlignment = TextAlignment.Right;
-            _lineNumbers.TextWrapping = TextWrapping.NoWrap;
-            _mainEditor.TextWrapping = TextWrapping.NoWrap;
-        }
-
-        private void UpdateLineNumbers()
-        {
-            if (_lineNumbers == null)
-                return;
-
-            var content = Text ?? _mainEditor?.Text ?? string.Empty;
-
-            // Always ensure at least one line
-            if (string.IsNullOrEmpty(content))
-                content = " ";
-
-            var lines = content.Split('\n');
-            var sb = new StringBuilder(lines.Length * 5);
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                sb.Append((i + 1).ToString());
-                if (i < lines.Length - 1)
-                    sb.AppendLine();
-            }
-
-            var newText = sb.ToString();
-            _lineNumbers.Text = newText;
-
-            // After updating line numbers, sync scroll position
-            SyncScrollPosition();
-        }
-
-        private void MainScroll_ScrollChanged(object? sender, ScrollChangedEventArgs e)
-        {
-            if (_isSyncingScroll)
-                return;
-
-            SyncScrollPosition();
-        }
-
-        private void SyncScrollPosition()
-        {
-            if (_mainScroll == null || _lineNumbersScroll == null || _isSyncingScroll)
-                return;
-
-            _isSyncingScroll = true;
-            try
-            {
-                // Sync vertical offset
-                var targetOffset = new Vector(_lineNumbersScroll.Offset.X, _mainScroll.Offset.Y);
-
-                // Only update if different to avoid infinite loops
-                if (Math.Abs(_lineNumbersScroll.Offset.Y - _mainScroll.Offset.Y) > 0.01)
-                {
-                    _lineNumbersScroll.Offset = targetOffset;
-
-                    // Force immediate update
-                    _lineNumbersScroll.InvalidateArrange();
-                    _lineNumbersScroll.InvalidateMeasure();
+                    var docLine = doc.GetLineByNumber(Math.Clamp(line, 1, doc.LineCount));
+                    int startCol = (line == e.Line) ? e.Column : 1;
+                    int endCol = (line == e.EndLine) ? e.EndColumn : (docLine.EndOffset - docLine.Offset) + 1;
+                    if (startCol <= 0) startCol = 1;
+                    if (endCol <= startCol) continue;
+                    int startOffset = docLine.Offset + startCol - 1;
+                    int endOffset = docLine.Offset + endCol - 1;
+                    var geoBuilder = new BackgroundGeometryBuilder { AlignToWholePixels = true, CornerRadius = 0 }; // not used for wave, but keep
+                    var start = textView.GetVisualPosition(new TextViewPosition(doc.GetLocation(startOffset)), VisualYPosition.TextBottom);
+                    var end = textView.GetVisualPosition(new TextViewPosition(doc.GetLocation(endOffset)), VisualYPosition.TextBottom);
+                    if (double.IsNaN(start.X) || double.IsNaN(end.X)) continue;
+                    double y = start.Y - 1;
+                    double x = start.X;
+                    double xEnd = end.X;
+                    var brush = GetBrush(TokenType.Error);
+                    var pen = new Pen(brush, 1);
+                    bool up = true;
+                    double step = 4;
+                    var geo = new StreamGeometry();
+                    using (var ctx = geo.Open())
+                    {
+                        ctx.BeginFigure(new Avalonia.Point(x, y), false);
+                        while (x < xEnd)
+                        {
+                            x += step / 2;
+                            ctx.LineTo(new Avalonia.Point(x, y + (up ? -2 : 0)));
+                            up = !up;
+                        }
+                    }
+                    drawingContext.DrawGeometry(null, pen, geo);
                 }
             }
-            finally
-            {
-                _isSyncingScroll = false;
-            }
-        }
-
-        private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
-        {
-            // This is called from the XAML binding
-            if (!_isSyncingScroll)
-            {
-                SyncScrollPosition();
-            }
-        }
-
-        private void PublishCursorAndSelection()
-        {
-            if (_mainEditor == null) return;
-            var text = _mainEditor.Text ?? string.Empty;
-            var caret = Math.Clamp(_mainEditor.CaretIndex, 0, text.Length);
-
-            var (line, col) = GetLineAndColumn(text, caret);
-            App.EventBus.Publish(new CursorPositionEvent(line, col));
-
-            var selStart = Math.Clamp(_mainEditor.SelectionStart, 0, text.Length);
-            var selEnd = Math.Clamp(_mainEditor.SelectionEnd, 0, text.Length);
-            if (selEnd < selStart)
-            {
-                var tmp = selStart;
-                selStart = selEnd;
-                selEnd = tmp;
-            }
-
-            var charCount = selEnd - selStart;
-            if (charCount > 0)
-            {
-                var (startLine, startCol) = GetLineAndColumn(text, selStart);
-                var (endLine, endCol) = GetLineAndColumn(text, selEnd);
-                var lineBreaks = CountLineBreaks(text, selStart, selEnd);
-                App.EventBus.Publish(new SelectionInfoEvent(startLine, startCol, endLine, endCol, charCount, lineBreaks));
-            }
-            else
-            {
-                // Clear selection info
-                App.EventBus.Publish(new SelectionInfoEvent(line, col, line, col, 0, 0));
-            }
-        }
-
-        private static (int line, int col) GetLineAndColumn(string text, int index)
-        {
-            index = Math.Clamp(index, 0, text.Length);
-            int line = 1;
-            int lastNlPos = -1;
-            for (int i = 0; i < index; i++)
-            {
-                if (text[i] == '\n')
-                {
-                    line++;
-                    lastNlPos = i;
-                }
-            }
-            int col = index - lastNlPos;
-            return (line, col);
-        }
-
-        private static int CountLineBreaks(string text, int start, int end)
-        {
-            int count = 0;
-            for (int i = Math.Max(0, start); i < Math.Min(text.Length, end); i++)
-            {
-                if (text[i] == '\n') count++;
-            }
-            return count;
-        }
-
-        private void PublishBufferLexical()
-        {
-            if (_mainEditor == null) return;
-            var text = _mainEditor.Text ?? string.Empty;
-            if (text == _lastLexSnapshot) return; // avoid duplicate publish
-            _lastLexSnapshot = text;
-            string? filePath = null;
-            if (DataContext is ViewModels.DocumentViewModel doc)
-                filePath = doc.FilePath;
-            App.EventBus.Publish(new TokenizeBufferRequestEvent(text, filePath));
         }
     }
 }

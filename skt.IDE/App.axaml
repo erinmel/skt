@@ -27,6 +27,8 @@
                     ChromeMedium="#ff3f2e4b" ChromeMediumLow="#ff584960" ChromeWhite="White" ListLow="#ff3f2e4b" ListMedium="#ff64576b" RegionColor="#ff262738" />
             </FluentTheme.Palettes>
         </FluentTheme>
+        <!-- AvaloniaEdit default control styles -->
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
 
         <!-- Base Button Style - Common properties for all buttons -->
         <Style Selector="Button">
@@ -124,6 +126,8 @@
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/ToolIconResources.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FilesIconResource.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FoldersIconResource.axaml"/>
+                <!-- Syntax token colors -->
+                <ResourceInclude Source="avares://skt.IDE/Assets/Colors/SyntaxColors.axaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>

@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Dark theme token colors -->
+  <SolidColorBrush x:Key="Tok.Integer.Dark" Color="#4FC1FF"/>
+  <SolidColorBrush x:Key="Tok.Real.Dark" Color="#4FC1FF"/>
+  <SolidColorBrush x:Key="Tok.Boolean.Dark" Color="#C5AEFF"/>
+  <SolidColorBrush x:Key="Tok.String.Dark" Color="#CE9178"/>
+  <SolidColorBrush x:Key="Tok.Identifier.Dark" Color="#E0E0E0"/>
+  <SolidColorBrush x:Key="Tok.Reserved.Dark" Color="#B48EF0"/>
+  <SolidColorBrush x:Key="Tok.Comment.Dark" Color="#57A64A"/>
+  <SolidColorBrush x:Key="Tok.Operator.Dark" Color="#FFC16B"/>
+  <SolidColorBrush x:Key="Tok.Symbol.Dark" Color="#A9A9A9"/>
+  <SolidColorBrush x:Key="Tok.Error.Dark" Color="#FF5555"/>
+
+  <!-- Light theme token colors -->
+  <SolidColorBrush x:Key="Tok.Integer.Light" Color="#005599"/>
+  <SolidColorBrush x:Key="Tok.Real.Light" Color="#005599"/>
+  <SolidColorBrush x:Key="Tok.Boolean.Light" Color="#642C99"/>
+  <SolidColorBrush x:Key="Tok.String.Light" Color="#8B2F00"/>
+  <SolidColorBrush x:Key="Tok.Identifier.Light" Color="#202020"/>
+  <SolidColorBrush x:Key="Tok.Reserved.Light" Color="#531995"/>
+  <SolidColorBrush x:Key="Tok.Comment.Light" Color="#2F6326"/>
+  <SolidColorBrush x:Key="Tok.Operator.Light" Color="#B04200"/>
+  <SolidColorBrush x:Key="Tok.Symbol.Light" Color="#444444"/>
+  <SolidColorBrush x:Key="Tok.Error.Light" Color="#C50000"/>
+</ResourceDictionary>
