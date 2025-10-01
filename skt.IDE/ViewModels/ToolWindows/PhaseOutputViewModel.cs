@@ -32,3 +32,5 @@ public partial class PhaseOutputViewModel : ObservableObject
         AddOutput($"--- {phase} Phase Started ---");
     }
 }
+
+

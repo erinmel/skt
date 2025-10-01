@@ -27,6 +27,8 @@
                     ChromeMedium="#ff3f2e4b" ChromeMediumLow="#ff584960" ChromeWhite="White" ListLow="#ff3f2e4b" ListMedium="#ff64576b" RegionColor="#ff262738" />
             </FluentTheme.Palettes>
         </FluentTheme>
+        <!-- TreeDataGrid control styles -->
+        <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Fluent.axaml"/>
         <!-- AvaloniaEdit default control styles -->
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
 

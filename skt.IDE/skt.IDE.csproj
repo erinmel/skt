@@ -25,6 +25,8 @@
     <!-- For Interaction.Behaviors, EventTriggerBehavior, InvokeCommandAction -->
     <PackageReference Include="Avalonia.Xaml.Interactivity" Version="11.3.0" />
     <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0" />
+    <!-- TreeDataGrid for tokens view -->
+    <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.1.1" />
   </ItemGroup>
 
   <ItemGroup>

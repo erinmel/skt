@@ -67,6 +67,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public FileExplorerViewModel FileExplorer { get; } = new();
     public PhaseOutputViewModel PhaseOutput { get; } = new();
+    public TokensViewModel Tokens { get; } = new();
 
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();

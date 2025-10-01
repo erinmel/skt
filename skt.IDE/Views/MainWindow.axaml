@@ -80,7 +80,7 @@
                     <toolviews:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
 
                     <!-- Tokens View -->
-                    <toolviews:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding}"/>
+                    <toolviews:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
 
                     <!-- Syntax Tree View -->
                     <toolviews:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding}"/>

@@ -20,29 +20,6 @@ public class CompilerBridge
         _bus.Subscribe<TokenizeBufferRequestEvent>(OnTokenizeBufferRequest);
         _bus.Subscribe<FileOpenedEvent>(OnFileOpened);
     }
-
-    private void PrintTokens(string? sourceId, List<Token> tokens, List<ErrorToken> errors, bool fromBuffer)
-    {
-        Console.WriteLine($"==== Lexical Analysis {(fromBuffer ? "(buffer)" : "(file)")} {sourceId ?? "<memory>"} ====\nTokens={tokens.Count} Errors={errors.Count}");
-#if DEBUG
-        for (int i = 0; i < tokens.Count; i++)
-        {
-            var t = tokens[i];
-            Console.WriteLine($"[TOK {i:D4}] {t.Type,-18} '{t.Value}' @ {t.Line}:{t.Column}-{t.EndLine}:{t.EndColumn}");
-        }
-        if (errors.Count > 0)
-        {
-            Console.WriteLine("-- Errors --");
-            for (int i = 0; i < errors.Count; i++)
-            {
-                var e = errors[i];
-                Console.WriteLine($"[ERR {i:D4}] Expected {e.Expected} Found '{e.Value}' @ {e.Line}:{e.Column}-{e.EndLine}:{e.EndColumn}");
-            }
-        }
-#endif
-        Console.WriteLine("==== End ====\n");
-    }
-
     private void AnalyzeFileInMemory(string filePath, string origin)
     {
         try
@@ -55,7 +32,6 @@ public class CompilerBridge
             var code = File.ReadAllText(filePath);
             var (tokens, errors) = _lexical.Tokenize(code); // in-memory only
             Console.WriteLine($"[Lexical:{origin}] {filePath} tokens={tokens.Count} errors={errors.Count}");
-            PrintTokens(filePath, tokens, errors, false);
             _bus.Publish(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, false));
         }
         catch (Exception ex)
@@ -70,7 +46,6 @@ public class CompilerBridge
         try
         {
             var (tokens, errors) = _lexical.Tokenize(content);
-            PrintTokens(filePath, tokens, errors, true);
             _bus.Publish(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, true));
         }
         catch (Exception ex)
