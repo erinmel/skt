@@ -69,6 +69,9 @@ public partial class MainWindowViewModel : ObservableObject
     public PhaseOutputViewModel PhaseOutput { get; } = new();
     public TokensViewModel Tokens { get; } = new();
 
+    // Errors view model (lexical/syntax/other grouped errors)
+    public ErrorsViewModel Errors { get; } = new();
+
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
 

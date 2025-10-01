@@ -125,3 +125,16 @@ public class SetCaretPositionRequestEvent
         CaretIndex = caretIndex;
     }
 }
+
+public class SetCaretLineColumnRequestEvent
+{
+    public string FilePath { get; }
+    public int Line { get; }
+    public int Column { get; }
+    public SetCaretLineColumnRequestEvent(string filePath, int line, int column)
+    {
+        FilePath = filePath;
+        Line = line;
+        Column = column;
+    }
+}

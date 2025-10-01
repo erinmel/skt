@@ -134,7 +134,7 @@
         <DataTemplate x:DataType="vm:DocumentViewModel">
           <Grid>
             <!-- Custom Text Editor -->
-            <te:TextEditor Text="{Binding Content, Mode=TwoWay}">
+            <te:TextEditor Text="{Binding Content, Mode=TwoWay}" Focusable="True" IsTabStop="True">
               <i:Interaction.Behaviors>
                 <ia:EventTriggerBehavior EventName="GotFocus">
                   <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"

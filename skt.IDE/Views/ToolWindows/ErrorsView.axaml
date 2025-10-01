@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.ErrorsView"
+             x:DataType="vm:ErrorsViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+    <ItemsControl ItemsSource="{Binding Groups}" HorizontalAlignment="Stretch">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:FileErrorGroup">
+          <Expander Header="{Binding DisplayName}" HorizontalAlignment="Stretch" IsExpanded="True" Margin="0,0,0,4">
+            <ItemsControl ItemsSource="{Binding Errors}" HorizontalAlignment="Stretch">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ErrorItem">
+                  <Button DoubleTapped="OnErrorDoubleTapped"
+                          Tag="{Binding FilePath}"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch"
+                          Padding="2"
+                          Margin="0,0,0,2">
+                    <Grid ColumnDefinitions="70,*" HorizontalAlignment="Stretch">
+                      <TextBlock Grid.Column="0" Text="{Binding StartPos}" FontFamily="Consolas,monospace"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"/>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Expander>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</UserControl>

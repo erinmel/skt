@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Concurrent;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
@@ -12,6 +13,7 @@ using skt.Shared;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
+using Avalonia.Controls.ApplicationLifetimes;
 
 namespace skt.IDE.Views.TextEditor;
 
@@ -33,12 +35,97 @@ public partial class TextEditor : UserControl
     private readonly List<ErrorToken> _currentErrors = new();
     private SemanticColorizer? _colorizer;
 
+    private static readonly ConcurrentDictionary<string, int> PendingCarets = new();
+
+    private static void FocusMainWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var win = desktop.MainWindow;
+            if (win != null)
+            {
+                win.Activate();
+                win.Focus();
+            }
+        }
+    }
+
+    private void EnsureFocusWithRetries(int attempts = 4, int delayMs = 35)
+    {
+        if (_editor == null) return;
+        int remaining = attempts;
+        void TryFocus()
+        {
+            if (_editor == null) return;
+            if (_editor.IsFocused || _editor.TextArea.IsFocused)
+                return;
+            _editor.Focus();
+            _editor.TextArea.Focus();
+            _editor.TextArea.Caret.BringCaretToView();
+            remaining--;
+            if (remaining > 0)
+            {
+                DispatcherTimer.RunOnce(TryFocus, TimeSpan.FromMilliseconds(delayMs));
+            }
+        }
+        // Kick off
+        DispatcherTimer.RunOnce(TryFocus, TimeSpan.FromMilliseconds(delayMs));
+    }
+
+    private void ApplyCaretAndFocus(int caret)
+    {
+        if (_editor == null) return;
+        var docText = _editor.Document?.Text ?? string.Empty;
+        caret = Math.Clamp(caret, 0, docText.Length);
+        _editor.CaretOffset = caret;
+        if (_editor.Document != null)
+        {
+            var loc = _editor.Document.GetLocation(caret);
+            _editor.ScrollTo(loc.Line, loc.Column);
+        }
+        FocusMainWindow();
+        _editor.Focus();
+        _editor.TextArea.Focus();
+        _editor.TextArea.Caret.BringCaretToView();
+        PublishCursor();
+        PublishSelection();
+        EnsureFocusWithRetries();
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_editor.Document != null)
+            {
+                var loc2 = _editor.Document.GetLocation(_editor.CaretOffset);
+                _editor.ScrollTo(loc2.Line, loc2.Column);
+            }
+            _editor.Focus();
+            _editor.TextArea.Focus();
+            _editor.TextArea.Caret.BringCaretToView();
+        }, DispatcherPriority.Input);
+        Dispatcher.UIThread.Post(() =>
+        {
+            _editor.TextArea.Caret.BringCaretToView();
+        }, DispatcherPriority.Render);
+    }
+
     public TextEditor()
     {
         InitializeComponent();
         AttachedToVisualTree += OnAttached;
         DetachedFromVisualTree += OnDetached;
         PropertyChanged += OnTextPropertyChanged;
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (_editor == null) return;
+        if (DataContext is ViewModels.DocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+        {
+            if (PendingCarets.TryRemove(doc.FilePath, out var pendingOffset))
+            {
+                Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(pendingOffset), DispatcherPriority.Background);
+            }
+        }
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -64,6 +151,7 @@ public partial class TextEditor : UserControl
         if (!_isSubscribed)
         {
             App.EventBus.Subscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
+            App.EventBus.Subscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest); // new
             App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
             App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
             _isSubscribed = true;
@@ -75,6 +163,18 @@ public partial class TextEditor : UserControl
             PublishSelection();
             PublishBufferLexical();
         }, DispatcherPriority.Loaded);
+
+        if (DataContext is ViewModels.DocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+        {
+            if (PendingCarets.TryRemove(doc.FilePath, out var pendingOffset))
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    ApplyCaretAndFocus(pendingOffset);
+                    EnsureFocusWithRetries();
+                }, DispatcherPriority.Background);
+            }
+        }
     }
 
     private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
@@ -88,6 +188,7 @@ public partial class TextEditor : UserControl
         if (_isSubscribed)
         {
             App.EventBus.Unsubscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
+            App.EventBus.Unsubscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest); // new
             App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
             App.EventBus.Unsubscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
             _isSubscribed = false;
@@ -96,18 +197,61 @@ public partial class TextEditor : UserControl
 
     private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
     {
-        if (_editor == null) return;
-        if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath)) return;
-        if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
+        if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath))
+        {
+            // No document yet: store pending
+            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, __) => e.CaretIndex);
+            return;
+        }
+        if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            // Different document instance: store for correct file
+            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, __) => e.CaretIndex);
+            return;
+        }
+        if (_editor == null)
+        {
+            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, __) => e.CaretIndex);
+            return;
+        }
         var docText = _editor.Document?.Text ?? string.Empty;
         var caret = Math.Clamp(e.CaretIndex, 0, docText.Length);
         Dispatcher.UIThread.Post(() =>
         {
-            _editor.CaretOffset = caret;
-            _editor.Focus();
-            PublishCursor();
-            PublishSelection();
-        });
+            ApplyCaretAndFocus(caret);
+        }, DispatcherPriority.Background);
+    }
+
+    private void OnSetCaretLineColumnRequest(SetCaretLineColumnRequestEvent e)
+    {
+        if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath))
+        {
+            return; // no pending storage for line/col yet (offset path is used for pending)
+        }
+        if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
+        if (_editor?.Document == null) return;
+        int offset = MapLineColumnToOffset(_editor.Document, e.Line, e.Column);
+        Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(offset), DispatcherPriority.Background);
+    }
+
+    private static int MapLineColumnToOffset(TextDocument doc, int line, int column, int tabWidth = 4)
+    {
+        line = Math.Clamp(line, 1, doc.LineCount);
+        var docLine = doc.GetLineByNumber(line);
+        int lineStart = docLine.Offset;
+        int lineEnd = docLine.EndOffset; // excludes line break
+        int visualCol = 1;
+        for (int i = lineStart; i < lineEnd; i++)
+        {
+            if (visualCol >= column) return i;
+            char ch = doc.GetCharAt(i);
+            if (ch == '\t')
+                visualCol += tabWidth; // matches tokenizer fixed width tab advance
+            else
+                visualCol++;
+        }
+        // If requested column is beyond line content, place at end
+        return lineEnd;
     }
 
     private void OnEditorTextChanged(object? sender, EventArgs e)
