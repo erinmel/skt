@@ -1,28 +1,34 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core;
-using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
+using Avalonia.Svg.Skia;
 using skt.IDE.ViewModels;
 using skt.IDE.Views;
+using skt.IDE.Services;
+using skt.IDE.Services.Buss;
 
 namespace skt.IDE;
 
-public partial class App : Application
+public class App : Application
 {
+    public static IEventBus EventBus { get; private set; } = new EventBus();
+    private CompilerBridge? _compilerBridge; // keep reference
+
     public override void Initialize()
     {
+        // Initialize SVG support
+        GC.KeepAlive(typeof(SvgImageExtension).Assembly);
+        GC.KeepAlive(typeof(Avalonia.Svg.Skia.Svg).Assembly);
+
         AvaloniaXamlLoader.Load(this);
+        _compilerBridge ??= new CompilerBridge(EventBus);
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
-            // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
-            DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),
@@ -30,18 +36,5 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    private void DisableAvaloniaDataAnnotationValidation()
-    {
-        // Get an array of plugins to remove
-        var dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        // remove each entry found
-        foreach (var plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
     }
 }

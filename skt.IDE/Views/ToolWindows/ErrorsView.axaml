@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.ErrorsView"
+             x:DataType="vm:ErrorsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Expander">
+      <Setter Property="Padding" Value="2,0"/>
+      <Setter Property="Margin" Value="0,0,0,1"/>
+    </Style>
+    <Style Selector="Expander:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+    </Style>
+    <Style Selector="Button.error-item">
+      <Setter Property="Padding" Value="2,1"/>
+      <Setter Property="Margin" Value="0,0,0,1"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Button.error-item:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+  </UserControl.Styles>
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+    <ItemsControl ItemsSource="{Binding Groups}" HorizontalAlignment="Stretch">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:FileErrorGroup">
+          <Expander Header="{Binding DisplayName}" HorizontalAlignment="Stretch" IsExpanded="True">
+            <ItemsControl ItemsSource="{Binding Errors}" HorizontalAlignment="Stretch">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ErrorItem">
+                  <Button DoubleTapped="OnErrorDoubleTapped"
+                          Tag="{Binding FilePath}"
+                          Classes="error-item"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Left">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" HorizontalAlignment="Left">
+                      <TextBlock Grid.Column="0" Text="{Binding Message}" TextWrapping="Wrap" TextAlignment="Left"/>
+                      <TextBlock Grid.Column="1" Text="{Binding StartPos}" FontFamily="Consolas,monospace" TextAlignment="Right" MinWidth="70"/>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Expander>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</UserControl>

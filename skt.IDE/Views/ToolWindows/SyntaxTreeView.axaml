@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels"
+             x:Class="skt.IDE.Views.ToolWindows.SyntaxTreeView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <ScrollViewer Name="RootScroll" VerticalScrollBarVisibility="Auto">
+        <TextBlock Text="{Binding SyntaxTreeOutput}"
+                   FontFamily="Consolas,monospace"
+                   Padding="10"
+                   TextWrapping="Wrap"/>
+    </ScrollViewer>
+</UserControl>

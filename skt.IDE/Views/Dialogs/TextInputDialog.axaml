@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="skt.IDE.Views.Dialogs.TextInputDialog"
+        SizeToContent="Height"
+        Width="400"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="Input"
+        SystemDecorations="BorderOnly"
+        Background="{DynamicResource SystemControlBackgroundAltMediumLowBrush}"
+        >
+  <Window.Styles>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,Auto,Auto" Margin="12">
+    <TextBlock x:Name="MessageText" Grid.Row="0" Margin="0,0,0,8" TextWrapping="Wrap"/>
+    <TextBox x:Name="InputBox" Grid.Row="1"/>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button x:Name="OkButton" MinWidth="88" IsDefault="True">OK</Button>
+      <Button x:Name="CancelButton" MinWidth="88" IsCancel="True">Cancel</Button>
+    </StackPanel>
+  </Grid>
+</Window>
+

@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:i="using:Avalonia.Xaml.Interactivity"
+             xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
+             xmlns:vm="using:skt.IDE.ViewModels"
+             xmlns:te="using:skt.IDE.Views.TextEditor"
+             mc:Ignorable="d"
+             d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="skt.IDE.Views.TextEditor.TabbedEditor"
+             x:DataType="vm:TabbedEditorViewModel"
+             Name="TabbedEditorRoot">
+
+  <UserControl.Styles>
+    <!-- Close button styling -->
+    <Style Selector="Button.tab-close">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="4"/>
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="Height" Value="12"/>
+      <Setter Property="Margin" Value="2"/>
+    </Style>
+
+    <Style Selector="Button.tab-close:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ChromeGray}"/>
+    </Style>
+
+    <!-- Tab styling for unselected and selected states -->
+    <Style Selector="TextBlock.tab-title">
+      <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundUnselected}"/>
+    </Style>
+
+    <!-- Selected tab styling only -->
+    <Style Selector="Border.tab-item.selected">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+      <Setter Property="BorderThickness" Value="0,0,0,4"/>
+    </Style>
+
+    <Style Selector="TextBlock.tab-title.selected">
+      <Setter Property="Foreground" Value="{DynamicResource TabItemHeaderForegroundSelected}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="30"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Tab Header with Scrolling -->
+    <Border Grid.Row="0"
+            BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Scrollable Tab Strip -->
+        <ScrollViewer Grid.Column="0"
+                      Name="TabScrollViewer"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Documents}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DocumentViewModel">
+                <Border Name="TabBorder"
+                        Classes="tab-item"
+                        Classes.selected="{Binding IsSelected}"
+                        Background="Transparent"
+                        BorderThickness="0,0,1,0"
+                        MinWidth="120"
+                        MaxWidth="200"
+                        Height="35"
+                        Cursor="Hand">
+
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Tab Title -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Title}"
+                               Classes="tab-title"
+                               Classes.selected="{Binding IsSelected}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               Margin="4,0,2,0"
+                               TextTrimming="CharacterEllipsis"
+                               FontSize="13"/>
+
+                    <!-- Close Button -->
+                    <Button Grid.Column="1"
+                            Name="CloseButton"
+                            Classes="tab-close"
+                            ToolTip.Tip="Close Tab"
+                            Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.CloseTabCommand}"
+                            CommandParameter="{Binding}">
+                        <Image Source="{DynamicResource Icon.Close}" Width="6" Height="6"/>
+                    </Button>
+                  </Grid>
+
+                  <!-- Click handler for tab selection -->
+                  <i:Interaction.Behaviors>
+                    <ia:EventTriggerBehavior EventName="PointerPressed">
+                      <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"
+                                               CommandParameter="{Binding}"/>
+                    </ia:EventTriggerBehavior>
+                  </i:Interaction.Behaviors>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Editor Content Area -->
+    <ContentControl Grid.Row="1"
+                    IsVisible="{Binding HasDocuments}"
+                    Content="{Binding SelectedDocument}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:DocumentViewModel">
+          <Grid>
+            <!-- Custom Text Editor -->
+            <te:TextEditor Text="{Binding Content, Mode=TwoWay}" Focusable="True" IsTabStop="True">
+              <i:Interaction.Behaviors>
+                <ia:EventTriggerBehavior EventName="GotFocus">
+                  <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"
+                                           CommandParameter="{Binding}"/>
+                </ia:EventTriggerBehavior>
+                <ia:EventTriggerBehavior EventName="PointerPressed">
+                  <ia:InvokeCommandAction Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.SelectTabCommand}"
+                                           CommandParameter="{Binding}"/>
+                </ia:EventTriggerBehavior>
+              </i:Interaction.Behaviors>
+            </te:TextEditor>
+          </Grid>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+  </Grid>
+</UserControl>

@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.TokensView"
+             x:DataType="vm:TokensViewModel">
+  <Design.DataContext>
+    <vm:TokensViewModel/>
+  </Design.DataContext>
+  <UserControl.Styles>
+    <Style Selector="">
+
+    </Style>
+  </UserControl.Styles>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="4">
+      <TextBlock Text="Tokens:" FontWeight="Bold" Margin="20,0,0,0"/>
+      <TextBlock Text="{Binding TokenCount}"/>
+      <TextBlock Text="Errors:" FontWeight="Bold" Margin="20,0,0,0"/>
+      <TextBlock Text="{Binding ErrorCount}"/>
+    </StackPanel>
+    <TreeDataGrid Grid.Row="1" Source="{Binding Source}" CanUserSortColumns="True"/>
+  </Grid>
+</UserControl>

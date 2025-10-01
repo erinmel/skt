@@ -55,19 +55,45 @@ public class LexicalAnalyzer
 
     private void Advance()
     {
-        if (!AtEnd())
+        if (AtEnd()) return;
+        char ch = _code[_position];
+
+        // Normalize Windows CRLF to a single newline movement
+        if (ch == '\r')
         {
-            if (CurrentChar() == '\n')
+            if (_position + 1 < _codeLength && _code[_position + 1] == '\n')
             {
-                _line++;
-                _column = 1;
+                _position += 2;
             }
             else
             {
-                _column++;
+                _position++;
             }
-            _position++;
+            _line++;
+            _column = 1;
+            return;
         }
+
+        if (ch == '\n')
+        {
+            _position++;
+            _line++;
+            _column = 1;
+            return;
+        }
+
+        if (ch == '\t')
+        {
+            _position++;
+            int tabWidth = 4;
+            int zeroBased = _column - 1;
+            int nextStop = ((zeroBased / tabWidth) + 1) * tabWidth;
+            _column = nextStop + 1;
+            return;
+        }
+
+        _position++;
+        _column++;
     }
 
     private void HandleWhitespace()
@@ -284,24 +310,14 @@ public class LexicalAnalyzer
 
     public (List<Token> tokens, List<ErrorToken> errors) TokenizeToFile(string code, string filePath)
     {
+        // Deterministic output: hash of full path, overwrite each run, exclude comments
         var (tokens, errors) = Tokenize(code);
-        
-        // Exclude comments from the output file
         var filteredTokens = tokens.Where(t => t.Type != TokenType.Comment).ToList();
-
-        // Create better filename with timestamp to avoid collisions
-        string fileName = CreateUniqueFileName(filePath) + ".sktt";
-
-        // Create output directory if it doesn't exist - ensure it's fully created
-        string outputDir = "lexical_output";
+        string outputDir = Path.Combine(Path.GetTempPath(), "skt/lexical");
         EnsureDirectoryExists(outputDir);
-
-        string outputPath = Path.Combine(outputDir, fileName);
-        
-        // Use custom binary serialization for maximum performance
+        string hashFileName = ComputePathHash(filePath) + ".sktt";
+        string outputPath = Path.Combine(outputDir, hashFileName);
         WriteBinaryTokens(outputPath, filteredTokens);
-
-        Console.WriteLine($"Tokens written to: {outputPath}");
         return (tokens, errors);
     }
 
@@ -328,24 +344,11 @@ public class LexicalAnalyzer
         }
     }
 
-    private static string CreateUniqueFileName(string filePath)
+    private static string ComputePathHash(string filePath)
     {
-        // Combine file path hash + timestamp for uniqueness
         using var sha256 = SHA256.Create();
         byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(filePath));
-        string hashHex = Convert.ToHexString(hash).ToLower(); // Useful 64 chars for collision resistance
-        // Ensure the directory exists before trying to create the file
-        string? directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-
-        // Add timestamp for collision avoidance
-        string timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
-
-        return $"{hashHex}_{timestamp}";
+        return Convert.ToHexString(hash).ToLower();
     }
 
     private static void WriteBinaryTokens(string filePath, List<Token> tokens)

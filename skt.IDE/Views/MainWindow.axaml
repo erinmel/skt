@@ -1,20 +1,119 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:skt.IDE.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:texteditorviews="using:skt.IDE.Views.TextEditor"
+        xmlns:toolviews="using:skt.IDE.Views.ToolWindows"
         x:Class="skt.IDE.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="skt.IDE">
+        Icon="avares://skt.IDE/Assets/SKT.ico"
+        Title="SKT IDE"
+        Width="1200"
+        Height="800"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
+        >
+
+    <Window.Styles>
+        <Style Selector="DropDownButton PathIcon">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </Window.Styles>
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <!-- Toolbar (this includes your custom window controls) -->
+            <RowDefinition Height="40"/>
+            <!-- Main content area -->
+            <RowDefinition Height="7*"/>
+            <!-- Terminal/Errors -->
+            <RowDefinition Height="0*" MinHeight="0"/>
+            <!-- Status bar -->
+            <RowDefinition Height="25"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <!-- Text Editor -->
+            <ColumnDefinition Width="5*"/>
+            <!-- Tools (File Explorer) -->
+            <ColumnDefinition Width="3*"/>
+            <!-- Tool Window (Very narrow, fixed width) -->
+            <ColumnDefinition Width="45" MinWidth="45" MaxWidth="45"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Custom Toolbar with Window Controls -->
+        <toolviews:Toolbar Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Name="MainToolbar" />
+
+        <!-- Main Content Area -->
+        <Border Grid.Row="1" Grid.Column="0" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="0">
+                    <texteditorviews:TabbedEditor Name="TabbedEditorControl" DataContext="{Binding TabbedEditorViewModel}"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Tools/Tool Window Content (Dynamic content based on selected tool) -->
+        <Border Grid.Row="1" Grid.Column="1" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="5" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding SelectedToolWindowTitle}" FontWeight="Bold"/>
+                </Border>
+
+                <!-- Dynamic content based on selected tool window -->
+                <Grid Grid.Row="1">
+                    <!-- File Explorer (default) -->
+                    <toolviews:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
+
+                    <!-- Tokens View -->
+                    <toolviews:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
+
+                    <!-- Syntax Tree View -->
+                    <toolviews:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding}"/>
+
+                    <!-- Phase Output View -->
+                    <toolviews:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Tool Window (Toggle Buttons) -->
+        <toolviews:ToolWindowStrip Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Name="ToolWindowStripControl" />
+
+        <!-- Terminal/Errors extracted to its own control -->
+        <toolviews:TerminalPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Name="TerminalPanelControl" />
+
+        <!-- Status Bar -->
+        <toolviews:StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"/>
+
+        <!-- Splitters -->
+        <GridSplitter Grid.Row="1" Grid.Column="1"
+                     Width="2"
+                     HorizontalAlignment="Left"
+                     ResizeDirection="Columns"
+                     Margin="0"
+                     Padding="0"/>
+
+        <!-- Horizontal splitter between main area and terminal -->
+        <GridSplitter Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                     Height="2"
+                     VerticalAlignment="Top"
+                     ResizeDirection="Rows"
+                     Margin="0"
+                     Padding="0"/>
+    </Grid>
 </Window>

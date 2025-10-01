@@ -1,6 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.ViewModels;
 
 namespace skt.IDE;
@@ -13,7 +14,10 @@ public class ViewLocator : IDataTemplate
         if (param is null)
             return null;
         
-        var name = param.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
+        var vmType = param.GetType();
+        var name = vmType.FullName!
+            .Replace(".ViewModels.", ".Views.", StringComparison.Ordinal)
+            .Replace("ViewModel", "View", StringComparison.Ordinal);
         var type = Type.GetType(name);
 
         if (type != null)
@@ -26,6 +30,6 @@ public class ViewLocator : IDataTemplate
 
     public bool Match(object? data)
     {
-        return data is ViewModelBase;
+        return data is ObservableObject;
     }
 }
