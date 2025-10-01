@@ -116,7 +116,14 @@ public partial class Toolbar : UserControl
 
     private async void NewProjectButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        await CreateNewProjectAsync();
+        try
+        {
+            await CreateNewProjectAsync();
+        }
+        catch (Exception e)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error handling NewProjectButton_Click: {e}");
+        }
     }
 
     private async Task CreateNewProjectAsync()
@@ -148,7 +155,7 @@ public partial class Toolbar : UserControl
                 Directory.CreateDirectory(finalPath);
                 var mainFilePath = Path.Combine(finalPath, "main.skt");
                 var template = "main {\n\n}\n";
-                File.WriteAllText(mainFilePath, template);
+                await File.WriteAllTextAsync(mainFilePath, template);
                 App.EventBus.Publish(new FileCreatedEvent(mainFilePath));
 
                 // Open project
@@ -163,7 +170,7 @@ public partial class Toolbar : UserControl
                     {
                         App.EventBus.Publish(new SetCaretPositionRequestEvent(mainFilePath, caretIndex));
                     }
-                }, Avalonia.Threading.DispatcherPriority.Background);
+                }, DispatcherPriority.Background);
 
                 App.EventBus.Publish(new StatusBarMessageEvent($"Created project: {projectName}", 3000));
             }
@@ -207,7 +214,7 @@ public partial class Toolbar : UserControl
                     App.EventBus.Publish(new ProjectFolderSelectedEvent(folderPath));
 
                     // Publish a status update for the status bar
-                    App.EventBus.Publish(new StatusBarMessageEvent($"Project folder selected: {System.IO.Path.GetFileName(folderPath)}", 3000));
+                    App.EventBus.Publish(new StatusBarMessageEvent($"Project folder selected: {Path.GetFileName(folderPath)}", 3000));
                 }
             }
             catch (Exception ex)
@@ -224,7 +231,6 @@ public partial class Toolbar : UserControl
 
     private void NewFileButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        // Publish a request for creating a new file; FileExplorerViewModel listens for this event
         App.EventBus.Publish(new CreateFileRequestEvent());
     }
 

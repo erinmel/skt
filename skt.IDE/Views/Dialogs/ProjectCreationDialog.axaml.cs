@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -136,7 +135,6 @@ public partial class ProjectCreationDialog : Window
         try
         {
             var top = this as Window;
-            if (top == null) return;
             var result = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = "Select Base Folder",
@@ -147,7 +145,10 @@ public partial class ProjectCreationDialog : Window
                 _basePathTextBox!.Text = result[0].Path.LocalPath;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
     }
 
     private void TryCloseWithResult()

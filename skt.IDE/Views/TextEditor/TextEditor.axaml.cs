@@ -82,21 +82,17 @@ namespace skt.IDE.Views.TextEditor
         private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
         {
             if (_mainEditor == null) return;
-            // Match by file path through DataContext if possible
-            if (DataContext is ViewModels.DocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+            if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath)) return;
+            if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
+
+            var length = _mainEditor.Text?.Length ?? 0;
+            var caret = Math.Clamp(e.CaretIndex, 0, length);
+            Dispatcher.UIThread.Post(() =>
             {
-                if (string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    var length = _mainEditor.Text?.Length ?? 0;
-                    var caret = Math.Clamp(e.CaretIndex, 0, length);
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        _mainEditor.CaretIndex = caret;
-                        _mainEditor.Focus();
-                        PublishCursorAndSelection();
-                    });
-                }
-            }
+                _mainEditor.CaretIndex = caret;
+                _mainEditor.Focus();
+                PublishCursorAndSelection();
+            });
         }
 
         private void SetupScrollSynchronization()
