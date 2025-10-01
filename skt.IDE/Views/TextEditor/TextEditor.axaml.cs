@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Collections.Concurrent;
 using Avalonia;
 using Avalonia.Controls;
@@ -81,7 +80,10 @@ public partial class TextEditor : UserControl
         if (_editor.Document != null)
         {
             var loc = _editor.Document.GetLocation(caret);
-            _editor.ScrollTo(loc.Line, loc.Column);
+            // Scroll with a small vertical margin so the caret isn't placed at the very top or bottom.
+            const int verticalMarginLines = 3;
+            int scrollLine = Math.Clamp(loc.Line - verticalMarginLines, 1, _editor.Document.LineCount);
+            _editor.ScrollTo(scrollLine, loc.Column);
         }
         FocusMainWindow();
         _editor.Focus();
@@ -95,7 +97,8 @@ public partial class TextEditor : UserControl
             if (_editor.Document != null)
             {
                 var loc2 = _editor.Document.GetLocation(_editor.CaretOffset);
-                _editor.ScrollTo(loc2.Line, loc2.Column);
+                int scrollLine2 = Math.Clamp(loc2.Line - 2, 1, _editor.Document.LineCount);
+                _editor.ScrollTo(scrollLine2, loc2.Column);
             }
             _editor.Focus();
             _editor.TextArea.Focus();
@@ -119,13 +122,10 @@ public partial class TextEditor : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_editor == null) return;
-        if (DataContext is ViewModels.DocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
-        {
-            if (PendingCarets.TryRemove(doc.FilePath, out var pendingOffset))
-            {
-                Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(pendingOffset), DispatcherPriority.Background);
-            }
-        }
+        if (!(DataContext is ViewModels.DocumentViewModel doc) ||
+            string.IsNullOrEmpty(doc.FilePath) ||
+            !PendingCarets.TryRemove(doc.FilePath, out var pendingOffset)) return;
+        Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(pendingOffset), DispatcherPriority.Background);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -151,7 +151,7 @@ public partial class TextEditor : UserControl
         if (!_isSubscribed)
         {
             App.EventBus.Subscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
-            App.EventBus.Subscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest); // new
+            App.EventBus.Subscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest);
             App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
             App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
             _isSubscribed = true;
@@ -164,17 +164,14 @@ public partial class TextEditor : UserControl
             PublishBufferLexical();
         }, DispatcherPriority.Loaded);
 
-        if (DataContext is ViewModels.DocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+        if (DataContext is not ViewModels.DocumentViewModel doc ||
+            string.IsNullOrEmpty(doc.FilePath) ||
+            !PendingCarets.TryRemove(doc.FilePath, out var pendingOffset)) return;
+        Dispatcher.UIThread.Post(() =>
         {
-            if (PendingCarets.TryRemove(doc.FilePath, out var pendingOffset))
-            {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    ApplyCaretAndFocus(pendingOffset);
-                    EnsureFocusWithRetries();
-                }, DispatcherPriority.Background);
-            }
-        }
+            ApplyCaretAndFocus(pendingOffset);
+            EnsureFocusWithRetries();
+        }, DispatcherPriority.Background);
     }
 
     private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
@@ -188,7 +185,7 @@ public partial class TextEditor : UserControl
         if (_isSubscribed)
         {
             App.EventBus.Unsubscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
-            App.EventBus.Unsubscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest); // new
+            App.EventBus.Unsubscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest);
             App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
             App.EventBus.Unsubscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
             _isSubscribed = false;
@@ -199,19 +196,18 @@ public partial class TextEditor : UserControl
     {
         if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath))
         {
-            // No document yet: store pending
-            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, __) => e.CaretIndex);
+            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, _) => e.CaretIndex);
             return;
         }
         if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
         {
             // Different document instance: store for correct file
-            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, __) => e.CaretIndex);
+            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, _) => e.CaretIndex);
             return;
         }
         if (_editor == null)
         {
-            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, __) => e.CaretIndex);
+            PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, _) => e.CaretIndex);
             return;
         }
         var docText = _editor.Document?.Text ?? string.Empty;
@@ -303,14 +299,15 @@ public partial class TextEditor : UserControl
     private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
     {
         if (_editor == null || _colorizer == null) return;
-        if (DataContext is ViewModels.DocumentViewModel doc)
-        {
-            if (!string.Equals(doc.FilePath ?? string.Empty, e.FilePath ?? string.Empty, StringComparison.OrdinalIgnoreCase) && !e.FromBuffer) return;
-        }
+        if (DataContext is ViewModels.DocumentViewModel doc &&
+            !string.Equals(doc.FilePath ?? string.Empty, e.FilePath ?? string.Empty, StringComparison.OrdinalIgnoreCase) &&
+            !e.FromBuffer) return;
+
         _currentTokens.Clear();
         _currentTokens.AddRange(e.Tokens);
         _currentErrors.Clear();
         _currentErrors.AddRange(e.Errors);
+
         bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
         _colorizer.Update(_currentTokens, _currentErrors, isDark);
         _editor.TextArea.TextView.Redraw();
@@ -318,6 +315,17 @@ public partial class TextEditor : UserControl
 
     private void OnLexicalFailed(LexicalAnalysisFailedEvent e)
     {
+        if (_editor == null || _colorizer == null) return;
+        if (DataContext is ViewModels.DocumentViewModel doc &&
+            !string.Equals(doc.FilePath ?? string.Empty, e.FilePath ?? string.Empty, StringComparison.OrdinalIgnoreCase) &&
+            !e.FromBuffer) return;
+
+        _currentTokens.Clear();
+        _currentErrors.Clear();
+
+        bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
+        _colorizer.Update(_currentTokens, _currentErrors, isDark);
+        _editor.TextArea.TextView.Redraw();
     }
 
     private void PublishCursor()
@@ -359,12 +367,27 @@ public partial class TextEditor : UserControl
         return count;
     }
 
-    private class SemanticColorizer : DocumentColorizingTransformer, IBackgroundRenderer
+    public class SemanticColorizer : DocumentColorizingTransformer, IBackgroundRenderer
     {
-        private readonly List<Token> _tokens = new();
-        private readonly List<ErrorToken> _errors = new();
         private bool _isDark;
-        // Fallback colors if resource lookup fails
+        private readonly Dictionary<int, List<SpanPart>> _tokenPartsByLine = new();
+        private readonly Dictionary<int, List<SpanPart>> _errorPartsByLine = new();
+        private readonly List<int> _sortedErrorLines = new();
+        private Pen? _errorPen;
+
+        private readonly struct SpanPart
+        {
+            public readonly int StartColumn; // 1-based inclusive
+            public readonly int EndColumnExclusive; // exclusive, int.MaxValue means to end of line
+            public readonly TokenType Type;
+            public SpanPart(int start, int endExclusive, TokenType type)
+            {
+                StartColumn = start;
+                EndColumnExclusive = endExclusive;
+                Type = type;
+            }
+        }
+
         private static readonly Dictionary<TokenType, (Color dark, Color light)> Fallback = new()
         {
             { TokenType.Integer, (Color.FromRgb(0x4F,0xC1,0xFF), Color.FromRgb(0x00,0x55,0x99)) },
@@ -385,34 +408,53 @@ public partial class TextEditor : UserControl
 
         public void Update(IEnumerable<Token> tokens, IEnumerable<ErrorToken> errors, bool isDark)
         {
-            _tokens.Clear();
-            _tokens.AddRange(tokens);
-            _errors.Clear();
-            _errors.AddRange(errors);
             _isDark = isDark;
+            _tokenPartsByLine.Clear();
+            _errorPartsByLine.Clear();
+            foreach (var t in tokens)
+                ExplodeMultiLine(t.Line, t.EndLine, t.Column, t.EndColumn, t.Type, _tokenPartsByLine);
+            foreach (var e in errors)
+                ExplodeMultiLine(e.Line, e.EndLine, e.Column, e.EndColumn, TokenType.Error, _errorPartsByLine);
+            _sortedErrorLines.Clear();
+            _sortedErrorLines.AddRange(_errorPartsByLine.Keys);
+            _sortedErrorLines.Sort();
+            _errorPen = null; // theme or content may have changed
+        }
+
+        private static void ExplodeMultiLine(int startLine, int endLine, int startCol, int endCol, TokenType type, Dictionary<int, List<SpanPart>> target)
+        {
+            if (endLine < startLine) return;
+            for (int line = startLine; line <= endLine; line++)
+            {
+                int sc = line == startLine ? startCol : 1;
+                int ec = line == endLine ? endCol : int.MaxValue;
+                AddSpan(target, line, new SpanPart(sc, ec, type));
+            }
+        }
+
+        private static void AddSpan(Dictionary<int, List<SpanPart>> map, int line, SpanPart part)
+        {
+            if (!map.TryGetValue(line, out var list))
+            {
+                list = new List<SpanPart>();
+                map[line] = list;
+            }
+            list.Add(part);
         }
 
         protected override void ColorizeLine(DocumentLine line)
         {
             if (line.IsDeleted) return;
-            int lineNumber = line.LineNumber;
-            foreach (var t in _tokens)
-            {
-                if (t.EndLine < lineNumber || t.Line > lineNumber) continue;
-                int startCol = (t.Line == lineNumber) ? t.Column : 1;
-                int endColExclusive = (t.EndLine == lineNumber) ? t.EndColumn : int.MaxValue;
-                ApplySpan(line, startCol, endColExclusive, t.Type, false);
-            }
-            foreach (var e in _errors)
-            {
-                if (e.EndLine < lineNumber || e.Line > lineNumber) continue;
-                int startCol = (e.Line == lineNumber) ? e.Column : 1;
-                int endColExclusive = (e.EndLine == lineNumber) ? e.EndColumn : int.MaxValue;
-                ApplySpan(line, startCol, endColExclusive, TokenType.Error, true);
-            }
+            int n = line.LineNumber;
+            if (_tokenPartsByLine.TryGetValue(n, out var tokenParts))
+                foreach (var p in tokenParts)
+                    ApplySpan(line, p.StartColumn, p.EndColumnExclusive, p.Type);
+            if (_errorPartsByLine.TryGetValue(n, out var errorParts))
+                foreach (var p in errorParts)
+                    ApplySpan(line, p.StartColumn, p.EndColumnExclusive, p.Type);
         }
 
-        private void ApplySpan(DocumentLine line, int startCol, int endColExclusive, TokenType type, bool error)
+        private void ApplySpan(DocumentLine line, int startCol, int endColExclusive, TokenType type)
         {
             if (startCol <= 0) startCol = 1;
             if (endColExclusive <= startCol) return;
@@ -426,7 +468,7 @@ public partial class TextEditor : UserControl
             spanEndOffset = Math.Clamp(spanEndOffset, spanStartOffset, lineEndOffset);
             if (spanEndOffset <= spanStartOffset) return;
             var brush = GetBrush(type);
-            ChangeLinePart(spanStartOffset, spanEndOffset, el => { el.TextRunProperties.SetForegroundBrush(brush); });
+            ChangeLinePart(spanStartOffset, spanEndOffset, el => el.TextRunProperties.SetForegroundBrush(brush));
         }
 
         private IBrush GetBrush(TokenType type)
@@ -457,49 +499,78 @@ public partial class TextEditor : UserControl
             return _isDark ? Brushes.White : Brushes.Black;
         }
 
-        public KnownLayer Layer => KnownLayer.Selection; // draw over selection for underline
+        public KnownLayer Layer => KnownLayer.Selection;
 
         public void Draw(TextView textView, DrawingContext drawingContext)
         {
-            if (_errors.Count == 0) return;
+            if (_sortedErrorLines.Count == 0) return;
             var doc = textView.Document;
-            if (doc == null) return;
-            foreach (var e in _errors)
+            var visualLines = textView.VisualLines;
+            if (doc == null || visualLines == null || visualLines.Count == 0) return;
+            int first = visualLines[0].FirstDocumentLine.LineNumber;
+            int last = visualLines[^1].LastDocumentLine.LineNumber;
+            _errorPen ??= new Pen(GetBrush(TokenType.Error));
+            foreach (var lineNum in GetVisibleErrorLines(first, last))
+                DrawErrorWavesForLine(textView, drawingContext, doc, lineNum, _errorPen);
+        }
+
+        private IEnumerable<int> GetVisibleErrorLines(int first, int last)
+        {
+            if (_sortedErrorLines.Count == 0) yield break;
+            int lo = 0, hi = _sortedErrorLines.Count - 1;
+            while (lo <= hi)
             {
-                for (int line = e.Line; line <= e.EndLine; line++)
+                int mid = (lo + hi) / 2;
+                if (_sortedErrorLines[mid] < first) lo = mid + 1; else hi = mid - 1;
+            }
+            for (int i = lo; i < _sortedErrorLines.Count; i++)
+            {
+                int line = _sortedErrorLines[i];
+                if (line > last) yield break;
+                yield return line;
+            }
+        }
+
+        private void DrawErrorWavesForLine(TextView textView, DrawingContext ctx, TextDocument doc, int lineNum, Pen pen)
+        {
+            if (!_errorPartsByLine.TryGetValue(lineNum, out var parts) || parts.Count == 0) return;
+            if (lineNum < 1 || lineNum > doc.LineCount) return;
+            var docLine = doc.GetLineByNumber(lineNum);
+            int lineContentColumns = (docLine.EndOffset - docLine.Offset) + 1;
+            for (int i = 0; i < parts.Count; i++)
+            {
+                var p = parts[i];
+                int startCol = p.StartColumn > 0 ? p.StartColumn : 1;
+                int endCol = p.EndColumnExclusive == int.MaxValue ? lineContentColumns : p.EndColumnExclusive;
+                if (endCol <= startCol) continue;
+                int startOffset = docLine.Offset + startCol - 1;
+                int endOffset = docLine.Offset + endCol - 1;
+                DrawWave(textView, ctx, doc, startOffset, endOffset, pen);
+            }
+        }
+
+        private static void DrawWave(TextView view, DrawingContext ctx, TextDocument doc, int startOffset, int endOffset, Pen pen)
+        {
+            var start = view.GetVisualPosition(new TextViewPosition(doc.GetLocation(startOffset)), VisualYPosition.TextBottom);
+            var end = view.GetVisualPosition(new TextViewPosition(doc.GetLocation(endOffset)), VisualYPosition.TextBottom);
+            if (double.IsNaN(start.X) || double.IsNaN(end.X)) return;
+            double y = start.Y - 1;
+            double x = start.X;
+            double xEnd = end.X;
+            const double step = 4;
+            bool up = true;
+            var geo = new StreamGeometry();
+            using (var g = geo.Open())
+            {
+                g.BeginFigure(new Point(x, y), false);
+                while (x < xEnd)
                 {
-                    var docLine = doc.GetLineByNumber(Math.Clamp(line, 1, doc.LineCount));
-                    int startCol = (line == e.Line) ? e.Column : 1;
-                    int endCol = (line == e.EndLine) ? e.EndColumn : (docLine.EndOffset - docLine.Offset) + 1;
-                    if (startCol <= 0) startCol = 1;
-                    if (endCol <= startCol) continue;
-                    int startOffset = docLine.Offset + startCol - 1;
-                    int endOffset = docLine.Offset + endCol - 1;
-                    var geoBuilder = new BackgroundGeometryBuilder { AlignToWholePixels = true, CornerRadius = 0 }; // not used for wave, but keep
-                    var start = textView.GetVisualPosition(new TextViewPosition(doc.GetLocation(startOffset)), VisualYPosition.TextBottom);
-                    var end = textView.GetVisualPosition(new TextViewPosition(doc.GetLocation(endOffset)), VisualYPosition.TextBottom);
-                    if (double.IsNaN(start.X) || double.IsNaN(end.X)) continue;
-                    double y = start.Y - 1;
-                    double x = start.X;
-                    double xEnd = end.X;
-                    var brush = GetBrush(TokenType.Error);
-                    var pen = new Pen(brush, 1);
-                    bool up = true;
-                    double step = 4;
-                    var geo = new StreamGeometry();
-                    using (var ctx = geo.Open())
-                    {
-                        ctx.BeginFigure(new Avalonia.Point(x, y), false);
-                        while (x < xEnd)
-                        {
-                            x += step / 2;
-                            ctx.LineTo(new Avalonia.Point(x, y + (up ? -2 : 0)));
-                            up = !up;
-                        }
-                    }
-                    drawingContext.DrawGeometry(null, pen, geo);
+                    x += step / 2;
+                    g.LineTo(new Point(x, y + (up ? -2 : 0)));
+                    up = !up;
                 }
             }
+            ctx.DrawGeometry(null, pen, geo);
         }
     }
 }
