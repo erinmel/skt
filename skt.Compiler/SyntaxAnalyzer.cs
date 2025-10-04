@@ -34,6 +34,8 @@ public class SyntaxAnalyzer
     private int _recursionDepth;
     private const int MaxRecursionDepth = 8192;
 
+    private readonly CstToAstConverter _cstToAstConverter;
+
     public SyntaxAnalyzer()
     {
         _grammar = DefineGrammar();
@@ -47,6 +49,7 @@ public class SyntaxAnalyzer
         _tokens = new List<Token>();
         _position = 0;
         _recursionDepth = 0;
+        _cstToAstConverter = new CstToAstConverter();
 
         BuildParser();
     }
@@ -344,13 +347,16 @@ public class SyntaxAnalyzer
             _errors.Clear();
             _errorPositions.Clear();
 
-            var ast = ParseNonTerminal("prog");
+            var cst = ParseNonTerminal("prog");
 
-            if (ast != null && !AtEnd)
+            if (cst != null && !AtEnd)
             {
                 int remaining = _tokens.Count - _position;
                 AddError($"Tokens extra después del final ({remaining} tokens restantes)");
             }
+
+            // Convert CST to AST
+            var ast = _cstToAstConverter.Convert(cst);
 
             return (ast, _errors);
         }
@@ -370,14 +376,21 @@ public class SyntaxAnalyzer
 
     private static string? FindTokenFile(string hashPrefix)
     {
-        string outputDir = "lexical_output";
+        string outputDir = Path.Combine(Path.GetTempPath(), "skt/lexical");
         if (!Directory.Exists(outputDir))
         {
             return null;
         }
 
-        // Find files with the same hash prefix
-        var matchingFiles = Directory.GetFiles(outputDir, $"{hashPrefix}_*.sktt");
+        // Try exact match first (no suffix pattern)
+        string exactFile = Path.Combine(outputDir, $"{hashPrefix}.sktt");
+        if (File.Exists(exactFile))
+        {
+            return exactFile;
+        }
+
+        // Fallback: Find files with the same hash prefix for compatibility
+        var matchingFiles = Directory.GetFiles(outputDir, $"{hashPrefix}*.sktt");
 
         if (matchingFiles.Length == 0)
         {

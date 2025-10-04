@@ -43,8 +43,7 @@ public class SyntaxAnalyzerUnitTest
             // Assert
             Assert.NotNull(ast);
             Assert.Empty(errors);
-            Assert.Equal("prog", ast.Rule);
-            Assert.Equal(4, ast.Children.Count); // main, {, block, }
+            Assert.Equal("program", ast.Rule); // Changed from "prog" to "program" (AST root)
         }
         finally
         {
@@ -67,7 +66,7 @@ public class SyntaxAnalyzerUnitTest
             // Assert
             Assert.NotNull(ast);
             Assert.Empty(errors);
-            Assert.Equal("prog", ast.Rule);
+            Assert.Equal("program", ast.Rule); // Changed from "prog" to "program" (AST root)
         }
         finally
         {
@@ -95,15 +94,14 @@ public class SyntaxAnalyzerUnitTest
             Assert.NotNull(ast);
             Assert.Empty(errors);
 
-            // Find the variable declaration in the AST
-            var blockNode = ast.Children.FirstOrDefault(c => c.Rule == "block");
-            Assert.NotNull(blockNode);
+            // Find the variable declaration in the AST (now it's simplified)
+            // In the AST, declarations are direct children of program with type as root
+            var declNode = ast.Children.FirstOrDefault(c => c.Rule == "int");
+            Assert.NotNull(declNode);
 
-            var elemNode = blockNode.Children.FirstOrDefault(c => c.Rule == "elem");
-            Assert.NotNull(elemNode);
-
-            var vdeclNode = elemNode.Children.FirstOrDefault(c => c.Rule == "vdecl");
-            Assert.NotNull(vdeclNode);
+            // The identifier should be a child of the type node
+            var idNode = declNode?.Children.FirstOrDefault(c => c.Rule == "ID");
+            Assert.NotNull(idNode);
         }
         finally
         {
@@ -653,7 +651,7 @@ public class SyntaxAnalyzerUnitTest
             // Assert
             Assert.NotNull(ast);
             Assert.Empty(errors);
-            Assert.Equal("prog", ast.Rule);
+            Assert.Equal("program", ast.Rule); // Changed from "prog" to "program" (AST root)
         }
         finally
         {
@@ -908,20 +906,30 @@ public class SyntaxAnalyzerUnitTest
         // Use reflection to get properties since we don't know the exact AST node type
         var nodeType = node.GetType();
         var ruleProperty = nodeType.GetProperty("Rule");
-        var valueProperty = nodeType.GetProperty("Value");
+        var tokenProperty = nodeType.GetProperty("Token");
         var childrenProperty = nodeType.GetProperty("Children");
 
         string rule = ruleProperty?.GetValue(node)?.ToString() ?? "Unknown";
-        string? value = valueProperty?.GetValue(node)?.ToString();
+        var token = tokenProperty?.GetValue(node);
 
-        if (!string.IsNullOrEmpty(value))
+        // Build the node description
+        string nodeDescription = rule;
+
+        if (token != null)
         {
-            Console.WriteLine($"{indent}{rule}: \"{value}\"");
+            // Extract token information
+            var tokenType = token.GetType();
+            var tokenTypeProperty = tokenType.GetProperty("Type");
+            var tokenValueProperty = tokenType.GetProperty("Value");
+
+            var tokenTypeValue = tokenTypeProperty?.GetValue(token)?.ToString() ?? "Unknown";
+            var lexeme = tokenValueProperty?.GetValue(token)?.ToString() ?? "";
+
+            // Format: rule [TokenType: "lexeme"]
+            nodeDescription = $"{rule} [{tokenTypeValue}: \"{lexeme}\"]";
         }
-        else
-        {
-            Console.WriteLine($"{indent}{rule}");
-        }
+
+        Console.WriteLine($"{indent}{nodeDescription}");
 
         // Print children if they exist
         var children = childrenProperty?.GetValue(node);
