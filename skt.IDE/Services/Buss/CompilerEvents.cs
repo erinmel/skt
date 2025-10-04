@@ -57,3 +57,39 @@ public class LexicalAnalysisFailedEvent
         FromBuffer = fromBuffer;
     }
 }
+
+public class ParseFileRequestEvent
+{
+    public string FilePath { get; }
+
+    public ParseFileRequestEvent(string filePath)
+    {
+        FilePath = filePath;
+    }
+}
+
+public class SyntaxAnalysisCompletedEvent
+{
+    public string FilePath { get; }
+    public AstNode? Ast { get; }
+    public List<ParseError> Errors { get; }
+
+    public SyntaxAnalysisCompletedEvent(string filePath, AstNode? ast, List<ParseError> errors)
+    {
+        FilePath = filePath;
+        Ast = ast;
+        Errors = errors;
+    }
+}
+
+public class SyntaxAnalysisFailedEvent
+{
+    public string FilePath { get; }
+    public string Message { get; }
+
+    public SyntaxAnalysisFailedEvent(string filePath, string message)
+    {
+        FilePath = filePath;
+        Message = message;
+    }
+}

@@ -72,6 +72,9 @@ public partial class MainWindowViewModel : ObservableObject
     // Errors view model (lexical/syntax/other grouped errors)
     public ErrorsViewModel Errors { get; } = new();
 
+    // Syntax Tree view model
+    public SyntaxTreeViewModel SyntaxTree { get; } = new();
+
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
 

@@ -83,7 +83,7 @@
                     <toolviews:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
 
                     <!-- Syntax Tree View -->
-                    <toolviews:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding}"/>
+                    <toolviews:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding SyntaxTree}"/>
 
                     <!-- Phase Output View -->
                     <toolviews:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
