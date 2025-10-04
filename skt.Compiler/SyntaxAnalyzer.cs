@@ -370,14 +370,21 @@ public class SyntaxAnalyzer
 
     private static string? FindTokenFile(string hashPrefix)
     {
-        string outputDir = "lexical_output";
+        string outputDir = Path.Combine(Path.GetTempPath(), "skt/lexical");
         if (!Directory.Exists(outputDir))
         {
             return null;
         }
 
-        // Find files with the same hash prefix
-        var matchingFiles = Directory.GetFiles(outputDir, $"{hashPrefix}_*.sktt");
+        // Try exact match first (no suffix pattern)
+        string exactFile = Path.Combine(outputDir, $"{hashPrefix}.sktt");
+        if (File.Exists(exactFile))
+        {
+            return exactFile;
+        }
+
+        // Fallback: Find files with the same hash prefix for compatibility
+        var matchingFiles = Directory.GetFiles(outputDir, $"{hashPrefix}*.sktt");
 
         if (matchingFiles.Length == 0)
         {
