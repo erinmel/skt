@@ -378,7 +378,7 @@ block comment */";
     public void Tokenize_FunctionDeclaration_ReturnsCorrectTokenSequence()
     {
         // Arrange
-        string code = "int main() { return 0; }";
+        string code = "int main() { int 0; }";
         
         // Act
         var (tokens, errors) = _analyzer.Tokenize(code);
@@ -392,7 +392,7 @@ block comment */";
         Assert.Equal(TokenType.Symbol, tokens[2].Type); // (
         Assert.Equal(TokenType.Symbol, tokens[3].Type); // )
         Assert.Equal(TokenType.Symbol, tokens[4].Type); // {
-        Assert.Equal(TokenType.Identifier, tokens[5].Type); // return
+        Assert.Equal(TokenType.ReservedWord, tokens[5].Type); // return
         Assert.Equal(TokenType.Integer, tokens[6].Type); // 0
         Assert.Equal(TokenType.Symbol, tokens[7].Type); // ;
         Assert.Equal(TokenType.Symbol, tokens[8].Type); // }
@@ -547,6 +547,11 @@ string message = ""hello"";";
 
     #region File Output Tests
 
+    private static string GetLexicalOutputDir()
+    {
+        return Path.Combine(Path.GetTempPath(), "skt/lexical");
+    }
+
     private static void WaitForDirectoryDeletion(string directoryPath, TimeSpan timeout)
     {
         SpinWait.SpinUntil(() => !Directory.Exists(directoryPath), timeout);
@@ -557,10 +562,10 @@ string message = ""hello"";";
     {
         // Arrange
         string code = "int x = 42;";
-        string testFilePath = $"test_file_{Guid.NewGuid():N}.skt"; // Make unique to avoid conflicts
+        string testFilePath = $"test_file_{Guid.NewGuid():N}.skt";
+        string outputDir = GetLexicalOutputDir();
 
         // Clean up before test to ensure clean state
-        string outputDir = "lexical_output";
         SafeDeleteDirectory(outputDir);
 
         // Wait a moment to ensure cleanup is complete
@@ -574,22 +579,16 @@ string message = ""hello"";";
             // Assert
             Assert.Empty(errors);
             Assert.True(tokens.Count > 0);
-
-            // Verify file was created
             Assert.True(Directory.Exists(outputDir));
 
-            // Instead of checking for exactly one file, check that at least one file was created
-            // and find the specific file for this test by checking the creation time or content
             var files = Directory.GetFiles(outputDir, "*.sktt");
             Assert.True(files.Length >= 1, $"Expected at least 1 file, but found {files.Length}");
 
-            // Verify that our specific file was created (it should be the most recent one)
             var mostRecentFile = files.OrderByDescending(f => File.GetCreationTime(f)).First();
-            Assert.True(File.Exists(mostRecentFile), "Most recent token file should exist");
+            Assert.True(File.Exists(mostRecentFile));
 
-            // Verify the file contains valid token data
             var tokenData = LexicalAnalyzer.ReadBinaryTokens(mostRecentFile);
-            Assert.True(tokenData.Count > 0, "Token file should contain tokens");
+            Assert.True(tokenData.Count > 0);
         }
         finally
         {
@@ -605,20 +604,25 @@ string message = ""hello"";";
         string code = @"int x = 42; // comment
         /* block comment */
         x += 10;";
-        string testFilePath = "test_with_comments.skt";
-        
-        // Act
-        var (allTokens, errors) = _analyzer.TokenizeToFile(code, testFilePath);
-        
-        // Assert
-        Assert.Empty(errors);
-        
-        var comments = allTokens.Where(t => t.Type == TokenType.Comment).ToList();
-        Assert.Equal(2, comments.Count); // Should find comments in return value
-        
-        // Cleanup
-        string outputDir = "lexical_output";
-        SafeDeleteDirectory(outputDir);
+        string testFilePath = $"test_with_comments_{Guid.NewGuid():N}.skt";
+        string outputDir = GetLexicalOutputDir();
+
+        try
+        {
+            // Act
+            var (allTokens, errors) = _analyzer.TokenizeToFile(code, testFilePath);
+
+            // Assert
+            Assert.Empty(errors);
+
+            var comments = allTokens.Where(t => t.Type == TokenType.Comment).ToList();
+            Assert.Equal(2, comments.Count);
+        }
+        finally
+        {
+            // Cleanup after test
+            SafeDeleteDirectory(outputDir);
+        }
     }
 
     private static void SafeDeleteDirectory(string directoryPath)

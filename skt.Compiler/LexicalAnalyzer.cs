@@ -207,7 +207,10 @@ public class LexicalAnalyzer
 
     private bool TryTokenizeComment(List<Token> tokens)
     {
-        if (CurrentChar() != '/' || AtEnd()) return false;
+        if (CurrentChar() != '/') return false;
+
+        // Need to check if there's a next character
+        if (_position + 1 >= _codeLength) return false;
 
         char nextChar = PeekChar();
         if (nextChar == '/')
@@ -231,7 +234,7 @@ public class LexicalAnalyzer
         Advance(); // Skip second /
 
         // Consume until end of line or end of file
-        while (!AtEnd() && CurrentChar() != '\n')
+        while (!AtEnd() && CurrentChar() != '\n' && CurrentChar() != '\r')
         {
             Advance();
         }
@@ -251,7 +254,7 @@ public class LexicalAnalyzer
 
         while (!AtEnd())
         {
-            if (CurrentChar() == '*' && PeekChar() == '/')
+            if (CurrentChar() == '*' && _position + 1 < _codeLength && PeekChar() == '/')
             {
                 Advance(); // Skip *
                 Advance(); // Skip /
