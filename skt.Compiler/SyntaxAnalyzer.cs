@@ -367,6 +367,34 @@ public class SyntaxAnalyzer
         }
     }
 
+    public (AstNode? ast, List<ParseError> errors) ParseFromTokens(List<Token> tokens)
+    {
+        try
+        {
+            _tokens = tokens.Where(t => t.Type != TokenType.Comment).ToList();
+            _position = 0;
+            _errors.Clear();
+            _errorPositions.Clear();
+
+            var cst = ParseNonTerminal("prog");
+
+            if (cst != null && !AtEnd)
+            {
+                int remaining = _tokens.Count - _position;
+                AddError($"Tokens extra después del final ({remaining} tokens restantes)");
+            }
+
+            var ast = _cstToAstConverter.Convert(cst);
+
+            return (ast, _errors);
+        }
+        catch (Exception e)
+        {
+            AddError($"Error interno del parser: {e.Message}");
+            return (null, _errors);
+        }
+    }
+
     private static string CreateHashPrefix(string filePath)
     {
         using var sha256 = SHA256.Create();

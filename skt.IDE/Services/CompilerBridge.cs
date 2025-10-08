@@ -21,6 +21,7 @@ public class CompilerBridge
         _bus.Subscribe<TokenizeBufferRequestEvent>(OnTokenizeBufferRequest);
         _bus.Subscribe<FileOpenedEvent>(OnFileOpened);
         _bus.Subscribe<ParseFileRequestEvent>(OnParseFileRequest);
+        _bus.Subscribe<ParseBufferRequestEvent>(OnParseBufferRequest);
     }
 
     private void AnalyzeFileInMemory(string filePath, string origin)
@@ -34,7 +35,6 @@ public class CompilerBridge
             }
             var code = File.ReadAllText(filePath);
             var (tokens, errors) = _lexical.Tokenize(code);
-            Console.WriteLine($"[Lexical:{origin}] {filePath} tokens={tokens.Count} errors={errors.Count}");
             _bus.Publish(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, false));
 
             // Also perform syntax analysis when file is analyzed
@@ -53,6 +53,9 @@ public class CompilerBridge
         {
             var (tokens, errors) = _lexical.Tokenize(content);
             _bus.Publish(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, true));
+
+            // Also trigger syntax analysis for the buffer
+            ParseBuffer(content, tokens, filePath);
         }
         catch (Exception ex)
         {
@@ -89,8 +92,26 @@ public class CompilerBridge
         }
     }
 
+    private void ParseBuffer(string content, List<Token> tokens, string? filePath)
+    {
+        try
+        {
+            // Parse directly from tokens in memory without writing to file
+            var (ast, errors) = _syntax.ParseFromTokens(tokens);
+
+            Console.WriteLine($"[Syntax:buffer] {filePath ?? "unnamed"} ast={(ast != null ? "OK" : "null")} errors={errors.Count}");
+            _bus.Publish(new SyntaxAnalysisCompletedEvent(filePath, ast, errors, true));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Syntax:buffer][Error] {ex.Message}");
+            _bus.Publish(new SyntaxAnalysisFailedEvent(filePath ?? "unnamed", ex.Message));
+        }
+    }
+
     private void OnFileOpened(FileOpenedEvent e) => AnalyzeFileInMemory(e.FilePath, "open");
     private void OnTokenizeFileRequest(TokenizeFileRequestEvent e) => AnalyzeFileInMemory(e.FilePath, "request");
     private void OnTokenizeBufferRequest(TokenizeBufferRequestEvent e) => AnalyzeBuffer(e.Content, e.FilePath);
     private void OnParseFileRequest(ParseFileRequestEvent e) => PerformSyntaxAnalysis(e.FilePath);
+    private void OnParseBufferRequest(ParseBufferRequestEvent e) => ParseBuffer(e.Content, e.Tokens, e.FilePath);
 }

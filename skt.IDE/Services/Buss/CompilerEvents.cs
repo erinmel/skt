@@ -68,17 +68,33 @@ public class ParseFileRequestEvent
     }
 }
 
+public class ParseBufferRequestEvent
+{
+    public string? FilePath { get; }
+    public string Content { get; }
+    public List<Token> Tokens { get; }
+
+    public ParseBufferRequestEvent(string content, List<Token> tokens, string? filePath)
+    {
+        Content = content;
+        Tokens = tokens;
+        FilePath = filePath;
+    }
+}
+
 public class SyntaxAnalysisCompletedEvent
 {
-    public string FilePath { get; }
+    public string? FilePath { get; }
     public AstNode? Ast { get; }
     public List<ParseError> Errors { get; }
+    public bool FromBuffer { get; }
 
-    public SyntaxAnalysisCompletedEvent(string filePath, AstNode? ast, List<ParseError> errors)
+    public SyntaxAnalysisCompletedEvent(string? filePath, AstNode? ast, List<ParseError> errors, bool fromBuffer = false)
     {
         FilePath = filePath;
         Ast = ast;
         Errors = errors;
+        FromBuffer = fromBuffer;
     }
 }
 
