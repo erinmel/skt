@@ -27,6 +27,7 @@
     <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0" />
     <!-- TreeDataGrid for tokens view -->
     <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.1.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" />
   </ItemGroup>
 
   <ItemGroup>
