@@ -4,7 +4,7 @@ namespace skt.Compiler;
 
 internal static class Program
 {
-    private sealed record Options(string FilePath, bool TokenizeOnly, bool ParseOnly, bool Verbose);
+    private sealed record Options(string FilePath, bool TokenizeOnly, bool ParseOnly, bool SemanticOnly, bool Verbose);
 
     public static int Main(string[] args)
     {
@@ -40,6 +40,13 @@ internal static class Program
             return 0;
         }
 
+        if (options.SemanticOnly)
+        {
+            _ = analyzer.TokenizeToFile(source, options.FilePath);
+            RunSemanticAnalysis(options);
+            return 0;
+        }
+
         RunFullCompilation(analyzer, source, options);
         return 0;
     }
@@ -49,8 +56,9 @@ internal static class Program
         var filePath = args[0];
         bool tokenizeOnly = args.Contains("--tokenize");
         bool parseOnly = args.Contains("--parse");
+        bool semanticOnly = args.Contains("--semantic");
         bool verbose = args.Contains("--verbose");
-        return new Options(filePath, tokenizeOnly, parseOnly, verbose);
+        return new Options(filePath, tokenizeOnly, parseOnly, semanticOnly, verbose);
     }
 
     private static void PrintUsage()
@@ -59,6 +67,7 @@ internal static class Program
         Console.WriteLine("Options:");
         Console.WriteLine("  --tokenize    Generate token file (.sktt) only");
         Console.WriteLine("  --parse       Parse and show AST");
+        Console.WriteLine("  --semantic    Perform semantic analysis");
         Console.WriteLine("  --verbose     Show detailed output");
     }
 
@@ -114,10 +123,19 @@ internal static class Program
         Console.WriteLine("Step 2: Syntax Analysis");
         Console.WriteLine("-" + new string('-', 30));
 
-        RunParse(options);
+        var (ast, parseErrors) = RunParse(options);
+
+        if (ast != null && parseErrors.Count == 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Step 3: Semantic Analysis");
+            Console.WriteLine("-" + new string('-', 30));
+
+            RunSemanticAnalysisWithAst(ast, options);
+        }
     }
 
-    private static void RunParse(Options options)
+    private static (AstNode? ast, List<ParseError> errors) RunParse(Options options)
     {
         var syntaxAnalyzer = new SyntaxAnalyzer();
         var (ast, parseErrors) = syntaxAnalyzer.Parse(options.FilePath);
@@ -140,6 +158,107 @@ internal static class Program
         else
         {
             Console.WriteLine("Failed to generate AST due to errors.");
+        }
+
+        return (ast, parseErrors);
+    }
+
+    private static void RunSemanticAnalysis(Options options)
+    {
+        var syntaxAnalyzer = new SyntaxAnalyzer();
+        var (ast, parseErrors) = syntaxAnalyzer.Parse(options.FilePath);
+
+        if (parseErrors.Count > 0)
+        {
+            Console.WriteLine("Parse Errors Found:");
+            PrintParseErrors(parseErrors);
+            Console.WriteLine();
+        }
+
+        if (ast != null)
+        {
+            RunSemanticAnalysisWithAst(ast, options);
+        }
+        else
+        {
+            Console.WriteLine("Cannot perform semantic analysis - AST generation failed.");
+        }
+    }
+
+    private static void RunSemanticAnalysisWithAst(AstNode ast, Options options)
+    {
+        var semanticAnalyzer = new SemanticAnalyzer();
+        var (annotatedAst, symbolTable, semanticErrors) = semanticAnalyzer.Analyze(ast);
+
+        Console.WriteLine($"Semantic Analysis Complete:");
+        Console.WriteLine($"  Symbols declared: {symbolTable.Entries.Count}");
+        Console.WriteLine($"  Semantic errors: {semanticErrors.Count}");
+        Console.WriteLine();
+
+        if (symbolTable.Entries.Count > 0)
+        {
+            Console.WriteLine("Symbol Table:");
+            Console.WriteLine("-" + new string('-', 80));
+            Console.WriteLine($"{"Name",-15} {"Type",-10} {"Scope",-15} {"Line",-6} {"Offset",-8}");
+            Console.WriteLine(new string('-', 80));
+            foreach (var entry in symbolTable.Entries)
+            {
+                Console.WriteLine($"{entry.Name,-15} {entry.DataType,-10} {entry.Scope,-15} {entry.DeclarationLine,-6} {entry.MemoryOffset,-8}");
+            }
+            Console.WriteLine();
+        }
+
+        if (semanticErrors.Count > 0)
+        {
+            Console.WriteLine("Semantic Errors:");
+            Console.WriteLine("-" + new string('-', 80));
+            PrintSemanticErrors(semanticErrors);
+            Console.WriteLine();
+        }
+        else
+        {
+            Console.WriteLine("✓ No semantic errors found!");
+            Console.WriteLine();
+        }
+
+        if (options.Verbose && annotatedAst != null)
+        {
+            Console.WriteLine("Annotated AST (with types):");
+            Console.WriteLine("-" + new string('-', 30));
+            PrintAnnotatedAst(annotatedAst, 0);
+            Console.WriteLine();
+        }
+    }
+
+    private static void PrintSemanticErrors(List<SemanticError> errors)
+    {
+        foreach (var error in errors)
+        {
+            Console.WriteLine($"  Line {error.Line}, Column {error.Column}: [{error.ErrorType}]");
+            Console.WriteLine($"    {error.Message}");
+
+            if (error.VariableName != null)
+                Console.WriteLine($"    Variable: '{error.VariableName}'");
+
+            if (error.ExpectedType != null && error.ActualType != null)
+                Console.WriteLine($"    Expected type: {error.ExpectedType}, Found: {error.ActualType}");
+
+            Console.WriteLine();
+        }
+    }
+
+    private static void PrintAnnotatedAst(AnnotatedAstNode node, int depth)
+    {
+        string indent = new string(' ', depth * 2);
+        string typeInfo = node.DataType != null ? $" : {node.DataType}" : "";
+
+        Console.WriteLine(node.Token != null
+            ? $"{indent}├─ {node.Rule}: '{node.Token.Value}'{typeInfo}"
+            : $"{indent}├─ {node.Rule}{typeInfo}");
+
+        foreach (var child in node.Children)
+        {
+            PrintAnnotatedAst(child, depth + 1);
         }
     }
 
