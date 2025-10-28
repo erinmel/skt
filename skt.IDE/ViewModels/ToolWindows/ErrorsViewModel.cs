@@ -150,6 +150,7 @@ public class ErrorsViewModel : ObservableObject
 
                 if (group.Errors.Count == 0)
                 {
+                    // If no errors, remove the group
                     target.Remove(group);
                 }
             }
