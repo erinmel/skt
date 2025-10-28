@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
-             x:Class="skt.IDE.Views.ToolWindows.ErrorsView"
-             x:DataType="vm:ErrorsViewModel">
+             xmlns:local="using:skt.IDE.Views.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.ErrorsView">
   <UserControl.Styles>
     <Style Selector="Expander">
       <Setter Property="Padding" Value="2,0"/>
@@ -23,7 +23,7 @@
     </Style>
   </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-    <ItemsControl ItemsSource="{Binding Groups}" HorizontalAlignment="Stretch">
+    <ItemsControl ItemsSource="{Binding GroupsSource, RelativeSource={RelativeSource AncestorType={x:Type local:ErrorsView}}}" HorizontalAlignment="Stretch">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:FileErrorGroup">
           <Expander Header="{Binding DisplayName}" HorizontalAlignment="Stretch" IsExpanded="True">

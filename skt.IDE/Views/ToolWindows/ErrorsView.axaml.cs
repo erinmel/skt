@@ -1,16 +1,39 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.Controls.ApplicationLifetimes;
 using skt.IDE.Services.Buss;
 using skt.IDE.ViewModels.ToolWindows;
+using Avalonia;
 
 namespace skt.IDE.Views.ToolWindows;
 
 public partial class ErrorsView : UserControl
 {
+    public static readonly StyledProperty<IEnumerable<FileErrorGroup>?> GroupsSourceProperty =
+        AvaloniaProperty.Register<ErrorsView, IEnumerable<FileErrorGroup>?>(nameof(GroupsSource));
+
+    public IEnumerable<FileErrorGroup>? GroupsSource
+    {
+        get => GetValue(GroupsSourceProperty);
+        set => SetValue(GroupsSourceProperty, value);
+    }
+
+    public static readonly StyledProperty<int> PanelTabIndexProperty =
+        AvaloniaProperty.Register<ErrorsView, int>(nameof(PanelTabIndex), 1);
+
+    /// <summary>
+    /// Index of the terminal tab this ErrorsView represents (0=Terminal,1=Lexical,2=Syntax,3=Other)
+    /// </summary>
+    public int PanelTabIndex
+    {
+        get => GetValue(PanelTabIndexProperty);
+        set => SetValue(PanelTabIndexProperty, value);
+    }
+
     public ErrorsView()
     {
         InitializeComponent();
@@ -39,6 +62,10 @@ public partial class ErrorsView : UserControl
         FocusMainWindow();
 
         App.EventBus.Publish(new OpenFileRequestEvent(filePath));
+        // Also request the terminal panel to open and select the correct tab
+        App.EventBus.Publish(new ShowToolWindowRequestEvent("TerminalToggle"));
+        App.EventBus.Publish(new ShowTerminalTabRequestEvent(PanelTabIndex));
+
         // Use line/column event instead of computing raw offset
         Dispatcher.UIThread.Post(() =>
         {

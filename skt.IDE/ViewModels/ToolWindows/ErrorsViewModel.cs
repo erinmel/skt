@@ -43,29 +43,39 @@ public class FileErrorGroup
 
 public class ErrorsViewModel : ObservableObject
 {
-    private readonly ObservableCollection<FileErrorGroup> _groups = new();
+    private readonly ObservableCollection<FileErrorGroup> _lexicalGroups = new();
+    private readonly ObservableCollection<FileErrorGroup> _syntaxGroups = new();
 
-    public ObservableCollection<FileErrorGroup> Groups => _groups;
+    public ObservableCollection<FileErrorGroup> LexicalGroups => _lexicalGroups;
+    public ObservableCollection<FileErrorGroup> SyntaxGroups => _syntaxGroups;
 
     public ErrorsViewModel()
     {
         App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
         App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
+        App.EventBus.Subscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxCompleted);
+        App.EventBus.Subscribe<SyntaxAnalysisFailedEvent>(OnSyntaxFailed);
         App.EventBus.Subscribe<FileClosedEvent>(OnFileClosed);
     }
 
     private void OnFileClosed(FileClosedEvent e)
     {
         if (string.IsNullOrEmpty(e.FilePath)) return;
-        var existing = _groups.FirstOrDefault(g => string.Equals(g.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase));
+        RemoveGroupIfExists(_lexicalGroups, e.FilePath);
+        RemoveGroupIfExists(_syntaxGroups, e.FilePath);
+    }
+
+    private void RemoveGroupIfExists(ObservableCollection<FileErrorGroup> collection, string filePath)
+    {
+        var existing = collection.FirstOrDefault(g => string.Equals(g.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
         if (existing != null)
         {
             if (!Dispatcher.UIThread.CheckAccess())
             {
-                Dispatcher.UIThread.Post(() => _groups.Remove(existing));
+                Dispatcher.UIThread.Post(() => collection.Remove(existing));
                 return;
             }
-            _groups.Remove(existing);
+            collection.Remove(existing);
         }
     }
 
@@ -73,7 +83,7 @@ public class ErrorsViewModel : ObservableObject
     {
         var path = e.FilePath ?? string.Empty;
         var message = e.Message;
-        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(path, new[] { (message, 0, 0) }));
+        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_lexicalGroups, path, new[] { (message, 0, 0) }));
     }
 
     private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
@@ -81,7 +91,33 @@ public class ErrorsViewModel : ObservableObject
         var path = e.FilePath ?? string.Empty;
         var errors = e.Errors;
         var messages = errors.Select(err => (FormatError(err), err.Line, err.Column)).ToArray();
-        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(path, messages));
+        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_lexicalGroups, path, messages));
+    }
+
+    private void OnSyntaxFailed(SyntaxAnalysisFailedEvent e)
+    {
+        var path = e.FilePath ?? string.Empty;
+        var message = e.Message;
+        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_syntaxGroups, path, new[] { (message, 0, 0) }));
+    }
+
+    private void OnSyntaxCompleted(SyntaxAnalysisCompletedEvent e)
+    {
+        var path = e.FilePath ?? string.Empty;
+        var errors = e.Errors ?? new List<ParseError>();
+        var messages = errors.Select(err => (FormatParseError(err), err.Line, err.Column)).ToArray();
+        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_syntaxGroups, path, messages));
+    }
+
+    private string FormatParseError(ParseError err)
+    {
+        if (!string.IsNullOrEmpty(err.ExpectedToken) || !string.IsNullOrEmpty(err.FoundToken))
+        {
+            var expected = string.IsNullOrEmpty(err.ExpectedToken) ? "" : $"Expected '{err.ExpectedToken}' ";
+            var found = string.IsNullOrEmpty(err.FoundToken) ? "" : $"but found '{err.FoundToken}'";
+            return string.IsNullOrWhiteSpace(expected + found) ? err.Message : $"{expected}{found} ({err.Message})";
+        }
+        return err.Message;
     }
 
     private static string FormatError(ErrorToken err)
@@ -91,27 +127,32 @@ public class ErrorsViewModel : ObservableObject
         return $"{err.Type}: {err.Value}";
     }
 
-    private void AddOrUpdateGroupWithMessages(string filePath, (string msg, int line, int col)[] messages)
-    {
-        var group = _groups.FirstOrDefault(g => string.Equals(g.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
-        if (group == null && messages.Length > 0)
-        {
-            group = new FileErrorGroup(filePath);
-            _groups.Add(group);
-        }
+    private static readonly object _groupLock = new();
 
-        if (group != null)
+    private void AddOrUpdateGroupWithMessages(ObservableCollection<FileErrorGroup> target, string filePath, (string msg, int line, int col)[] messages)
+    {
+        lock (_groupLock)
         {
-            group.Errors.Clear();
-            foreach (var (msg, line, col) in messages)
+            var group = target.FirstOrDefault(g => string.Equals(g.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            if (group == null && messages.Length > 0)
             {
-                group.Errors.Add(new ErrorItem(filePath, msg, line, col));
+                group = new FileErrorGroup(filePath);
+                target.Add(group);
             }
 
-            // If no errors, remove the group
-            if (group.Errors.Count == 0)
+            if (group != null)
             {
-                _groups.Remove(group);
+                group.Errors.Clear();
+                foreach (var (msg, line, col) in messages)
+                {
+                    group.Errors.Add(new ErrorItem(filePath, msg, line, col));
+                }
+
+                if (group.Errors.Count == 0)
+                {
+                    // If no errors, remove the group
+                    target.Remove(group);
+                }
             }
         }
     }

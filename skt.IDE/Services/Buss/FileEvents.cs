@@ -138,3 +138,18 @@ public class SetCaretLineColumnRequestEvent
         Column = column;
     }
 }
+
+// Request the main UI to show a specific tool window (button name from ToolWindowStrip)
+public class ShowToolWindowRequestEvent
+{
+    public string ButtonName { get; }
+    public ShowToolWindowRequestEvent(string buttonName) => ButtonName = buttonName;
+}
+
+// Request the main UI to show the terminal panel and select a specific tab index
+public class ShowTerminalTabRequestEvent
+{
+    // TabIndex: 0=Terminal,1=Lexical Errors,2=Syntax Errors,3=Other
+    public int TabIndex { get; }
+    public ShowTerminalTabRequestEvent(int tabIndex) => TabIndex = tabIndex;
+}

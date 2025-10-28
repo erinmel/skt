@@ -3,6 +3,8 @@ using skt.IDE.ViewModels;
 using System;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Threading;
+using skt.IDE.Services.Buss;
 
 namespace skt.IDE.Views;
 
@@ -48,6 +50,10 @@ public partial class MainWindow : Window
         // Wire up decoupled ToolWindowStrip events
         ToolWindowStripControl.ToolWindowButtonClicked += OnToolWindowStrip_ToolWindowButtonClicked;
         ToolWindowStripControl.ToolPanelButtonClicked += OnToolWindowStrip_ToolPanelButtonClicked;
+
+        // Subscribe to global requests to show tool windows or terminal tabs
+        App.EventBus.Subscribe<ShowToolWindowRequestEvent>(OnShowToolWindowRequest);
+        App.EventBus.Subscribe<ShowTerminalTabRequestEvent>(OnShowTerminalTabRequest);
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -87,6 +93,35 @@ public partial class MainWindow : Window
     {
         var panel = GetTerminalPanelFromButtonName(buttonName);
         ToggleTerminalPanel(panel);
+    }
+
+    private void OnShowToolWindowRequest(ShowToolWindowRequestEvent e)
+    {
+        if (e == null || string.IsNullOrEmpty(e.ButtonName)) return;
+        // Reuse existing async handler to switch tool window
+        _ = OnToolWindowStrip_ToolWindowButtonClickedAsync(e.ButtonName);
+    }
+
+    private void OnShowTerminalTabRequest(ShowTerminalTabRequestEvent e)
+    {
+        // Map incoming tab index to internal TerminalPanelType and ensure panel is visible
+        var panelType = e.TabIndex switch
+        {
+            0 => TerminalPanelType.Terminal,
+            1 => TerminalPanelType.Errors,
+            2 => TerminalPanelType.Syntax,
+            3 => TerminalPanelType.Other,
+            _ => TerminalPanelType.Terminal
+        };
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _selectedTerminalPanel = panelType;
+            _isTerminalPanelVisible = true;
+            UpdateTerminalPanelVisibility();
+            UpdateTerminalPanelSelection();
+            SwitchTerminalTab();
+        });
     }
 
     #region Tool Window Toggle Methods
@@ -176,12 +211,13 @@ public partial class MainWindow : Window
         return buttonName switch
         {
             "TerminalToggle" => TerminalPanelType.Terminal,
-            "OutputToggle" => TerminalPanelType.Errors, // Output maps to general errors
-            "ErrorsToggle" => TerminalPanelType.Errors,
-            "BuildToggle" => TerminalPanelType.Other, // Build output maps to other
-            _ => TerminalPanelType.Terminal
-        };
-    }
+            // Map OutputToggle -> Lexical Errors panel, ErrorsToggle -> Syntax Errors panel
+            "OutputToggle" => TerminalPanelType.Errors,
+            "ErrorsToggle" => TerminalPanelType.Syntax,
+            "BuildToggle" => TerminalPanelType.Other,
+             _ => TerminalPanelType.Terminal
+         };
+     }
 
     private void ToggleTerminalPanel(TerminalPanelType panelType)
     {
@@ -226,7 +262,8 @@ public partial class MainWindow : Window
         return panel switch
         {
             TerminalPanelType.Terminal => "TerminalToggle",
-            TerminalPanelType.Errors => "ErrorsToggle",
+            // Use OutputToggle for lexical/errors panel, ErrorsToggle for syntax panel
+            TerminalPanelType.Errors => "OutputToggle",
             TerminalPanelType.Syntax => "ErrorsToggle",
             TerminalPanelType.Other => "BuildToggle",
             _ => "TerminalToggle"
@@ -299,8 +336,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void HandleException(Exception ex, string context)
-    {
+    private void HandleException(Exception ex, string context) {
         var viewModel = ViewModel;
         if (viewModel is not null)
         {

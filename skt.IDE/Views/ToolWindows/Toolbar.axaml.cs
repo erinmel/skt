@@ -46,17 +46,23 @@ public partial class Toolbar : UserControl
         var lexMenuItem = this.FindControl<MenuItem>("LexicalAnalysisMenuItem");
         if (lexMenuItem != null)
             lexMenuItem.IsEnabled = false;
+        var syntaxMenuItem = this.FindControl<MenuItem>("SyntacticAnalysisMenuItem");
+        if (syntaxMenuItem != null)
+            syntaxMenuItem.IsEnabled = false;
 
         // React to project open so the toolbar can enable the New File button
         App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
         // Subscribe to selected document changes so toolbar can update Save/SaveAs without going through MainWindowViewModel
         App.EventBus.Subscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
+        // Subscribe to lexical analysis completion to enable syntax analysis
+        App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalAnalysisCompleted);
 
         // Clean up on unload
         Unloaded += (_, _) =>
         {
             App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
             App.EventBus.Unsubscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
+            App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalAnalysisCompleted);
         };
     }
 
@@ -91,6 +97,20 @@ public partial class Toolbar : UserControl
             var lexMenuItem = this.FindControl<MenuItem>("LexicalAnalysisMenuItem");
             if (lexMenuItem != null)
                 lexMenuItem.IsEnabled = e.HasSelection && !string.IsNullOrEmpty(e.FilePath);
+
+            var syntaxMenuItem = this.FindControl<MenuItem>("SyntacticAnalysisMenuItem");
+            if (syntaxMenuItem != null)
+                syntaxMenuItem.IsEnabled = e.HasSelection && !string.IsNullOrEmpty(e.FilePath);
+        });
+    }
+
+    private void OnLexicalAnalysisCompleted(LexicalAnalysisCompletedEvent e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var syntaxMenuItem = this.FindControl<MenuItem>("SyntacticAnalysisMenuItem");
+            if (syntaxMenuItem != null)
+                syntaxMenuItem.IsEnabled = e.ErrorCount == 0 && !string.IsNullOrEmpty(e.FilePath);
         });
     }
 
@@ -293,6 +313,25 @@ public partial class Toolbar : UserControl
         }
         App.EventBus.Publish(new TokenizeFileRequestEvent(path, writeTokenFile: false));
         App.EventBus.Publish(new StatusBarMessageEvent("Lexical analysis started (file)", 2000));
+    }
+
+    private void SyntacticAnalysisMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            App.EventBus.Publish(new StatusBarMessageEvent("No context for syntax analysis", true));
+            return;
+        }
+        var path = vm.TabbedEditorViewModel.SelectedDocument?.FilePath;
+        if (string.IsNullOrEmpty(path))
+        {
+            App.EventBus.Publish(new StatusBarMessageEvent("No file selected to parse", true));
+            return;
+        }
+
+        // Call syntax analysis directly - it will cascade
+        App.EventBus.Publish(new ParseFileRequestEvent(path));
+        App.EventBus.Publish(new StatusBarMessageEvent("Running syntax analysis", 2000));
     }
 
 }
