@@ -328,8 +328,10 @@ public partial class Toolbar : UserControl
             App.EventBus.Publish(new StatusBarMessageEvent("No file selected to parse", true));
             return;
         }
+
+        // Call syntax analysis directly - it will cascade
         App.EventBus.Publish(new ParseFileRequestEvent(path));
-        App.EventBus.Publish(new StatusBarMessageEvent("Syntax analysis started", 2000));
+        App.EventBus.Publish(new StatusBarMessageEvent("Running compilation pipeline to lexical", 2000));
     }
 
 }

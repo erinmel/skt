@@ -333,7 +333,7 @@ public class SyntaxAnalyzer
 
             if (file == null)
             {
-                AddError("Archivo de tokens no encontrado");
+                AddError("Token file not found");
                 return (null, _errors);
             }
 
@@ -352,7 +352,7 @@ public class SyntaxAnalyzer
             if (cst != null && !AtEnd)
             {
                 int remaining = _tokens.Count - _position;
-                AddError($"Tokens extra después del final ({remaining} tokens restantes)");
+                AddError($"Extra tokens after end ({remaining} tokens remaining)");
             }
 
             // Convert CST to AST
@@ -362,7 +362,7 @@ public class SyntaxAnalyzer
         }
         catch (Exception e)
         {
-            AddError($"Error interno del parser: {e.Message}");
+            AddError($"Internal parser error: {e.Message}");
             return (null, _errors);
         }
     }
@@ -381,7 +381,7 @@ public class SyntaxAnalyzer
             if (cst != null && !AtEnd)
             {
                 int remaining = _tokens.Count - _position;
-                AddError($"Tokens extra después del final ({remaining} tokens restantes)");
+                AddError($"Extra tokens after end ({remaining} tokens remaining)");
             }
 
             var ast = _cstToAstConverter.Convert(cst);
@@ -390,7 +390,7 @@ public class SyntaxAnalyzer
         }
         catch (Exception e)
         {
-            AddError($"Error interno del parser: {e.Message}");
+            AddError($"Internal parser error: {e.Message}");
             return (null, _errors);
         }
     }
@@ -436,7 +436,7 @@ public class SyntaxAnalyzer
         if (_recursionDepth > MaxRecursionDepth)
         {
             _recursionDepth--;
-            AddError($"Máxima profundidad de recursión excedida en {nonTerminal}");
+            AddError($"Maximum recursion depth exceeded in {nonTerminal}");
             return CreateErrorNode(nonTerminal);
         }
 
@@ -544,7 +544,7 @@ public class SyntaxAnalyzer
             }
             else
             {
-                AddError("Expresión esperada después de '<<'");
+                AddError("Expression expected after '<<'");
                 break;
             }
         }
@@ -568,14 +568,14 @@ public class SyntaxAnalyzer
                 var commaNode = ExpectToken(",");
                 node.Children.Add(commaNode);
 
-                var idNode = ExpectToken("ID", "Identificador esperado después de coma");
+                var idNode = ExpectToken("ID", "Identifier expected after comma");
                 node.Children.Add(idNode);
                 continue;
             }
 
             if (tok.Type == TokenType.Identifier)
             {
-                AddError("Falta coma entre identificadores");
+                AddError("Missing comma between identifiers");
                 var commaNode = CreateVirtualNode(",");
                 node.Children.Add(commaNode);
 
@@ -677,7 +677,7 @@ public class SyntaxAnalyzer
             }
             else
             {
-                AddError($"EOF inesperado, esperando {nonTerminal}");
+                AddError($"Unexpected EOF, expecting {nonTerminal}");
                 return null;
             }
         }
@@ -692,7 +692,7 @@ public class SyntaxAnalyzer
             }
             else
             {
-                AddError($"No hay regla para {nonTerminal} con '{currentToken?.Value}'");
+                AddError($"No rule for {nonTerminal} with '{currentToken?.Value}'");
                 if (!AtEnd)
                 {
                     _position++;
@@ -743,7 +743,7 @@ public class SyntaxAnalyzer
 
         if (AtEnd)
         {
-            AddError($"EOF inesperado, esperando '{expectedSymbol}'");
+            AddError($"Unexpected EOF, expecting '{expectedSymbol}'");
             return CreateVirtualNode(expectedSymbol);
         }
 
@@ -757,7 +757,7 @@ public class SyntaxAnalyzer
         }
         else
         {
-            AddError($"Esperaba '{expectedSymbol}', encontró '{currentToken?.Value}'");
+            AddError($"Expected '{expectedSymbol}', found '{currentToken?.Value}'");
             // For critical tokens, insert virtual token
             if (CriticalTokens.Contains(expectedSymbol))
             {
@@ -799,7 +799,7 @@ public class SyntaxAnalyzer
         node.Children.Add(idsNode);
 
         // ;
-        var semicolon = ExpectToken(";", "Falta punto y coma en declaración");
+        var semicolon = ExpectToken(";", "Missing semicolon in declaration");
         node.Children.Add(semicolon);
 
         return node;
@@ -811,7 +811,7 @@ public class SyntaxAnalyzer
         var node = CreateNode("asgn", new List<AstNode>(), currentToken);
 
         // ID
-        var idNode = ExpectToken("ID", "Identificador esperado en asignación");
+        var idNode = ExpectToken("ID", "Identifier expected in assignment");
         node.Children.Add(idNode);
 
         // Operator
@@ -835,7 +835,7 @@ public class SyntaxAnalyzer
                 }
                 else
                 {
-                    AddError("Expresión esperada después del operador");
+                    AddError("Expression expected after operator");
                     SynchronizeTo([";"]);
                 }
             }
@@ -849,13 +849,13 @@ public class SyntaxAnalyzer
             }
             else
             {
-                AddError("Operador de asignación esperado");
+                AddError("Assignment operator expected");
                 SynchronizeTo([";"]);
             }
         }
 
         // ;
-        var semicolon = ExpectToken(";", "Falta punto y coma en asignación");
+        var semicolon = ExpectToken(";", "Missing semicolon in assignment");
         node.Children.Add(semicolon);
 
         return node;
@@ -882,7 +882,7 @@ public class SyntaxAnalyzer
         var node = CreateNode("ids", new List<AstNode>(), currentToken);
 
         // First ID
-        var idNode = ExpectToken("ID", "Identificador esperado");
+        var idNode = ExpectToken("ID", "Identifier expected");
         node.Children.Add(idNode);
 
         // ids_t with recovery (iterative variant)
@@ -903,13 +903,13 @@ public class SyntaxAnalyzer
 
         // >> or <<
         string op = ioType == "cin" ? ">>" : "<<";
-        var opNode = ExpectToken(op, $"Operador '{op}' esperado después de '{ioType}'");
+        var opNode = ExpectToken(op, $"Operator '{op}' expected after '{ioType}'");
         node.Children.Add(opNode);
 
         if (ioType == "cin")
         {
             // ID for cin
-            var idNode = ExpectToken("ID", "Identificador esperado después de '>>'");
+            var idNode = ExpectToken("ID", "Identifier expected after '>>'");
             node.Children.Add(idNode);
         }
         else
@@ -922,13 +922,13 @@ public class SyntaxAnalyzer
             }
             else
             {
-                AddError("Expresión esperada después de '<<'");
+                AddError("Expression expected after '<<'");
                 SynchronizeTo([";"]);
             }
         }
 
         // ;
-        var semicolon = ExpectToken(";", $"Falta punto y coma en sentencia {ioType}");
+        var semicolon = ExpectToken(";", $"Missing semicolon in {ioType} statement");
         node.Children.Add(semicolon);
 
         return node;
@@ -940,7 +940,7 @@ public class SyntaxAnalyzer
 
         if (AtEnd)
         {
-            errorMessage ??= $"EOF inesperado, esperando '{expectedTerminal}'";
+            errorMessage ??= $"Unexpected EOF, expecting '{expectedTerminal}'";
             AddError(errorMessage);
             return CreateVirtualNode(expectedTerminal);
         }
@@ -954,7 +954,7 @@ public class SyntaxAnalyzer
         }
         else
         {
-            errorMessage ??= $"Esperaba '{expectedTerminal}', encontró '{currentToken?.Value}'";
+            errorMessage ??= $"Expected '{expectedTerminal}', found '{currentToken?.Value}'";
             AddError(errorMessage);
 
             // For critical tokens, insert virtual; for others, consume and create virtual

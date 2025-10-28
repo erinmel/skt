@@ -71,12 +71,10 @@ public class ParseFileRequestEvent
 public class ParseBufferRequestEvent
 {
     public string? FilePath { get; }
-    public string Content { get; }
     public List<Token> Tokens { get; }
 
-    public ParseBufferRequestEvent(string content, List<Token> tokens, string? filePath)
+    public ParseBufferRequestEvent(List<Token> tokens, string? filePath)
     {
-        Content = content;
         Tokens = tokens;
         FilePath = filePath;
     }
