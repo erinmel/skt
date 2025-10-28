@@ -83,7 +83,7 @@
                         BorderThickness="0"
                         Padding="6,6"
                         Margin="0,3"
-                        ToolTip.Tip="Sintax Errors">
+                        ToolTip.Tip="Syntax Errors">
                     <Image Source="{DynamicResource Icon.PanelErrors}" Width="20" Height="20"/>
                 </Button>
 
