@@ -39,15 +39,10 @@
           </ScrollViewer>
         </TabItem>
         <TabItem Header="Lexical Errors">
-          <toolviews:ErrorsView DataContext="{Binding Errors}" />
+          <toolviews:ErrorsView GroupsSource="{Binding Errors.LexicalGroups}" PanelTabIndex="1" />
         </TabItem>
         <TabItem Header="Syntax Errors">
-          <ScrollViewer>
-            <TextBox AcceptsReturn="True"
-                     FontFamily="Consolas,monospace"
-                     Text="{Binding SyntaxErrors}"
-                     IsReadOnly="True"/>
-          </ScrollViewer>
+          <toolviews:ErrorsView GroupsSource="{Binding Errors.SyntaxGroups}" PanelTabIndex="2" />
         </TabItem>
         <TabItem Header="Other Errors">
           <ScrollViewer>

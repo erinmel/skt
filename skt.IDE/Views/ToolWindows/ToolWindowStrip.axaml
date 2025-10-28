@@ -73,7 +73,7 @@
                         BorderThickness="0"
                         Padding="6,6"
                         Margin="0,3"
-                        ToolTip.Tip="Output">
+                        ToolTip.Tip="Lexical Errors">
                     <Image Source="{DynamicResource Icon.PanelOutput}" Width="20" Height="20"/>
                 </Button>
 
@@ -83,7 +83,7 @@
                         BorderThickness="0"
                         Padding="6,6"
                         Margin="0,3"
-                        ToolTip.Tip="Errors">
+                        ToolTip.Tip="Sintax Errors">
                     <Image Source="{DynamicResource Icon.PanelErrors}" Width="20" Height="20"/>
                 </Button>
 

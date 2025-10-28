@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.Shared;
 using Avalonia.Controls.Models.TreeDataGrid;
@@ -67,7 +66,9 @@ public partial class SyntaxTreeViewModel : ObservableObject
         if (needsFullRebuild)
         {
             _rootNodesInternal.Clear();
-            var viewModel = new AstNodeViewModel(rootNode, _expansionState);
+            // Use an explicit path for the root so expansion state keys line up with saved keys
+            var rootPath = "[0]";
+            var viewModel = new AstNodeViewModel(rootNode, _expansionState, rootPath);
             _rootNodesInternal.Add(viewModel);
         }
         else
@@ -75,7 +76,8 @@ public partial class SyntaxTreeViewModel : ObservableObject
             // Smart update: reuse existing nodes where possible
             if (_rootNodesInternal.Count > 0)
             {
-                _rootNodesInternal[0].UpdateFrom(rootNode, _expansionState);
+                // Ensure we pass the same root path used when saving state
+                _rootNodesInternal[0].UpdateFrom(rootNode, _expansionState, "[0]");
             }
         }
 
