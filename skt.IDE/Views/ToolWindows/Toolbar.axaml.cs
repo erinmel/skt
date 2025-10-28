@@ -331,7 +331,7 @@ public partial class Toolbar : UserControl
 
         // Call syntax analysis directly - it will cascade
         App.EventBus.Publish(new ParseFileRequestEvent(path));
-        App.EventBus.Publish(new StatusBarMessageEvent("Running compilation pipeline to lexical", 2000));
+        App.EventBus.Publish(new StatusBarMessageEvent("Running syntax analysis", 2000));
     }
 
 }
