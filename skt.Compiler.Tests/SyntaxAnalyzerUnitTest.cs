@@ -546,7 +546,7 @@ public class SyntaxAnalyzerUnitTest
             // Assert
             Assert.NotNull(ast);
             Assert.NotEmpty(errors);
-            Assert.Contains(errors, e => e.Message.Contains("punto y coma"));
+            Assert.Contains(errors, e => e.Message.Contains("semicolon"));
         }
         finally
         {
@@ -571,7 +571,7 @@ public class SyntaxAnalyzerUnitTest
             // Assert
             Assert.NotNull(ast);
             Assert.NotEmpty(errors);
-            Assert.Contains(errors, e => e.Message.Contains("coma"));
+            Assert.Contains(errors, e => e.Message.Contains("comma"));
         }
         finally
         {
@@ -803,7 +803,7 @@ public class SyntaxAnalyzerUnitTest
         // Assert
         Assert.Null(ast);
         Assert.NotEmpty(errors);
-        Assert.Contains(errors, e => e.Message.Contains("tokens no encontrado"));
+        Assert.Contains(errors, e => e.Message.Contains("Token file not found"));
     }
 
     #endregion

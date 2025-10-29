@@ -15,6 +15,7 @@ public partial class MainWindow : Window
         FileExplorer,
         Tokens,
         SyntaxTree,
+        SemanticTree,
         PhaseOutput
     }
 
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
         public const string FileExplorer = "File Explorer";
         public const string Tokens = "Tokens";
         public const string SyntaxTree = "Syntax Tree";
+        public const string SemanticTree = "Semantic Tree";
         public const string PhaseOutput = "Phase Output";
     }
 
@@ -134,6 +136,7 @@ public partial class MainWindow : Window
             "FileExplorerToggle" => ToolWindowType.FileExplorer,
             "TokensToggle" => ToolWindowType.Tokens,
             "SyntaxTreeToggle" => ToolWindowType.SyntaxTree,
+            "SemanticTreeToggle" => ToolWindowType.SemanticTree,
             "PhaseOutputToggle" => ToolWindowType.PhaseOutput,
             _ => ToolWindowType.FileExplorer
         };
@@ -165,6 +168,7 @@ public partial class MainWindow : Window
             ToolWindowType.FileExplorer => ToolWindowTitles.FileExplorer,
             ToolWindowType.Tokens => ToolWindowTitles.Tokens,
             ToolWindowType.SyntaxTree => ToolWindowTitles.SyntaxTree,
+            ToolWindowType.SemanticTree => ToolWindowTitles.SemanticTree,
             ToolWindowType.PhaseOutput => ToolWindowTitles.PhaseOutput,
             _ => ToolWindowTitles.FileExplorer
         };
@@ -176,11 +180,13 @@ public partial class MainWindow : Window
         var fileExplorer = this.FindControl<Control>("FileExplorerContent");
         var tokens = this.FindControl<Control>("TokensContent");
         var syntax = this.FindControl<Control>("SyntaxTreeContent");
+        var semantic = this.FindControl<Control>("SemanticTreeContent");
         var phaseOutput = this.FindControl<Control>("PhaseOutputContent");
 
         if (fileExplorer is not null) fileExplorer.IsVisible = _selectedToolWindow == ToolWindowType.FileExplorer;
         if (tokens is not null) tokens.IsVisible = _selectedToolWindow == ToolWindowType.Tokens;
         if (syntax is not null) syntax.IsVisible = _selectedToolWindow == ToolWindowType.SyntaxTree;
+        if (semantic is not null) semantic.IsVisible = _selectedToolWindow == ToolWindowType.SemanticTree;
         if (phaseOutput is not null) phaseOutput.IsVisible = _selectedToolWindow == ToolWindowType.PhaseOutput;
     }
 
@@ -197,6 +203,7 @@ public partial class MainWindow : Window
             ToolWindowType.FileExplorer => "FileExplorerToggle",
             ToolWindowType.Tokens => "TokensToggle",
             ToolWindowType.SyntaxTree => "SyntaxTreeToggle",
+            ToolWindowType.SemanticTree => "SemanticTreeToggle",
             ToolWindowType.PhaseOutput => "PhaseOutputToggle",
             _ => "FileExplorerToggle"
         };

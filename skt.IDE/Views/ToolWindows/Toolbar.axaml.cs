@@ -50,12 +50,18 @@ public partial class Toolbar : UserControl
         if (syntaxMenuItem != null)
             syntaxMenuItem.IsEnabled = false;
 
+        var semanticMenuItem = this.FindControl<MenuItem>("SemanticAnalysisMenuItem");
+        if (semanticMenuItem != null)
+            semanticMenuItem.IsEnabled = false;
+
         // React to project open so the toolbar can enable the New File button
         App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
         // Subscribe to selected document changes so toolbar can update Save/SaveAs without going through MainWindowViewModel
         App.EventBus.Subscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
         // Subscribe to lexical analysis completion to enable syntax analysis
         App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalAnalysisCompleted);
+        // Subscribe to syntax analysis completion to enable semantic analysis
+        App.EventBus.Subscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxAnalysisCompleted);
 
         // Clean up on unload
         Unloaded += (_, _) =>
@@ -63,6 +69,7 @@ public partial class Toolbar : UserControl
             App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
             App.EventBus.Unsubscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
             App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalAnalysisCompleted);
+            App.EventBus.Unsubscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxAnalysisCompleted);
         };
     }
 
@@ -111,6 +118,16 @@ public partial class Toolbar : UserControl
             var syntaxMenuItem = this.FindControl<MenuItem>("SyntacticAnalysisMenuItem");
             if (syntaxMenuItem != null)
                 syntaxMenuItem.IsEnabled = e.ErrorCount == 0 && !string.IsNullOrEmpty(e.FilePath);
+        });
+    }
+
+    private void OnSyntaxAnalysisCompleted(SyntaxAnalysisCompletedEvent e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var semanticMenuItem = this.FindControl<MenuItem>("SemanticAnalysisMenuItem");
+            if (semanticMenuItem != null)
+                semanticMenuItem.IsEnabled = e.Errors.Count == 0 && !string.IsNullOrEmpty(e.FilePath);
         });
     }
 
@@ -334,4 +351,9 @@ public partial class Toolbar : UserControl
         App.EventBus.Publish(new StatusBarMessageEvent("Running syntax analysis", 2000));
     }
 
+    private void SemanticAnalysisMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        App.EventBus.Publish(new ShowToolWindowRequestEvent("SemanticTreeToggle"));
+        App.EventBus.Publish(new StatusBarMessageEvent("Semantic analysis running live", 2000));
+    }
 }

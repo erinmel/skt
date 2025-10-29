@@ -65,7 +65,7 @@
                         <MenuFlyout>
                             <MenuItem Header="Lexical" Name="LexicalAnalysisMenuItem" Click="LexicalAnalysisMenuItem_Click"/>
                             <MenuItem Header="Syntactic" Name="SyntacticAnalysisMenuItem" Click="SyntacticAnalysisMenuItem_Click" IsEnabled="False"/>
-                            <MenuItem Header="Semantic" IsEnabled="False"/>
+                            <MenuItem Header="Semantic" Name="SemanticAnalysisMenuItem" Click="SemanticAnalysisMenuItem_Click" IsEnabled="False"/>
                         </MenuFlyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>

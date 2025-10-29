@@ -21,6 +21,7 @@ public partial class ToolWindowStrip : UserControl
             var fe = this.FindControl<Button>("FileExplorerToggle");
             var tokens = this.FindControl<Button>("TokensToggle");
             var syntax = this.FindControl<Button>("SyntaxTreeToggle");
+            var semantic = this.FindControl<Button>("SemanticTreeToggle");
             var phase = this.FindControl<Button>("PhaseOutputToggle");
 
             var terminal = this.FindControl<Button>("TerminalToggle");
@@ -31,6 +32,7 @@ public partial class ToolWindowStrip : UserControl
             if (fe is not null) fe.Click += ToolWindowToggle_Click;
             if (tokens is not null) tokens.Click += ToolWindowToggle_Click;
             if (syntax is not null) syntax.Click += ToolWindowToggle_Click;
+            if (semantic is not null) semantic.Click += ToolWindowToggle_Click;
             if (phase is not null) phase.Click += ToolWindowToggle_Click;
 
             if (terminal is not null) terminal.Click += ToolPanelToggle_Click;
@@ -76,6 +78,7 @@ public partial class ToolWindowStrip : UserControl
         FileExplorerToggle.Classes.Remove(SelectedCssClass);
         TokensToggle.Classes.Remove(SelectedCssClass);
         SyntaxTreeToggle.Classes.Remove(SelectedCssClass);
+        SemanticTreeToggle.Classes.Remove(SelectedCssClass);
         PhaseOutputToggle.Classes.Remove(SelectedCssClass);
     }
 
@@ -93,6 +96,9 @@ public partial class ToolWindowStrip : UserControl
                 break;
             case nameof(SyntaxTreeToggle):
                 SyntaxTreeToggle.Classes.Add(SelectedCssClass);
+                break;
+            case nameof(SemanticTreeToggle):
+                SemanticTreeToggle.Classes.Add(SelectedCssClass);
                 break;
             case nameof(PhaseOutputToggle):
                 PhaseOutputToggle.Classes.Add(SelectedCssClass);

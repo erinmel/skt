@@ -12,6 +12,7 @@ public class CompilerBridge
     private readonly IEventBus _bus;
     private readonly LexicalAnalyzer _lexical = new();
     private readonly SyntaxAnalyzer _syntax = new();
+    private readonly SemanticAnalyzer _semantic = new();
 
     public CompilerBridge(IEventBus bus)
     {
@@ -21,6 +22,7 @@ public class CompilerBridge
         _bus.Subscribe<FileOpenedEvent>(OnFileOpened);
         _bus.Subscribe<ParseFileRequestEvent>(OnParseFileRequest);
         _bus.Subscribe<ParseBufferRequestEvent>(OnParseBufferRequest);
+        _bus.Subscribe<SemanticAnalysisRequestEvent>(OnSemanticAnalysisRequest);
     }
 
     private void AnalyzeFileInMemory(string filePath)
@@ -95,10 +97,53 @@ public class CompilerBridge
         {
             var (ast, errors) = _syntax.ParseFromTokens(tokens);
             _bus.Publish(new SyntaxAnalysisCompletedEvent(filePath, ast, errors, true));
+
+            if (ast != null)
+            {
+                PerformSemanticAnalysisOnBuffer(ast, filePath);
+            }
         }
         catch (Exception ex)
         {
             _bus.Publish(new SyntaxAnalysisFailedEvent(filePath ?? "unnamed", ex.Message));
+        }
+    }
+
+    private void PerformSemanticAnalysis(SemanticAnalysisRequestEvent request)
+    {
+        try
+        {
+            var (annotatedAst, symbolTable, errors) = _semantic.Analyze(request.Ast);
+            _bus.Publish(new SemanticAnalysisCompletedEvent(
+                request.FilePath,
+                annotatedAst,
+                symbolTable,
+                errors,
+                request.FromBuffer
+            ));
+        }
+        catch (Exception ex)
+        {
+            _bus.Publish(new SemanticAnalysisFailedEvent(request.FilePath, ex.Message, request.FromBuffer));
+        }
+    }
+
+    private void PerformSemanticAnalysisOnBuffer(AstNode ast, string? filePath)
+    {
+        try
+        {
+            var (annotatedAst, symbolTable, errors) = _semantic.Analyze(ast);
+            _bus.Publish(new SemanticAnalysisCompletedEvent(
+                filePath,
+                annotatedAst,
+                symbolTable,
+                errors,
+                true
+            ));
+        }
+        catch (Exception ex)
+        {
+            _bus.Publish(new SemanticAnalysisFailedEvent(filePath ?? "unnamed", ex.Message, true));
         }
     }
 
@@ -107,4 +152,5 @@ public class CompilerBridge
     private void OnTokenizeBufferRequest(TokenizeBufferRequestEvent e) => AnalyzeBuffer(e.Content, e.FilePath);
     private void OnParseFileRequest(ParseFileRequestEvent e) => PerformSyntaxAnalysis(e.FilePath);
     private void OnParseBufferRequest(ParseBufferRequestEvent e) => ParseBuffer(e.Tokens, e.FilePath);
+    private void OnSemanticAnalysisRequest(SemanticAnalysisRequestEvent e) => PerformSemanticAnalysis(e);
 }

@@ -75,6 +75,9 @@ public partial class MainWindowViewModel : ObservableObject
     // Syntax Tree view model
     public SyntaxTreeViewModel SyntaxTree { get; } = new();
 
+    // Semantic Tree view model
+    public SemanticTreeViewModel SemanticTree { get; } = new();
+
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
 

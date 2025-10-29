@@ -43,6 +43,16 @@
                     <Image Source="{DynamicResource Icon.ToolWindowSyntaxTree}" Width="20" Height="20"/>
                 </Button>
 
+                <Button Name="SemanticTreeToggle"
+                        Tag="ToolIcon"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6,6"
+                        Margin="0,3"
+                        ToolTip.Tip="Semantic Tree">
+                    <Image Source="{DynamicResource Icon.ToolWindowSyntaxTree}" Width="20" Height="20"/>
+                </Button>
+
                 <Button Name="PhaseOutputToggle"
                         Tag="ToolIcon"
                         Background="Transparent"
