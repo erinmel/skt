@@ -8,7 +8,7 @@ using Avalonia.Controls;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
-public partial class SemanticTreeViewModel : ObservableObject
+public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 {
     private ObservableCollection<AnnotatedAstNodeViewModel> _rootNodesInternal = new();
     private AnnotatedAstNodeViewModel? _programNode;
@@ -31,6 +31,8 @@ public partial class SemanticTreeViewModel : ObservableObject
 
     private void InitializeTreeSource()
     {
+        TreeSource?.Dispose();
+
         TreeSource = new HierarchicalTreeDataGridSource<AnnotatedAstNodeViewModel>(_rootNodesInternal)
         {
             Columns =
@@ -101,6 +103,12 @@ public partial class SemanticTreeViewModel : ObservableObject
         _rootNodesInternal.Clear();
         _programNode = null;
         StatusMessage = "No semantic tree to display";
+    }
+
+    public void Dispose()
+    {
+        TreeSource?.Dispose();
+        TreeSource = null;
     }
 }
 

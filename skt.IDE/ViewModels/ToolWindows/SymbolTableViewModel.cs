@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Services.Buss;
 using skt.Shared;
+using System;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
@@ -28,7 +29,7 @@ public class SymbolRow
     }
 }
 
-public partial class SymbolTableViewModel : ObservableObject
+public partial class SymbolTableViewModel : ObservableObject, IDisposable
 {
     private readonly ObservableCollection<SymbolRow> _rows = new();
 
@@ -87,5 +88,10 @@ public partial class SymbolTableViewModel : ObservableObject
             _rows.Clear();
             SymbolCount = 0;
         });
+    }
+
+    public void Dispose()
+    {
+        Source?.Dispose();
     }
 }
