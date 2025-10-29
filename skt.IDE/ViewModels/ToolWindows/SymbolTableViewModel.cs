@@ -23,7 +23,7 @@ public class SymbolRow
         Name = name;
         DataType = dataType;
         Scope = scope;
-        IsUsed = isUsed ? "Si" : "No";
+        IsUsed = isUsed ? "Yes" : "No";
         Lines = string.Join(", ", lines);
     }
 }
