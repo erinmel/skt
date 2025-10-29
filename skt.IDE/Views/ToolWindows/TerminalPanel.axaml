@@ -9,11 +9,12 @@
       <Setter Property="Padding" Value="0"/>
     </Style>
     <Style Selector="TabItem">
-      <Setter Property="Padding" Value="6,2"/>
-      <Setter Property="FontSize" Value="18"/>
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="Bold"/>
     </Style>
     <Style Selector="ScrollViewer">
-      <Setter Property="Padding" Value="4"/>
+      <Setter Property="Padding" Value="0"/>
     </Style>
     <Style Selector="TextBox">
       <Setter Property="FontSize" Value="12"/>
@@ -25,40 +26,35 @@
     </Style>
   </UserControl.Styles>
   <Border Margin="2">
-    <Grid>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="*"/>
-      </Grid.RowDefinitions>
-      <TabControl Grid.Row="0" Name="TerminalTabView">
-        <TabItem Header="Terminal">
-          <ScrollViewer>
-            <TextBox AcceptsReturn="True"
-                     FontFamily="Consolas,monospace"
-                     Watermark="Terminal output will appear here..."
-                     IsReadOnly="True"/>
-          </ScrollViewer>
-        </TabItem>
-        <TabItem Header="Lexical Errors">
-          <toolviews:ErrorsView GroupsSource="{Binding Errors.LexicalGroups}" PanelTabIndex="1" />
-        </TabItem>
-        <TabItem Header="Syntax Errors">
-          <toolviews:ErrorsView GroupsSource="{Binding Errors.SyntaxGroups}" PanelTabIndex="2" />
-        </TabItem>
-        <TabItem Header="Semantic Errors">
-          <toolviews:ErrorsView GroupsSource="{Binding Errors.SemanticGroups}" PanelTabIndex="3" />
-        </TabItem>
-        <TabItem Header="Symbol Table">
-          <toolviews:SymbolTableView DataContext="{Binding SymbolTable}" />
-        </TabItem>
-        <TabItem Header="Other Errors">
-          <ScrollViewer>
-            <TextBox AcceptsReturn="True"
-                     FontFamily="Consolas,monospace"
-                     Text="{Binding OtherErrors}"
-                     IsReadOnly="True"/>
-          </ScrollViewer>
-        </TabItem>
-      </TabControl>
-    </Grid>
+    <TabControl Name="TerminalTabView" Padding="0">
+      <TabItem Header="Terminal">
+        <ScrollViewer>
+          <TextBox AcceptsReturn="True"
+                   FontFamily="Consolas,monospace"
+                   Watermark="Terminal output will appear here..."
+                   IsReadOnly="True"/>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Lexical Errors">
+        <toolviews:ErrorsView GroupsSource="{Binding Errors.LexicalGroups}" PanelTabIndex="1" />
+      </TabItem>
+      <TabItem Header="Syntax Errors">
+        <toolviews:ErrorsView GroupsSource="{Binding Errors.SyntaxGroups}" PanelTabIndex="2" />
+      </TabItem>
+      <TabItem Header="Semantic Errors">
+        <toolviews:ErrorsView GroupsSource="{Binding Errors.SemanticGroups}" PanelTabIndex="3" />
+      </TabItem>
+      <TabItem Header="Symbol Table">
+        <toolviews:SymbolTableView DataContext="{Binding SymbolTable}" />
+      </TabItem>
+      <TabItem Header="Other Errors">
+        <ScrollViewer>
+          <TextBox AcceptsReturn="True"
+                   FontFamily="Consolas,monospace"
+                   Text="{Binding OtherErrors}"
+                   IsReadOnly="True"/>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
   </Border>
 </UserControl>
