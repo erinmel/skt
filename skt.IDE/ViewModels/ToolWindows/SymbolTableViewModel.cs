@@ -50,11 +50,11 @@ public partial class SymbolTableViewModel : ObservableObject
     {
         Columns =
         {
-            new TextColumn<SymbolRow, string>("Nombre", x => x.Name),
-            new TextColumn<SymbolRow, string>("Tipo", x => x.DataType),
-            new TextColumn<SymbolRow, string>("Ámbito", x => x.Scope),
-            new TextColumn<SymbolRow, string>("Usada", x => x.IsUsed),
-            new TextColumn<SymbolRow, string>("Linea", x => x.Lines)
+            new TextColumn<SymbolRow, string>("Name", x => x.Name),
+            new TextColumn<SymbolRow, string>("Type", x => x.DataType),
+            new TextColumn<SymbolRow, string>("Scope", x => x.Scope),
+            new TextColumn<SymbolRow, string>("Used", x => x.IsUsed),
+            new TextColumn<SymbolRow, string>("Line", x => x.Lines)
         }
     };
 
