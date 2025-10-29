@@ -44,6 +44,12 @@
         <TabItem Header="Syntax Errors">
           <toolviews:ErrorsView GroupsSource="{Binding Errors.SyntaxGroups}" PanelTabIndex="2" />
         </TabItem>
+        <TabItem Header="Semantic Errors">
+          <toolviews:ErrorsView GroupsSource="{Binding Errors.SemanticGroups}" PanelTabIndex="3" />
+        </TabItem>
+        <TabItem Header="Symbol Table">
+          <toolviews:SymbolTableView DataContext="{Binding SymbolTable}" />
+        </TabItem>
         <TabItem Header="Other Errors">
           <ScrollViewer>
             <TextBox AcceptsReturn="True"

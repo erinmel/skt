@@ -513,6 +513,9 @@ public class SemanticAnalyzer
     if (symbol != null)
     {
       node.SetTypeAttribute(symbol.DataType, AttributePropagation.Inherited, "symbol_table");
+
+      // Record this as a reference to the variable
+      symbol.AddReference(node.Line, node.Column);
     }
   }
 
