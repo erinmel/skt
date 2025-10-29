@@ -56,6 +56,7 @@ public partial class MainWindow : Window
         // Subscribe to global requests to show tool windows or terminal tabs
         App.EventBus.Subscribe<ShowToolWindowRequestEvent>(OnShowToolWindowRequest);
         App.EventBus.Subscribe<ShowTerminalTabRequestEvent>(OnShowTerminalTabRequest);
+        App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -124,6 +125,17 @@ public partial class MainWindow : Window
             UpdateTerminalPanelSelection();
             SwitchTerminalTab();
         });
+    }
+
+    private void OnProjectLoaded(ProjectLoadedEvent e)
+    {
+        if (e.Success)
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await SwitchToolWindow(ToolWindowType.FileExplorer);
+            });
+        }
     }
 
     #region Tool Window Toggle Methods

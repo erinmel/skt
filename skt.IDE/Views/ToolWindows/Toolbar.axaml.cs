@@ -329,6 +329,7 @@ public partial class Toolbar : UserControl
             return;
         }
         App.EventBus.Publish(new TokenizeFileRequestEvent(path, writeTokenFile: false));
+        App.EventBus.Publish(new ShowToolWindowRequestEvent("TokensToggle"));
         App.EventBus.Publish(new StatusBarMessageEvent("Lexical analysis started (file)", 2000));
     }
 
@@ -348,6 +349,7 @@ public partial class Toolbar : UserControl
 
         // Call syntax analysis directly - it will cascade
         App.EventBus.Publish(new ParseFileRequestEvent(path));
+        App.EventBus.Publish(new ShowToolWindowRequestEvent("SyntaxTreeToggle"));
         App.EventBus.Publish(new StatusBarMessageEvent("Running syntax analysis", 2000));
     }
 
