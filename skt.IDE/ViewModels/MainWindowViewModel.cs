@@ -1,8 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.ViewModels.ToolWindows;
 using Avalonia.Controls;
-using Avalonia.Media;
-using Avalonia;
 
 namespace skt.IDE.ViewModels;
 
@@ -50,18 +48,16 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty] private string _windowStateButtonTooltip = "Maximize";
 
-    public DrawingImage? WindowStateIcon
+    public string WindowStateIconKey
     {
         get
         {
-            var key = CurrentWindowState switch
+            return CurrentWindowState switch
             {
                 WindowState.Maximized => "Icon.Restore",
                 WindowState.Minimized => "Icon.Minimize",
                 _ => "Icon.Maximize"
             };
-
-            return Application.Current?.FindResource(key) as DrawingImage;
         }
     }
 
@@ -100,6 +96,6 @@ public partial class MainWindowViewModel : ObservableObject
                 break;
         }
 
-        OnPropertyChanged(nameof(WindowStateIcon));
+        OnPropertyChanged(nameof(WindowStateIconKey));
     }
 }

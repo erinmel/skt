@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
              xmlns:models="using:skt.IDE.Models"
+             xmlns:views="using:skt.IDE.Views"
              xmlns:converters1="clr-namespace:skt.IDE.Services.Converters"
              x:Class="skt.IDE.Views.ToolWindows.FileExplorerView"
              x:DataType="vm:FileExplorerViewModel">
@@ -26,11 +27,6 @@
 
     <Style Selector="MenuItem:pointerover /template/ Border">
       <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
-    </Style>
-
-    <Style Selector="Image">
-      <Setter Property="Width" Value="16"/>
-      <Setter Property="Height" Value="16"/>
     </Style>
 
     <!-- Inline editor style: remove extra spacing/height and use app default foreground -->
@@ -72,7 +68,7 @@
       <TreeView.ItemTemplate>
         <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="models:FileNode">
           <StackPanel Orientation="Horizontal" Spacing="3" IsVisible="{Binding IsPlaceholder, Converter={x:Static converters1:BoolInvertConverter.Instance}}">
-            <Image Source="{Binding IconKey, Converter={StaticResource IconKeyConverter}}" Width="16" Height="16"/>
+            <views:SktIcon IconKey="{Binding IconKey}" IconSize="16"/>
             <TextBlock Text="{Binding DisplayName}" IsVisible="{Binding IsEditing, Converter={x:Static converters1:BoolInvertConverter.Instance}}" VerticalAlignment="Center"/>
             <TextBox Name="InlineEditor"
                      Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -100,7 +96,7 @@
           <MenuItem Command="{Binding AddNewFileCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ToolbarFileNew}"/>
+                <views:SktIcon IconKey="Icon.ToolbarFileNew" IconSize="16"/>
                 <TextBlock Text="Add New File"/>
               </StackPanel>
             </MenuItem.Header>
@@ -109,7 +105,7 @@
           <MenuItem Command="{Binding AddNewFolderCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ToolbarProjectNew}"/>
+                <views:SktIcon IconKey="Icon.ToolbarProjectNew" IconSize="16"/>
                 <TextBlock Text="Add New Folder"/>
               </StackPanel>
             </MenuItem.Header>
@@ -118,7 +114,7 @@
           <MenuItem Command="{Binding RenameResourceCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ContentRename}"/>
+                <views:SktIcon IconKey="Icon.ContentRename" IconSize="16"/>
                 <TextBlock Text="Rename (F2)"/>
               </StackPanel>
             </MenuItem.Header>
@@ -129,7 +125,7 @@
           <MenuItem Command="{Binding CopyCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ContentCopy}"/>
+                <views:SktIcon IconKey="Icon.ContentCopy" IconSize="16"/>
                 <TextBlock Text="Copy"/>
               </StackPanel>
             </MenuItem.Header>
@@ -138,7 +134,7 @@
           <MenuItem Command="{Binding CutCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ContentCut}"/>
+                <views:SktIcon IconKey="Icon.ContentCut" IconSize="16"/>
                 <TextBlock Text="Cut"/>
               </StackPanel>
             </MenuItem.Header>
@@ -147,7 +143,7 @@
           <MenuItem Command="{Binding PasteCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ContentPaste}"/>
+                <views:SktIcon IconKey="Icon.ContentPaste" IconSize="16"/>
                 <TextBlock Text="Paste"/>
               </StackPanel>
             </MenuItem.Header>
@@ -156,7 +152,7 @@
           <MenuItem Command="{Binding DeleteCommand}">
             <MenuItem.Header>
               <StackPanel>
-                <Image Source="{DynamicResource Icon.ToolbarDelete}"/>
+                <views:SktIcon IconKey="Icon.ToolbarDelete" IconSize="16"/>
                 <TextBlock Text="Delete"/>
               </StackPanel>
             </MenuItem.Header>
