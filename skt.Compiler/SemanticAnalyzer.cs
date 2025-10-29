@@ -450,7 +450,9 @@ public class SemanticAnalyzer
 
   private void AnalyzeCinKeyword(AnnotatedAstNode node)
   {
-    // Similar to AnalyzeCinOperator, but for the 'cin' keyword usage
+    // Handles the 'cin' keyword node and performs variable validation.
+    // Unlike AnalyzeCinOperator (which handles the '>>' operator node and does not validate variables),
+    // this method checks that each variable used with 'cin' is declared.
     foreach (var child in node.Children)
     {
       if (child.Rule == "ID" && child.Token != null)
