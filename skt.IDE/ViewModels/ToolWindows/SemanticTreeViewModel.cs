@@ -39,10 +39,10 @@ public partial class SemanticTreeViewModel : ObservableObject
                     new TextColumn<AnnotatedAstNodeViewModel, string>("Rule/Token", x => x.DisplayName),
                     x => x.Children,
                     x => x.HasChildren),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Type", x => x.DataType),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Scope", x => x.Scope),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Value", x => x.Value),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Constant", x => x.IsConstant),
+                new TextColumn<AnnotatedAstNodeViewModel, string>("Type", x => x.TypeValue),
+                new TextColumn<AnnotatedAstNodeViewModel, string>("Type Prop", x => x.TypePropagation),
+                new TextColumn<AnnotatedAstNodeViewModel, string>("Value", x => x.ValueValue),
+                new TextColumn<AnnotatedAstNodeViewModel, string>("Val Prop", x => x.ValuePropagation),
                 new TextColumn<AnnotatedAstNodeViewModel, int>("Line", x => x.Line),
                 new TextColumn<AnnotatedAstNodeViewModel, int>("Col", x => x.Column)
             }
@@ -180,6 +180,86 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
         Scope = _annotatedNode.Scope ?? "";
         Value = _annotatedNode.Value?.ToString() ?? "";
         IsConstant = _annotatedNode.IsConstant ? "Yes" : "No";
+    }
+
+    public string TypeValue
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_annotatedNode.DataType))
+                return "";
+
+            return _annotatedNode.DataType;
+        }
+    }
+
+    public string ValueValue
+    {
+        get
+        {
+            if (_annotatedNode.Value == null)
+                return "";
+
+            return _annotatedNode.Value.ToString() ?? "";
+        }
+    }
+
+    public string TypePropagation
+    {
+        get
+        {
+            var propagation = _annotatedNode.TypeAttribute.Propagation;
+            var source = _annotatedNode.TypeAttribute.SourceNode;
+
+            if (propagation == AttributePropagation.None)
+                return "";
+
+            var result = FormatPropagationWithSymbol(propagation);
+            if (!string.IsNullOrEmpty(source))
+                result += $" {source}";
+
+            return result;
+        }
+    }
+
+    public string ValuePropagation
+    {
+        get
+        {
+            var propagation = _annotatedNode.ValueAttribute.Propagation;
+            var source = _annotatedNode.ValueAttribute.SourceNode;
+
+            if (propagation == AttributePropagation.None)
+                return "";
+
+            var result = FormatPropagationWithSymbol(propagation);
+            if (!string.IsNullOrEmpty(source))
+                result += $" {source}";
+
+            return result;
+        }
+    }
+
+    private static string FormatPropagationWithSymbol(AttributePropagation propagation)
+    {
+        return propagation switch
+        {
+            AttributePropagation.Synthesized => "⭡ Synth",
+            AttributePropagation.Inherited => "⭣ Inher",
+            AttributePropagation.Sibling => "⭤ Sibl",
+            _ => ""
+        };
+    }
+
+    private static string FormatPropagation(AttributePropagation propagation)
+    {
+        return propagation switch
+        {
+            AttributePropagation.Synthesized => "↑",
+            AttributePropagation.Inherited => "↓",
+            AttributePropagation.Sibling => "↔",
+            _ => ""
+        };
     }
 
     private void LoadChildren()
