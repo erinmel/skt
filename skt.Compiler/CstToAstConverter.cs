@@ -4,8 +4,8 @@ namespace skt.Compiler;
 
 public class CstToAstConverter
 {
-    private readonly HashSet<string> _ignoreSymbols = new() { ",", ";", "<<", ">>", "main" };
-    
+    private readonly HashSet<string> _ignoreSymbols = new() { ",", ";", "main" };
+
     private readonly Dictionary<string, int> _operators = new()
     {
         ["^"] = 1,
@@ -710,7 +710,29 @@ public class CstToAstConverter
             if (IsErrorNode(cinNode))
                 return CreateErrorPlaceholder(cinNode, "cin");
 
-            var cinAst = new AstNode("cin", new List<AstNode>());
+            var shiftToken = FindTokenByValues(cinNode, new[] { ">>" });
+            var cinToken = FindTokenByValues(cinNode, new[] { "cin" });
+
+            var opNode = new AstNode(
+                rule: ">>",
+                children: new List<AstNode>(),
+                token: shiftToken ?? cinToken,
+                line: shiftToken?.Line ?? cinToken?.Line ?? cinNode.Line,
+                column: shiftToken?.Column ?? cinToken?.Column ?? cinNode.Column,
+                endLine: shiftToken?.EndLine ?? cinToken?.EndLine ?? cinNode.EndLine,
+                endColumn: shiftToken?.EndColumn ?? cinToken?.EndColumn ?? cinNode.EndColumn
+            );
+
+            var cinLeaf = new AstNode(
+                rule: "cin",
+                children: new List<AstNode>(),
+                token: cinToken,
+                line: cinToken?.Line ?? cinNode.Line,
+                column: cinToken?.Column ?? cinNode.Column,
+                endLine: cinToken?.EndLine ?? cinNode.EndLine,
+                endColumn: cinToken?.EndColumn ?? cinNode.EndColumn
+            );
+            opNode.Children.Add(cinLeaf);
 
             var idToken = FindFirstTokenByType(cinNode, TokenType.Identifier);
             if (idToken != null)
@@ -724,10 +746,10 @@ public class CstToAstConverter
                     endLine: idToken.EndLine,
                     endColumn: idToken.EndColumn
                 );
-                cinAst.Children.Add(idNode);
+                opNode.Children.Add(idNode);
             }
 
-            return cinAst.Children.Count > 0 ? cinAst : null;
+            return opNode.Children.Count > 1 ? opNode : null;
         }
         catch
         {
@@ -742,31 +764,13 @@ public class CstToAstConverter
             if (IsErrorNode(coutNode))
                 return CreateErrorPlaceholder(coutNode, "cout");
 
-            var coutAst = new AstNode("cout", new List<AstNode>());
-
             var outNode = FindChildByRule(coutNode, "out");
             if (outNode != null)
             {
-                var coutChain = ConvertCoutChain(outNode);
-                if (coutChain != null)
-                {
-                    coutAst.Children.Add(coutChain);
-                }
-            }
-            else
-            {
-                var exprNode = FindChildByRule(coutNode, "expr");
-                if (exprNode != null)
-                {
-                    var exprAst = ConvertExpression(exprNode);
-                    if (exprAst != null)
-                    {
-                        coutAst.Children.Add(exprAst);
-                    }
-                }
+                return ConvertCoutChain(coutNode, outNode);
             }
 
-            return coutAst.Children.Count > 0 ? coutAst : null;
+            return null;
         }
         catch
         {
@@ -774,10 +778,97 @@ public class CstToAstConverter
         }
     }
 
-    private AstNode? ConvertCoutChain(AstNode outNode)
+    private AstNode? ConvertCoutChain(AstNode coutNode, AstNode outNode)
+    {
+        var expressions = new List<AstNode>();
+        CollectCoutExpressions(outNode, expressions);
+
+        if (expressions.Count == 0)
+            return null;
+
+        var coutToken = FindTokenByValues(coutNode, new[] { "cout" });
+
+        var currentNode = new AstNode(
+            rule: "cout",
+            children: new List<AstNode>(),
+            token: coutToken,
+            line: coutToken?.Line ?? coutNode.Line,
+            column: coutToken?.Column ?? coutNode.Column,
+            endLine: coutToken?.EndLine ?? coutNode.EndLine,
+            endColumn: coutToken?.EndColumn ?? coutNode.EndColumn
+        );
+
+        for (int i = 0; i < expressions.Count; i++)
+        {
+            if (i == 0)
+            {
+                var shiftNode = new AstNode(
+                    rule: "<<",
+                    children: new List<AstNode> { currentNode, expressions[i] },
+                    token: null,
+                    line: currentNode.Line,
+                    column: currentNode.Column,
+                    endLine: expressions[i].EndLine,
+                    endColumn: expressions[i].EndColumn
+                );
+                currentNode = shiftNode;
+            }
+            else
+            {
+                var shiftNode = new AstNode(
+                    rule: "<<",
+                    children: new List<AstNode> { currentNode, expressions[i] },
+                    token: null,
+                    line: currentNode.Line,
+                    column: currentNode.Column,
+                    endLine: expressions[i].EndLine,
+                    endColumn: expressions[i].EndColumn
+                );
+                currentNode = shiftNode;
+            }
+        }
+
+        return currentNode;
+    }
+
+    private void CollectCoutExpressions(AstNode outNode, List<AstNode> expressions)
     {
         var exprNode = FindChildByRule(outNode, "expr");
-        return exprNode != null ? ConvertExpression(exprNode) : null;
+        if (exprNode != null)
+        {
+            var exprAst = ConvertExpression(exprNode);
+            if (exprAst != null)
+            {
+                expressions.Add(exprAst);
+            }
+        }
+
+        var outTNode = FindChildByRule(outNode, "out_t");
+        if (outTNode != null)
+        {
+            CollectCoutExpressionsFromOutT(outTNode, expressions);
+        }
+    }
+
+    private void CollectCoutExpressionsFromOutT(AstNode outTNode, List<AstNode> expressions)
+    {
+        if (outTNode.Children == null) return;
+
+        foreach (var child in outTNode.Children)
+        {
+            if (child.Rule == "expr")
+            {
+                var exprAst = ConvertExpression(child);
+                if (exprAst != null)
+                {
+                    expressions.Add(exprAst);
+                }
+            }
+            else if (child.Rule == "out_t")
+            {
+                CollectCoutExpressionsFromOutT(child, expressions);
+            }
+        }
     }
 
     private void ProcessStatements(AstNode stmtsNode, AstNode bodyAst)
@@ -941,4 +1032,3 @@ public class CstToAstConverter
         }
     }
 }
-

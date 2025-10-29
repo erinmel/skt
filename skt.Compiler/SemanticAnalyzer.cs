@@ -94,18 +94,27 @@ public class SemanticAnalyzer
       case "--":
         AnalyzeIncrementDecrement(node);
         break;
-      case "if":
-        AnalyzeIfStatement(node);
+      case "branch":
+        AnalyzeBranchStatement(node);
         break;
       case "while":
       case "do":
         AnalyzeWhileStatement(node);
         break;
+      case ">>":
+        AnalyzeCinOperator(node);
+        break;
+      case "<<":
+        AnalyzeCoutOperator(node);
+        break;
       case "cin":
-        AnalyzeCinStatement(node);
+        AnalyzeCinKeyword(node);
         break;
       case "cout":
-        AnalyzeCoutStatement(node);
+        AnalyzeCoutKeyword(node);
+        break;
+      case "body":
+        AnalyzeBody(node);
         break;
       case "ID":
         AnalyzeIdentifier(node);
@@ -365,9 +374,13 @@ public class SemanticAnalyzer
     }
   }
 
-  private void AnalyzeIfStatement(AnnotatedAstNode node)
+  private void AnalyzeBranchStatement(AnnotatedAstNode node)
   {
-    AnalyzeWithScope(node, "if");
+    // Branch statements may affect control flow, analyze with caution
+    foreach (var child in node.Children)
+    {
+      AnalyzeNode(child);
+    }
   }
 
   private void AnalyzeWhileStatement(AnnotatedAstNode node)
@@ -391,8 +404,53 @@ public class SemanticAnalyzer
     _currentScope = previousScope;
   }
 
-  private void AnalyzeCinStatement(AnnotatedAstNode node)
+  private void AnalyzeCinOperator(AnnotatedAstNode node)
   {
+    // Analyze as a function call with cin as the callee
+    if (node.Children.Count > 0)
+    {
+      var firstChild = node.Children[0];
+      AnalyzeNode(firstChild);
+
+      if (firstChild.Rule == "ID" && firstChild.Token != null)
+      {
+        string varName = firstChild.Token.Value;
+
+        if (!_symbolTable.IsDeclared(varName, _currentScope))
+        {
+          ReportError(
+              SemanticErrorType.UndeclaredVariable,
+              $"Variable '{varName}' is used before declaration",
+              firstChild.Line, firstChild.Column, firstChild.EndLine, firstChild.EndColumn,
+              varName
+          );
+        }
+        else
+        {
+          firstChild.DataType = _symbolTable.GetSymbolType(varName, _currentScope);
+        }
+      }
+    }
+
+    // Set return type to void for cin operator
+    node.SetTypeAttribute("void", AttributePropagation.Synthesized, "cin_operator");
+  }
+
+  private void AnalyzeCoutOperator(AnnotatedAstNode node)
+  {
+    // Analyze as a function call with cout as the callee
+    foreach (var child in node.Children)
+    {
+      AnalyzeNode(child);
+    }
+
+    // Set return type to void for cout operator
+    node.SetTypeAttribute("void", AttributePropagation.Synthesized, "cout_operator");
+  }
+
+  private void AnalyzeCinKeyword(AnnotatedAstNode node)
+  {
+    // Similar to AnalyzeCinOperator, but for the 'cin' keyword usage
     foreach (var child in node.Children)
     {
       if (child.Rule == "ID" && child.Token != null)
@@ -420,8 +478,18 @@ public class SemanticAnalyzer
     }
   }
 
-  private void AnalyzeCoutStatement(AnnotatedAstNode node)
+  private void AnalyzeCoutKeyword(AnnotatedAstNode node)
   {
+    // Similar to AnalyzeCoutOperator, but for the 'cout' keyword usage
+    foreach (var child in node.Children)
+    {
+      AnalyzeNode(child);
+    }
+  }
+
+  private void AnalyzeBody(AnnotatedAstNode node)
+  {
+    // Body nodes are usually blocks of statements, analyze all children
     foreach (var child in node.Children)
     {
       AnalyzeNode(child);

@@ -895,7 +895,8 @@ public class SyntaxAnalyzer
     private AstNode ParseIoStatement(string ioType)
     {
         var currentToken = CurrentToken;
-        var node = CreateNode("stmt", new List<AstNode>(), currentToken);
+        string stmtType = ioType == "cin" ? "cinstmt" : "coutstmt";
+        var node = CreateNode(stmtType, new List<AstNode>(), currentToken);
 
         // cin/cout
         var ioNode = ExpectToken(ioType);
