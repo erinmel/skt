@@ -108,9 +108,9 @@ public partial class SemanticTreeView : UserControl
                     row.BringIntoView();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Best-effort: ignore
+                System.Diagnostics.Debug.WriteLine($"Best-effort focus/bring-into-view failed: {ex}");
             }
 
             SetScrollOffset(verticalOffset);
