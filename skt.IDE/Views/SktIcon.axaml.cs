@@ -88,23 +88,9 @@ public partial class SktIcon : UserControl
             IconImage.Source = null;
         }
 
-        if (!double.IsNaN(IconWidth))
-        {
-            IconImage.Width = IconWidth;
-        }
-        else
-        {
-            IconImage.Width = IconSize;
-        }
+        IconImage.Width = !double.IsNaN(IconWidth) ? IconWidth : IconSize;
 
-        if (!double.IsNaN(IconHeight))
-        {
-            IconImage.Height = IconHeight;
-        }
-        else
-        {
-            IconImage.Height = IconSize;
-        }
+        IconImage.Height = !double.IsNaN(IconHeight) ? IconHeight : IconSize;
 
         if (TintBrush != null)
         {
