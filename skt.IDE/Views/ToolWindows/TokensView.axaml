@@ -6,23 +6,23 @@
   <Design.DataContext>
     <vm:TokensViewModel/>
   </Design.DataContext>
-  <UserControl.Styles>
-    <Style Selector="">
 
-    </Style>
-  </UserControl.Styles>
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
-
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="4">
-      <TextBlock Text="Tokens:" FontWeight="Bold" Margin="20,0,0,0"/>
-      <TextBlock Text="{Binding TokenCount}"/>
-      <TextBlock Text="Errors:" FontWeight="Bold" Margin="20,0,0,0"/>
-      <TextBlock Text="{Binding ErrorCount}"/>
-    </StackPanel>
-    <TreeDataGrid Grid.Row="1" Source="{Binding Source}" CanUserSortColumns="True"/>
-  </Grid>
+  <TreeDataGrid Source="{Binding Source}"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="True">
+    <TreeDataGrid.Styles>
+      <Style Selector="TreeDataGridRow">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridRow:nth-child(even)">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridRow:pointerover /template/ Border#BackgroundBorder">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridCell">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      </Style>
+    </TreeDataGrid.Styles>
+  </TreeDataGrid>
 </UserControl>

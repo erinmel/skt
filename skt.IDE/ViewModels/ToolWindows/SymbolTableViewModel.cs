@@ -14,13 +14,15 @@ public class SymbolRow
 {
     public string Name { get; }
     public string DataType { get; }
+    public string Scope { get; }
     public string IsUsed { get; }
     public string Lines { get; }
 
-    public SymbolRow(string name, string dataType, bool isUsed, List<int> lines)
+    public SymbolRow(string name, string dataType, string scope, bool isUsed, List<int> lines)
     {
         Name = name;
         DataType = dataType;
+        Scope = scope;
         IsUsed = isUsed ? "Si" : "No";
         Lines = string.Join(", ", lines);
     }
@@ -50,6 +52,7 @@ public partial class SymbolTableViewModel : ObservableObject
         {
             new TextColumn<SymbolRow, string>("Nombre", x => x.Name),
             new TextColumn<SymbolRow, string>("Tipo", x => x.DataType),
+            new TextColumn<SymbolRow, string>("Ámbito", x => x.Scope),
             new TextColumn<SymbolRow, string>("Usada", x => x.IsUsed),
             new TextColumn<SymbolRow, string>("Linea", x => x.Lines)
         }
@@ -70,7 +73,7 @@ public partial class SymbolTableViewModel : ObservableObject
 
                 var isUsed = entry.References.Count > 0;
 
-                _rows.Add(new SymbolRow(entry.Name, entry.DataType, isUsed, allLines));
+                _rows.Add(new SymbolRow(entry.Name, entry.DataType, entry.Scope, isUsed, allLines));
             }
 
             SymbolCount = entries.Count;

@@ -4,38 +4,23 @@
              x:Class="skt.IDE.Views.ToolWindows.SymbolTableView"
              x:DataType="vm:SymbolTableViewModel">
 
-  <DockPanel>
-    <Border DockPanel.Dock="Top"
-            Background="#2D2D30"
-            BorderBrush="#3E3E42"
-            BorderThickness="0,0,0,1"
-            Padding="8,4">
-      <StackPanel Orientation="Horizontal" Spacing="12">
-        <TextBlock Text="Symbols:" FontWeight="Bold" Foreground="#CCCCCC" FontSize="12"/>
-        <TextBlock Text="{Binding SymbolCount}" Foreground="#CCCCCC" FontSize="12"/>
-      </StackPanel>
-    </Border>
-
-    <TreeDataGrid Name="SymbolTableGrid"
-                  Source="{Binding Source}"
-                  CanUserResizeColumns="True"
-                  CanUserSortColumns="True"
-                  Background="#1E1E1E">
-      <TreeDataGrid.Styles>
-        <Style Selector="TreeDataGridRow">
-          <Setter Property="Foreground" Value="#CCCCCC"/>
-          <Setter Property="Background" Value="#1E1E1E"/>
-        </Style>
-        <Style Selector="TreeDataGridRow:nth-child(even)">
-          <Setter Property="Background" Value="#252526"/>
-        </Style>
-        <Style Selector="TreeDataGridRow:pointerover /template/ Border#BackgroundBorder">
-          <Setter Property="Background" Value="#3E3E42"/>
-        </Style>
-        <Style Selector="TreeDataGridCell">
-          <Setter Property="Foreground" Value="#CCCCCC"/>
-        </Style>
-      </TreeDataGrid.Styles>
-    </TreeDataGrid>
-  </DockPanel>
+  <TreeDataGrid Name="SymbolTableGrid"
+                Source="{Binding Source}"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="True">
+    <TreeDataGrid.Styles>
+      <Style Selector="TreeDataGridRow">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridRow:nth-child(even)">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridRow:pointerover /template/ Border#BackgroundBorder">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridCell">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      </Style>
+    </TreeDataGrid.Styles>
+  </TreeDataGrid>
 </UserControl>
