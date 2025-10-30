@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -17,16 +19,19 @@ public enum TreeExpansionMode
 public interface ITreeExpansionManager<TNodeViewModel> where TNodeViewModel : ITreeNodeViewModel
 {
     TreeExpansionMode ExpansionMode { get; set; }
-    void ApplyExpansionMode(IEnumerable<TNodeViewModel> rootNodes);
-    void ExpandAll(IEnumerable<TNodeViewModel> nodes);
-    void CollapseAll(IEnumerable<TNodeViewModel> nodes);
-    void ExpandFirstLevel(IEnumerable<TNodeViewModel> nodes);
+    Task ApplyExpansionModeAsync(IEnumerable<TNodeViewModel> rootNodes, CancellationToken cancellationToken = default);
+    Task ExpandAllAsync(IEnumerable<TNodeViewModel> nodes, CancellationToken cancellationToken = default);
+    Task CollapseAllAsync(IEnumerable<TNodeViewModel> nodes, CancellationToken cancellationToken = default);
+    Task ExpandFirstLevelAsync(IEnumerable<TNodeViewModel> nodes, CancellationToken cancellationToken = default);
 }
 
 public class TreeExpansionManager<TNodeViewModel> : ITreeExpansionManager<TNodeViewModel>
     where TNodeViewModel : class, ITreeNodeViewModel
 {
     private TreeExpansionMode _expansionMode = TreeExpansionMode.FullyExpanded;
+    private const int BatchSize = 20;
+    private CancellationTokenSource? _currentOperationCts;
+    private static readonly Dictionary<Type, System.Reflection.PropertyInfo?> _propertyCache = new();
 
     public TreeExpansionMode ExpansionMode
     {
@@ -34,26 +39,83 @@ public class TreeExpansionManager<TNodeViewModel> : ITreeExpansionManager<TNodeV
         set => _expansionMode = value;
     }
 
-    public void ApplyExpansionMode(IEnumerable<TNodeViewModel> rootNodes)
+    public async Task ApplyExpansionModeAsync(IEnumerable<TNodeViewModel> rootNodes, CancellationToken cancellationToken = default)
     {
-        switch (_expansionMode)
+        _currentOperationCts?.Cancel();
+        _currentOperationCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        try
         {
-            case TreeExpansionMode.Collapsed:
-                CollapseAll(rootNodes);
-                break;
-            case TreeExpansionMode.FirstLevelOnly:
-                ExpandFirstLevel(rootNodes);
-                break;
-            case TreeExpansionMode.FullyExpanded:
-                ExpandAll(rootNodes);
-                break;
+            switch (_expansionMode)
+            {
+                case TreeExpansionMode.Collapsed:
+                    await CollapseAllAsync(rootNodes, _currentOperationCts.Token);
+                    break;
+                case TreeExpansionMode.FirstLevelOnly:
+                    await ExpandFirstLevelAsync(rootNodes, _currentOperationCts.Token);
+                    break;
+                case TreeExpansionMode.FullyExpanded:
+                    await ExpandAllAsync(rootNodes, _currentOperationCts.Token);
+                    break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Operation was cancelled, this is expected
         }
     }
 
-    public void ExpandAll(IEnumerable<TNodeViewModel> nodes)
+    public async Task ExpandAllAsync(IEnumerable<TNodeViewModel> nodes, CancellationToken cancellationToken = default)
     {
-        foreach (var node in nodes)
+        var nodesList = nodes.ToList();
+        await ExpandNodesRecursivelyAsync(nodesList, cancellationToken);
+    }
+
+    public async Task CollapseAllAsync(IEnumerable<TNodeViewModel> nodes, CancellationToken cancellationToken = default)
+    {
+        var nodesList = nodes.ToList();
+        await CollapseNodesRecursivelyAsync(nodesList, cancellationToken);
+    }
+
+    public async Task ExpandFirstLevelAsync(IEnumerable<TNodeViewModel> nodes, CancellationToken cancellationToken = default)
+    {
+        var nodesList = nodes.ToList();
+        int processedCount = 0;
+
+        foreach (var node in nodesList)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            node.IsExpanded = true;
+
+            if (node.HasChildren && node.ChildrenLoaded)
+            {
+                var children = GetChildrenFromNode(node);
+                if (children != null)
+                {
+                    await CollapseAllAsync(children, cancellationToken);
+                }
+            }
+
+            processedCount++;
+            if (processedCount % BatchSize == 0)
+            {
+                await Task.Delay(1, cancellationToken);
+            }
+        }
+    }
+
+    private async Task ExpandNodesRecursivelyAsync(List<TNodeViewModel> nodes, CancellationToken cancellationToken)
+    {
+        var queue = new Queue<TNodeViewModel>(nodes);
+        int processedCount = 0;
+
+        while (queue.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var node = queue.Dequeue();
+
             if (!node.IsExpanded)
             {
                 node.IsExpanded = true;
@@ -64,47 +126,66 @@ public class TreeExpansionManager<TNodeViewModel> : ITreeExpansionManager<TNodeV
                 var children = GetChildrenFromNode(node);
                 if (children != null)
                 {
-                    ExpandAll(children);
+                    foreach (var child in children)
+                    {
+                        queue.Enqueue(child);
+                    }
                 }
+            }
+
+            processedCount++;
+            if (processedCount % BatchSize == 0)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                await Task.Delay(1, cancellationToken);
             }
         }
     }
 
-    public void CollapseAll(IEnumerable<TNodeViewModel> nodes)
+    private async Task CollapseNodesRecursivelyAsync(List<TNodeViewModel> nodes, CancellationToken cancellationToken)
     {
-        foreach (var node in nodes)
+        var stack = new Stack<TNodeViewModel>(nodes.Reverse<TNodeViewModel>());
+        int processedCount = 0;
+
+        while (stack.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var node = stack.Pop();
+
             if (node.HasChildren && node.ChildrenLoaded)
             {
                 var children = GetChildrenFromNode(node);
                 if (children != null)
                 {
-                    CollapseAll(children);
+                    foreach (var child in children.Reverse())
+                    {
+                        stack.Push(child);
+                    }
                 }
             }
+
             node.IsExpanded = false;
-        }
-    }
 
-    public void ExpandFirstLevel(IEnumerable<TNodeViewModel> nodes)
-    {
-        foreach (var node in nodes)
-        {
-            node.IsExpanded = true;
-            if (node.HasChildren && node.ChildrenLoaded)
+            processedCount++;
+            if (processedCount % BatchSize == 0)
             {
-                var children = GetChildrenFromNode(node);
-                if (children != null)
-                {
-                    CollapseAll(children);
-                }
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                await Task.Delay(1, cancellationToken);
             }
         }
     }
 
     private IEnumerable<TNodeViewModel>? GetChildrenFromNode(TNodeViewModel node)
     {
-        var childrenProperty = node.GetType().GetProperty("Children");
+        var nodeType = node.GetType();
+
+        if (!_propertyCache.TryGetValue(nodeType, out var childrenProperty))
+        {
+            childrenProperty = nodeType.GetProperty("Children");
+            _propertyCache[nodeType] = childrenProperty;
+        }
+
         return childrenProperty?.GetValue(node) as IEnumerable<TNodeViewModel>;
     }
 }

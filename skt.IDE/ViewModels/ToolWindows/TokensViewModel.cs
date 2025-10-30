@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Threading;
@@ -14,9 +15,7 @@ namespace skt.IDE.ViewModels.ToolWindows;
 public partial class TokensViewModel : ObservableObject, IDisposable
 {
     private readonly ObservableCollection<TokenRow> _rows = new();
-
-    // Cache last successful lexical results per file
-    private readonly Dictionary<string, (List<Token> tokens, List<ErrorToken> errors)> _tokenCache = new();
+    private readonly Services.ActiveEditorService? _activeEditorService;
 
     [ObservableProperty]
     private FlatTreeDataGridSource<TokenRow> _source;
@@ -33,13 +32,11 @@ public partial class TokensViewModel : ObservableObject, IDisposable
     public TokensViewModel()
     {
         _source = CreateSource(_rows);
+        _activeEditorService = App.Services?.GetService(typeof(Services.ActiveEditorService)) as Services.ActiveEditorService;
 
-        App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalCompleted(m));
-        App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => OnLexicalFailed(m));
-        App.Messenger.Register<FileOpenedEvent>(this, (r, m) => OnFileOpened(m));
-        App.Messenger.Register<FileClosedEvent>(this, (r, m) => OnFileClosed(m));
-        App.Messenger.Register<FileRenamedEvent>(this, (r, m) => OnFileRenamed(m));
-        App.Messenger.Register<SelectedDocumentChangedEvent>(this, (r, m) => OnSelectedDocumentChanged(m));
+        App.Messenger.Register<ActiveEditorChangedEvent>(this, (_, m) => OnActiveEditorChanged(m));
+        App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (_, m) => OnLexicalCompleted(m));
+        App.Messenger.Register<FileClosedEvent>(this, (_, m) => OnFileClosed(m));
     }
 
     private FlatTreeDataGridSource<TokenRow> CreateSource(IList<TokenRow> items) => new(items)
@@ -53,118 +50,85 @@ public partial class TokensViewModel : ObservableObject, IDisposable
         }
     };
 
-    private void OnSelectedDocumentChanged(SelectedDocumentChangedEvent e)
+    private void OnActiveEditorChanged(ActiveEditorChangedEvent e)
     {
-        if (string.IsNullOrEmpty(e.FilePath))
+        if (e.ActiveEditor == null)
         {
             CurrentFile = string.Empty;
             Clear();
             return;
         }
 
-        if (CurrentFile != e.FilePath)
-        {
-            CurrentFile = e.FilePath;
-            if (_tokenCache.TryGetValue(e.FilePath, out var cached))
-            {
-                LoadTokens(cached.tokens, cached.errors);
-            }
-            else
-            {
-                Clear();
-                App.Messenger.Send(new TokenizeFileRequestEvent(e.FilePath));
-            }
-        }
-        else if (e.IsDirty)
-        {
-            App.Messenger.Send(new TokenizeFileRequestEvent(e.FilePath));
-        }
+        CurrentFile = e.ActiveEditor.FilePath ?? string.Empty;
+        LoadTokens(e.ActiveEditor.Tokens, e.ActiveEditor.LexicalErrors);
     }
 
-    private void OnFileOpened(FileOpenedEvent e)
+    private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
     {
-        CurrentFile = e.FilePath;
-        // Tokenization will be triggered by compiler bridge subscription already
+        // Only update if this is for the currently active file
+        if (!string.Equals(CurrentFile, e.FilePath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        LoadTokens(e.Tokens, e.Errors);
     }
 
     private void OnFileClosed(FileClosedEvent e)
     {
-        _tokenCache.Remove(e.FilePath);
         if (!string.Equals(CurrentFile, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
         CurrentFile = string.Empty;
         Clear();
     }
 
-    private void OnFileRenamed(FileRenamedEvent e)
+    private void LoadTokens(IEnumerable<Token> tokens, IEnumerable<ErrorToken> errors)
     {
-        if (_tokenCache.Remove(e.OldPath, out var data))
-        {
-            _tokenCache[e.NewPath] = data;
-        }
+        var tokenList = tokens.ToList();
+        var errorList = errors.ToList();
 
-        if (!string.Equals(CurrentFile, e.OldPath, StringComparison.OrdinalIgnoreCase)) return;
-        CurrentFile = e.NewPath;
-        if (_tokenCache.TryGetValue(e.NewPath, out var cached))
+        Dispatcher.UIThread.Post(() =>
         {
-            LoadTokens(cached.tokens, cached.errors);
-        }
+            _rows.Clear();
+
+            foreach (var token in tokenList)
+            {
+                _rows.Add(new TokenRow(
+                    token.Type.ToString(),
+                    token.Value,
+                    token.Line,
+                    token.Column,
+                    token.EndLine,
+                    token.EndColumn
+                ));
+            }
+
+            foreach (var error in errorList)
+            {
+                _rows.Add(new TokenRow(
+                    "ERROR",
+                    error.Value,
+                    error.Line,
+                    error.Column,
+                    error.EndLine,
+                    error.EndColumn
+                ));
+            }
+
+            TokenCount = tokenList.Count;
+            ErrorCount = errorList.Count;
+        });
     }
 
-    private void OnLexicalFailed(LexicalAnalysisFailedEvent e)
-    {
-        if (!string.IsNullOrEmpty(e.FilePath))
-            CurrentFile = e.FilePath;
-        if (e.FilePath == CurrentFile)
-        {
-            Clear();
-        }
-    }
-
-    private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
-    {
-        var path = e.FilePath ?? CurrentFile;
-        if (string.IsNullOrEmpty(path))
-            return;
-
-        _tokenCache[path] = (e.Tokens, e.Errors);
-
-        if (path == CurrentFile)
-        {
-            LoadTokens(e.Tokens, e.Errors);
-        }
-    }
-
-    private void LoadTokens(List<Token> tokens, List<ErrorToken> errors)
-    {
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            Dispatcher.UIThread.Post(() => LoadTokens(tokens, errors));
-            return;
-        }
-        _rows.Clear();
-        foreach (var t in tokens)
-        {
-            _rows.Add(new TokenRow( t.Type.ToString(), t.Value, t.Line, t.Column, t.EndLine, t.EndColumn));
-        }
-        TokenCount = tokens.Count;
-        ErrorCount = errors.Count;
-        Source = CreateSource(_rows); // force refresh
-    }
     private void Clear()
     {
-        if (!Dispatcher.UIThread.CheckAccess())
+        Dispatcher.UIThread.Post(() =>
         {
-            Dispatcher.UIThread.Post(Clear);
-            return;
-        }
-        _rows.Clear();
-        TokenCount = 0;
-        ErrorCount = 0;
-        Source = CreateSource(_rows); // ensure grid shows empty state
+            _rows.Clear();
+            TokenCount = 0;
+            ErrorCount = 0;
+        });
     }
 
     public void Dispose()
     {
-        Source?.Dispose();
+        App.Messenger.UnregisterAll(this);
     }
 }

@@ -1,9 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using skt.IDE.Services;
+using skt.IDE.Services.Buss;
 using skt.Shared;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls;
@@ -15,6 +21,9 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     private ObservableCollection<AstNodeViewModel> _rootNodesInternal = new();
     private AstNodeViewModel? _programNode;
     private readonly TreeExpansionManager<AstNodeViewModel> _expansionManager = new();
+    private CancellationTokenSource? _expansionCts;
+    private readonly Services.ActiveEditorService? _activeEditorService;
+    private ViewModels.TextEditorViewModel? _currentEditor;
 
     [ObservableProperty]
     private string _statusMessage = "No syntax tree to display. Open a file and compile to see syntax analysis.";
@@ -32,14 +41,18 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
         set
         {
             _expansionManager.ExpansionMode = value;
-            _expansionManager.ApplyExpansionMode(_rootNodesInternal);
+            _ = ApplyExpansionModeAsync();
         }
     }
 
     public SyntaxTreeViewModel()
     {
         _expansionManager.ExpansionMode = TreeExpansionMode.FullyExpanded;
+        _activeEditorService = App.Services?.GetService(typeof(Services.ActiveEditorService)) as Services.ActiveEditorService;
         InitializeTreeSource();
+
+        App.Messenger.Register<ActiveEditorChangedEvent>(this, (_, e) => OnActiveEditorChanged(e));
+        App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (_, e) => OnSyntaxAnalysisCompleted(e));
     }
 
     private void InitializeTreeSource()
@@ -75,6 +88,7 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
         }
 
         var isFirstLoad = _programNode == null;
+        var filePathContext = _currentEditor?.FilePath;
 
         if (_programNode != null && rootNode.Rule == "program")
         {
@@ -87,13 +101,13 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 
             if (rootNode.Rule == "program")
             {
-                var programViewModel = new AstNodeViewModel(rootNode);
+                var programViewModel = new AstNodeViewModel(rootNode, 0);
                 _programNode = programViewModel;
                 _rootNodesInternal.Add(programViewModel);
             }
             else
             {
-                _rootNodesInternal.Add(new AstNodeViewModel(rootNode));
+                _rootNodesInternal.Add(new AstNodeViewModel(rootNode, 0));
             }
         }
 
@@ -104,34 +118,70 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 
         if (isFirstLoad)
         {
-            // On first load, expand all nodes after a brief delay for UI to settle
-            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            _ = Task.Delay(50).ContinueWith(async _ =>
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     System.Diagnostics.Debug.WriteLine("First load - expanding all nodes");
-                    NotifyTreeDataGridToExpandAll?.Invoke();
+                    await ExpandAllAsync();
                 });
             });
         }
     }
 
     [RelayCommand]
-    public void ExpandAll()
+    private async Task ExpandAllAsync()
     {
         if (_rootNodesInternal.Count == 0) return;
-        ExpandAllNodesRecursively(_rootNodesInternal);
-        // Notify the view to refresh visuals in case the TreeDataGrid doesn't update immediately
-        NotifyTreeDataGridToExpandAll?.Invoke();
+
+        _expansionCts?.Cancel();
+        _expansionCts = new CancellationTokenSource();
+
+        try
+        {
+            await _expansionManager.ExpandAllAsync(_rootNodesInternal, _expansionCts.Token);
+            NotifyTreeDataGridToExpandAll?.Invoke();
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("Expand all operation cancelled");
+        }
     }
 
     [RelayCommand]
-    public void CollapseAll()
+    private async Task CollapseAllAsync()
     {
         if (_rootNodesInternal.Count == 0) return;
-        CollapseAllNodesRecursively(_rootNodesInternal);
-        // Notify the view to collapse visual rows in the TreeDataGrid as well
-        NotifyTreeDataGridToCollapseAll?.Invoke();
+
+        _expansionCts?.Cancel();
+        _expansionCts = new CancellationTokenSource();
+
+        try
+        {
+            await _expansionManager.CollapseAllAsync(_rootNodesInternal, _expansionCts.Token);
+            NotifyTreeDataGridToCollapseAll?.Invoke();
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("Collapse all operation cancelled");
+        }
+    }
+
+    private async Task ApplyExpansionModeAsync()
+    {
+        if (_rootNodesInternal.Count == 0) return;
+
+        _expansionCts?.Cancel();
+        _expansionCts = new CancellationTokenSource();
+
+        try
+        {
+            await _expansionManager.ApplyExpansionModeAsync(_rootNodesInternal, _expansionCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("Apply expansion mode cancelled");
+        }
     }
 
     [RelayCommand]
@@ -149,8 +199,15 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _expansionCts?.Cancel();
+        _expansionCts?.Dispose();
         TreeSource?.Dispose();
         TreeSource = null;
+    }
+
+    public void RefreshSource()
+    {
+        InitializeTreeSource();
     }
 
     public event Action? NotifyTreeDataGridToExpandAll;
@@ -188,12 +245,91 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
             }
         }
     }
+
+    private void OnActiveEditorChanged(ActiveEditorChangedEvent e)
+    {
+        SaveCurrentEditorExpansionState();
+        _currentEditor = e.ActiveEditor;
+        LoadCurrentEditorTree();
+    }
+
+    private void SaveCurrentEditorExpansionState()
+    {
+        if (_currentEditor == null) return;
+
+        _currentEditor.SyntaxTreeExpansionState.Clear();
+        SaveExpansionState(_rootNodesInternal, _currentEditor.SyntaxTreeExpansionState);
+    }
+
+    private void SaveExpansionState(IEnumerable<AstNodeViewModel> nodes, Dictionary<string, bool> state)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren)
+            {
+                state[node.NodePath] = node.IsExpanded;
+                if (node.Children.Count > 0)
+                {
+                    SaveExpansionState(node.Children, state);
+                }
+            }
+        }
+    }
+
+    private void LoadCurrentEditorTree()
+    {
+        if (_currentEditor == null)
+        {
+            _rootNodesInternal.Clear();
+            _programNode = null;
+            StatusMessage = "No syntax tree to display. Open a file and compile to see syntax analysis.";
+            return;
+        }
+
+        UpdateTree(_currentEditor.SyntaxTree, _currentEditor.SyntaxErrors.ToList());
+
+        if (_currentEditor.SyntaxTreeExpansionState.Count > 0)
+        {
+            RestoreExpansionState(_rootNodesInternal, _currentEditor.SyntaxTreeExpansionState);
+        }
+    }
+
+    private void RestoreExpansionState(IEnumerable<AstNodeViewModel> nodes, Dictionary<string, bool> state)
+    {
+        foreach (var node in nodes)
+        {
+            if (state.TryGetValue(node.NodePath, out var isExpanded))
+            {
+                node.IsExpanded = isExpanded;
+
+                if (node.Children.Count > 0)
+                {
+                    RestoreExpansionState(node.Children, state);
+                }
+            }
+        }
+    }
+
+    private void OnSelectedDocumentChanged(SelectedDocumentChangedEvent e)
+    {
+        // Deprecated - using ActiveEditorChangedEvent instead
+    }
+
+    private void OnSyntaxAnalysisCompleted(SyntaxAnalysisCompletedEvent e)
+    {
+        // Only update if this is for the currently active editor
+        if (_currentEditor != null && string.Equals(_currentEditor.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateTree(e.Ast, e.Errors);
+        }
+    }
 }
 
 public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
 {
     private AstNode _astNode;
-    private bool _childrenLoaded;
+    private string? _cachedNodePath;
+    private int _indexInParent;
 
     [ObservableProperty]
     private string _displayName = "";
@@ -210,30 +346,18 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
     [ObservableProperty]
     private bool _isExpanded;
 
-    private ObservableCollection<AstNodeViewModel> _children = new();
+    private readonly ObservableCollection<AstNodeViewModel> _children = new();
 
-    public ObservableCollection<AstNodeViewModel> Children
-    {
-        get
-        {
-            // Children are now eagerly loaded in constructor
-            return _children;
-        }
-    }
-
-    public bool ChildrenLoaded => _childrenLoaded;
+    public ObservableCollection<AstNodeViewModel> Children => _children;
+    public bool ChildrenLoaded => true;
     public AstNode AstNode => _astNode;
 
-    public AstNodeViewModel(AstNode astNode)
+    public AstNodeViewModel(AstNode astNode, int indexInParent = 0)
     {
         _astNode = astNode;
+        _indexInParent = indexInParent;
         UpdateDisplayProperties();
-
-        // Eagerly load children for tree structure
-        if (_astNode.Children.Count > 0)
-        {
-            LoadChildren();
-        }
+        LoadChildren();
     }
 
     private void UpdateDisplayProperties()
@@ -256,38 +380,26 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
 
     private void LoadChildren()
     {
-        _childrenLoaded = true;
         _children.Clear();
 
-        foreach (var childAstNode in _astNode.Children)
+        for (int i = 0; i < _astNode.Children.Count; i++)
         {
-            _children.Add(new AstNodeViewModel(childAstNode));
+            _children.Add(new AstNodeViewModel(_astNode.Children[i], i));
         }
     }
 
     public void UpdateFromAstNode(AstNode newAstNode)
     {
-        var wasExpanded = IsExpanded;
         _astNode = newAstNode;
+        _cachedNodePath = null;
         UpdateDisplayProperties();
-
-        if (_childrenLoaded)
-        {
-            UpdateChildren(newAstNode.Children, wasExpanded);
-        }
-        else if (wasExpanded && HasChildren)
-        {
-            LoadChildren();
-            IsExpanded = true;
-        }
+        UpdateChildren(newAstNode.Children);
     }
 
-    private void UpdateChildren(List<AstNode> newChildren, bool preserveExpansion = true)
+    private void UpdateChildren(List<AstNode> newChildren)
     {
         var oldViewModels = new List<AstNodeViewModel>(_children);
-        var oldExpansionStates = preserveExpansion
-            ? oldViewModels.ToDictionary(vm => vm.GeneratePathId(), vm => vm.IsExpanded)
-            : new Dictionary<string, bool>();
+        var oldExpansionStates = oldViewModels.ToDictionary(vm => vm.NodePath, vm => vm.IsExpanded);
 
         _children.Clear();
 
@@ -303,10 +415,10 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
             }
             else
             {
-                var newViewModel = new AstNodeViewModel(newChildAst);
-                if (preserveExpansion && oldExpansionStates.TryGetValue(newViewModel.GeneratePathId(), out var wasExpanded))
+                var newViewModel = new AstNodeViewModel(newChildAst, i);
+                if (oldExpansionStates.TryGetValue(newViewModel.NodePath, out var isExpanded))
                 {
-                    newViewModel.IsExpanded = wasExpanded;
+                    newViewModel.IsExpanded = isExpanded;
                 }
                 _children.Add(newViewModel);
             }
@@ -326,23 +438,28 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
         return oldNode.Token == null && newNode.Token == null;
     }
 
-    partial void OnIsExpandedChanged(bool value)
-    {
-        // Children are now eagerly loaded, no need for lazy loading
-    }
-
     public bool IsTerminal => _astNode.Token != null;
     public bool HasChildren => _astNode.Children.Count > 0;
 
-    public string StableId => GeneratePathId();
-    public string NodePath => GeneratePathId();
+    public string StableId => NodePath;
+    public string NodePath
+    {
+        get
+        {
+            if (_cachedNodePath == null)
+            {
+                _cachedNodePath = GeneratePathId();
+            }
+            return _cachedNodePath;
+        }
+    }
 
     private string GeneratePathId()
     {
         if (_astNode.Token != null && !string.IsNullOrEmpty(_astNode.Token.Value))
         {
-            return $"{_astNode.Token.Type}:{_astNode.Token.Value}@{_astNode.Line}:{_astNode.Column}";
+            return $"{_astNode.Token.Type}:{_astNode.Token.Value}[{_indexInParent}]@{_astNode.Line}:{_astNode.Column}";
         }
-        return $"{_astNode.Rule}@{_astNode.Line}:{_astNode.Column}";
+        return $"{_astNode.Rule}[{_indexInParent}]@{_astNode.Line}:{_astNode.Column}";
     }
 }

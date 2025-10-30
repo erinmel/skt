@@ -51,10 +51,12 @@ public class FileDirtyStateChangedEvent
 public class FileOpenedEvent
 {
     public string FilePath { get; }
+    public string? Content { get; }
 
-    public FileOpenedEvent(string filePath)
+    public FileOpenedEvent(string filePath, string? content = null)
     {
         FilePath = filePath;
+        Content = content;
     }
 }
 
@@ -152,4 +154,14 @@ public class ShowTerminalTabRequestEvent
     // TabIndex: 0=Terminal,1=Lexical Errors,2=Syntax Errors,3=Other
     public int TabIndex { get; }
     public ShowTerminalTabRequestEvent(int tabIndex) => TabIndex = tabIndex;
+}
+
+public class ActiveEditorChangedEvent
+{
+    public ViewModels.TextEditorViewModel? ActiveEditor { get; }
+
+    public ActiveEditorChangedEvent(ViewModels.TextEditorViewModel? activeEditor)
+    {
+        ActiveEditor = activeEditor;
+    }
 }

@@ -47,6 +47,7 @@ public class ErrorsViewModel : ObservableObject
     private readonly ObservableCollection<FileErrorGroup> _lexicalGroups = new();
     private readonly ObservableCollection<FileErrorGroup> _syntaxGroups = new();
     private readonly ObservableCollection<FileErrorGroup> _semanticGroups = new();
+    private readonly Services.ActiveEditorService? _activeEditorService;
 
     public ObservableCollection<FileErrorGroup> LexicalGroups => _lexicalGroups;
     public ObservableCollection<FileErrorGroup> SyntaxGroups => _syntaxGroups;
@@ -54,6 +55,8 @@ public class ErrorsViewModel : ObservableObject
 
     public ErrorsViewModel()
     {
+        _activeEditorService = App.Services?.GetService(typeof(Services.ActiveEditorService)) as Services.ActiveEditorService;
+
         App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalCompleted(m));
         App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => OnLexicalFailed(m));
         App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (r, m) => OnSyntaxCompleted(m));
