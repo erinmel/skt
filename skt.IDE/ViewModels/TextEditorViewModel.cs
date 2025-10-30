@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using CommunityToolkit.Mvvm.Messaging;
 using skt.Compiler;
 using skt.IDE.Services.Buss;
+using skt.IDE.ViewModels.ToolWindows;
 using skt.Shared;
 
 namespace skt.IDE.ViewModels;
@@ -85,6 +86,9 @@ public class TextEditorViewModel : INotifyPropertyChanged
     public Dictionary<string, bool> SyntaxTreeExpansionState { get; } = new();
     public Dictionary<string, bool> SemanticTreeExpansionState { get; } = new();
 
+    public TreeExpansionMode SyntaxTreeExpansionMode { get; set; } = TreeExpansionMode.FullyExpanded;
+    public TreeExpansionMode SemanticTreeExpansionMode { get; set; } = TreeExpansionMode.FullyExpanded;
+
     public DateTime LastAnalyzed { get; private set; } = DateTime.MinValue;
 
     public bool HasLexicalAnalysis => Tokens.Count > 0 || LexicalErrors.Count > 0;
@@ -118,7 +122,7 @@ public class TextEditorViewModel : INotifyPropertyChanged
     {
         if (!string.IsNullOrWhiteSpace(FilePath))
         {
-            App.Messenger.Send(new TokenizeBufferRequestEvent(FilePath, Content));
+            App.Messenger.Send(new TokenizeBufferRequestEvent(Content, FilePath));
         }
     }
 

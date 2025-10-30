@@ -58,8 +58,10 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
     private void OnActiveEditorChanged(ActiveEditorChangedEvent e)
     {
         SaveCurrentEditorExpansionState();
+        SaveCurrentEditorExpansionMode();
         _currentEditor = e.ActiveEditor;
         LoadCurrentEditorTree();
+        LoadCurrentEditorExpansionMode();
     }
 
     private void SaveCurrentEditorExpansionState()
@@ -68,6 +70,19 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 
         _currentEditor.SemanticTreeExpansionState.Clear();
         SaveExpansionState(_rootNodesInternal, _currentEditor.SemanticTreeExpansionState);
+    }
+
+    private void SaveCurrentEditorExpansionMode()
+    {
+        if (_currentEditor == null) return;
+        _currentEditor.SemanticTreeExpansionMode = _expansionManager.ExpansionMode;
+    }
+
+    private void LoadCurrentEditorExpansionMode()
+    {
+        if (_currentEditor == null) return;
+        _expansionManager.ExpansionMode = _currentEditor.SemanticTreeExpansionMode;
+        OnPropertyChanged(nameof(ExpansionMode));
     }
 
     private void SaveExpansionState(IEnumerable<AnnotatedAstNodeViewModel> nodes, Dictionary<string, bool> state)
@@ -226,13 +241,13 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 
             if (rootNode.Rule == "program")
             {
-                var programViewModel = new AnnotatedAstNodeViewModel(rootNode, 0);
+                var programViewModel = new AnnotatedAstNodeViewModel(rootNode, 0, filePathContext);
                 _programNode = programViewModel;
                 _rootNodesInternal.Add(programViewModel);
             }
             else
             {
-                _rootNodesInternal.Add(new AnnotatedAstNodeViewModel(rootNode, 0));
+                _rootNodesInternal.Add(new AnnotatedAstNodeViewModel(rootNode, 0, filePathContext));
             }
         }
 
@@ -370,6 +385,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
     private AnnotatedAstNode _annotatedNode;
     private string? _cachedNodePath;
     private int _indexInParent;
+    private string? _fileContext;
 
     [ObservableProperty]
     private string _displayName = "";
@@ -401,10 +417,11 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
     public bool ChildrenLoaded => true;
     public AnnotatedAstNode AnnotatedNode => _annotatedNode;
 
-    public AnnotatedAstNodeViewModel(AnnotatedAstNode annotatedNode, int indexInParent = 0)
+    public AnnotatedAstNodeViewModel(AnnotatedAstNode annotatedNode, int indexInParent = 0, string? fileContext = null)
     {
         _annotatedNode = annotatedNode;
         _indexInParent = indexInParent;
+        _fileContext = fileContext;
         UpdateDisplayProperties();
         LoadChildren();
     }
@@ -502,7 +519,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
 
         for (int i = 0; i < _annotatedNode.Children.Count; i++)
         {
-            _children.Add(new AnnotatedAstNodeViewModel(_annotatedNode.Children[i], i));
+            _children.Add(new AnnotatedAstNodeViewModel(_annotatedNode.Children[i], i, _fileContext));
         }
     }
 
@@ -533,7 +550,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
             }
             else
             {
-                var newViewModel = new AnnotatedAstNodeViewModel(newChildNode, i);
+                var newViewModel = new AnnotatedAstNodeViewModel(newChildNode, i, _fileContext);
                 if (oldExpansionStates.TryGetValue(newViewModel.NodePath, out var isExpanded))
                 {
                     newViewModel.IsExpanded = isExpanded;
@@ -574,10 +591,12 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
 
     private string GeneratePathId()
     {
+        var filePrefix = string.IsNullOrEmpty(_fileContext) ? "" : $"{_fileContext}::";
+
         if (_annotatedNode.Token != null && !string.IsNullOrEmpty(_annotatedNode.Token.Value))
         {
-            return $"{_annotatedNode.Token.Type}:{_annotatedNode.Token.Value}[{_indexInParent}]@{_annotatedNode.Line}:{_annotatedNode.Column}";
+            return $"{filePrefix}{_annotatedNode.Token.Type}:{_annotatedNode.Token.Value}[{_indexInParent}]@{_annotatedNode.Line}:{_annotatedNode.Column}";
         }
-        return $"{_annotatedNode.Rule}[{_indexInParent}]@{_annotatedNode.Line}:{_annotatedNode.Column}";
+        return $"{filePrefix}{_annotatedNode.Rule}[{_indexInParent}]@{_annotatedNode.Line}:{_annotatedNode.Column}";
     }
 }

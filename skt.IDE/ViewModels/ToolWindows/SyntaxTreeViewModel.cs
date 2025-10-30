@@ -101,13 +101,13 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 
             if (rootNode.Rule == "program")
             {
-                var programViewModel = new AstNodeViewModel(rootNode, 0);
+                var programViewModel = new AstNodeViewModel(rootNode, 0, filePathContext);
                 _programNode = programViewModel;
                 _rootNodesInternal.Add(programViewModel);
             }
             else
             {
-                _rootNodesInternal.Add(new AstNodeViewModel(rootNode, 0));
+                _rootNodesInternal.Add(new AstNodeViewModel(rootNode, 0, filePathContext));
             }
         }
 
@@ -249,8 +249,10 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     private void OnActiveEditorChanged(ActiveEditorChangedEvent e)
     {
         SaveCurrentEditorExpansionState();
+        SaveCurrentEditorExpansionMode();
         _currentEditor = e.ActiveEditor;
         LoadCurrentEditorTree();
+        LoadCurrentEditorExpansionMode();
     }
 
     private void SaveCurrentEditorExpansionState()
@@ -259,6 +261,19 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 
         _currentEditor.SyntaxTreeExpansionState.Clear();
         SaveExpansionState(_rootNodesInternal, _currentEditor.SyntaxTreeExpansionState);
+    }
+
+    private void SaveCurrentEditorExpansionMode()
+    {
+        if (_currentEditor == null) return;
+        _currentEditor.SyntaxTreeExpansionMode = _expansionManager.ExpansionMode;
+    }
+
+    private void LoadCurrentEditorExpansionMode()
+    {
+        if (_currentEditor == null) return;
+        _expansionManager.ExpansionMode = _currentEditor.SyntaxTreeExpansionMode;
+        OnPropertyChanged(nameof(ExpansionMode));
     }
 
     private void SaveExpansionState(IEnumerable<AstNodeViewModel> nodes, Dictionary<string, bool> state)
@@ -330,6 +345,7 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
     private AstNode _astNode;
     private string? _cachedNodePath;
     private int _indexInParent;
+    private string? _fileContext;
 
     [ObservableProperty]
     private string _displayName = "";
@@ -352,10 +368,11 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
     public bool ChildrenLoaded => true;
     public AstNode AstNode => _astNode;
 
-    public AstNodeViewModel(AstNode astNode, int indexInParent = 0)
+    public AstNodeViewModel(AstNode astNode, int indexInParent = 0, string? fileContext = null)
     {
         _astNode = astNode;
         _indexInParent = indexInParent;
+        _fileContext = fileContext;
         UpdateDisplayProperties();
         LoadChildren();
     }
@@ -384,7 +401,7 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
 
         for (int i = 0; i < _astNode.Children.Count; i++)
         {
-            _children.Add(new AstNodeViewModel(_astNode.Children[i], i));
+            _children.Add(new AstNodeViewModel(_astNode.Children[i], i, _fileContext));
         }
     }
 
@@ -415,7 +432,7 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
             }
             else
             {
-                var newViewModel = new AstNodeViewModel(newChildAst, i);
+                var newViewModel = new AstNodeViewModel(newChildAst, i, _fileContext);
                 if (oldExpansionStates.TryGetValue(newViewModel.NodePath, out var isExpanded))
                 {
                     newViewModel.IsExpanded = isExpanded;
@@ -456,10 +473,12 @@ public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
 
     private string GeneratePathId()
     {
+        var filePrefix = string.IsNullOrEmpty(_fileContext) ? "" : $"{_fileContext}::";
+
         if (_astNode.Token != null && !string.IsNullOrEmpty(_astNode.Token.Value))
         {
-            return $"{_astNode.Token.Type}:{_astNode.Token.Value}[{_indexInParent}]@{_astNode.Line}:{_astNode.Column}";
+            return $"{filePrefix}{_astNode.Token.Type}:{_astNode.Token.Value}[{_indexInParent}]@{_astNode.Line}:{_astNode.Column}";
         }
-        return $"{_astNode.Rule}[{_indexInParent}]@{_astNode.Line}:{_astNode.Column}";
+        return $"{filePrefix}{_astNode.Rule}[{_indexInParent}]@{_astNode.Line}:{_astNode.Column}";
     }
 }
