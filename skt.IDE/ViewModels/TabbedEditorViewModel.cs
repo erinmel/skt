@@ -14,6 +14,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using IDE;
 using Services.Buss;
+using CommunityToolkit.Mvvm.Messaging;
 
 public class TabbedEditorViewModel : INotifyPropertyChanged
 {
@@ -62,11 +63,10 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
                 OnCommandCanExecuteChanged();
 
-                // Publish selected document change so other components (eg. Toolbar) can react without going through MainWindowViewModel
                 var filePath = value?.FilePath;
                 var hasSelection = value != null;
                 var isDirty = value?.IsDirty ?? false;
-                App.EventBus.Publish(new SelectedDocumentChangedEvent(filePath, hasSelection, isDirty));
+                App.Messenger.Send(new SelectedDocumentChangedEvent(filePath, hasSelection, isDirty));
             }
         }
     }
@@ -103,11 +103,10 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         SaveCommand = new RelayCommand(async void () => await SaveFileAsync(), () => SelectedDocument != null);
         SaveAsCommand = new RelayCommand(async void () => await SaveAsFileAsync(), () => SelectedDocument != null);
 
-        // Subscribe to global open file requests
-        App.EventBus.Subscribe<OpenFileRequestEvent>(OnOpenFileRequest);
-        App.EventBus.Subscribe<SaveFileRequestEvent>(OnSaveFileRequest);
-        App.EventBus.Subscribe<SaveAsFilesRequestEvent>(SaveAsFilesRequest);
-        App.EventBus.Subscribe<FileRenamedEvent>(OnFileRenamed); // new subscription
+        App.Messenger.Register<OpenFileRequestEvent>(this, (r, m) => OnOpenFileRequest(m));
+        App.Messenger.Register<SaveFileRequestEvent>(this, (r, m) => OnSaveFileRequest(m));
+        App.Messenger.Register<SaveAsFilesRequestEvent>(this, (r, m) => SaveAsFilesRequest(m));
+        App.Messenger.Register<FileRenamedEvent>(this, (r, m) => OnFileRenamed(m));
     }
 
     private void OnOpenFileRequest(OpenFileRequestEvent e)
@@ -146,7 +145,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
         if (anyChanged && SelectedDocument != null)
         {
-            App.EventBus.Publish(new SelectedDocumentChangedEvent(SelectedDocument.FilePath, true, SelectedDocument.IsDirty));
+            App.Messenger.Send(new SelectedDocumentChangedEvent(SelectedDocument.FilePath, true, SelectedDocument.IsDirty));
         }
     }
 
@@ -189,8 +188,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
     {
         if (targetIsDirectory)
         {
-            return docPath.Equals(oldBase, StringComparison.OrdinalIgnoreCase) ||
-                   docPath.StartsWith(oldBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+            return docPath.Equals(oldBase, StringComparison.OrdinalIgnoreCase)
+                   || docPath.StartsWith(oldBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
         }
 
         return docPath.Equals(oldBase, StringComparison.OrdinalIgnoreCase);
@@ -233,7 +232,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(newPath)!);
                 await File.WriteAllTextAsync(newPath, string.Empty);
-                App.EventBus.Publish(new FileCreatedEvent(newPath));
+                App.Messenger.Send(new FileCreatedEvent(newPath));
             }
         }
         catch (Exception ex)
@@ -246,7 +245,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         doc.SetContentFromFile(string.Empty);
         Documents.Add(doc);
         SelectedDocument = doc;
-        App.EventBus.Publish(new StatusBarMessageEvent($"Created: {Path.GetFileName(newPath)}", 3000));
+        App.Messenger.Send(new StatusBarMessageEvent($"Created: {Path.GetFileName(newPath)}", 3000));
     }
 
     private async Task CloseTabAsync(DocumentViewModel? document)
@@ -276,7 +275,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
 
         if (!string.IsNullOrEmpty(document.FilePath))
         {
-            App.EventBus.Publish(new FileClosedEvent(document.FilePath));
+            App.Messenger.Send(new FileClosedEvent(document.FilePath));
         }
 
         // Select adjacent tab or create new one if none left
@@ -322,7 +321,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             .ForEach(d =>
             {
                 if (d.FilePath != null)
-                    App.EventBus.Publish(new FileClosedEvent(d.FilePath));
+                    App.Messenger.Send(new FileClosedEvent(d.FilePath));
             });
 
         Documents.Clear();
@@ -358,7 +357,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             Documents.Remove(doc);
             if (!string.IsNullOrEmpty(doc.FilePath))
             {
-                App.EventBus.Publish(new FileClosedEvent(doc.FilePath));
+                App.Messenger.Send(new FileClosedEvent(doc.FilePath));
             }
         }
 
@@ -406,7 +405,6 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
             {
                 var content = await File.ReadAllTextAsync(filePath);
 
-                // Check if file is already open
                 var existingDoc = Documents.FirstOrDefault(d =>
                     string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
 
@@ -424,9 +422,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 Documents.Add(doc);
                 SelectedDocument = doc;
 
-                App.EventBus.Publish(new FileOpenedEvent(filePath));
-                // Notify status bar about the opened file
-                App.EventBus.Publish(new StatusBarMessageEvent($"Opened: {Path.GetFileName(filePath)}", 3000));
+                App.Messenger.Send(new FileOpenedEvent(filePath));
+                App.Messenger.Send(new StatusBarMessageEvent($"Opened: {Path.GetFileName(filePath)}", 3000));
             }
             catch (Exception ex)
             {
@@ -460,9 +457,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
         var success = await SaveDocumentAsync(SelectedDocument);
         if (success && !string.IsNullOrEmpty(SelectedDocument.FilePath))
         {
-            App.EventBus.Publish(new FileUpdatedEvent(SelectedDocument.FilePath));
-            // Notify status bar (3 seconds)
-            App.EventBus.Publish(new StatusBarMessageEvent("Saved", 3000));
+            App.Messenger.Send(new FileUpdatedEvent(SelectedDocument.FilePath));
+            App.Messenger.Send(new StatusBarMessageEvent("Saved", 3000));
         }
     }
 
@@ -510,9 +506,8 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 var saved = await SaveDocumentAsync(SelectedDocument);
                 if (saved)
                 {
-                    App.EventBus.Publish(new FileCreatedEvent(newFilePath));
-                    // Notify status bar (4 seconds)
-                    App.EventBus.Publish(new StatusBarMessageEvent($"Saved As: {Path.GetFileName(newFilePath)}", 4000));
+                    App.Messenger.Send(new FileCreatedEvent(newFilePath));
+                    App.Messenger.Send(new StatusBarMessageEvent($"Saved As: {Path.GetFileName(newFilePath)}", 4000));
                 }
             }
         }
@@ -588,7 +583,7 @@ public class TabbedEditorViewModel : INotifyPropertyChanged
                 var filePath = SelectedDocument?.FilePath;
                 var hasSelection = SelectedDocument != null;
                 var isDirty = SelectedDocument?.IsDirty ?? false;
-                App.EventBus.Publish(new SelectedDocumentChangedEvent(filePath, hasSelection, isDirty));
+                App.Messenger.Send(new SelectedDocumentChangedEvent(filePath, hasSelection, isDirty));
             }
         }
     }
@@ -641,7 +636,7 @@ public class DocumentViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(Title));
             }
-                App.EventBus.Publish(new FileDirtyStateChangedEvent(FilePath ?? "", value));
+            App.Messenger.Send(new FileDirtyStateChangedEvent(FilePath ?? "", value));
         }
     }
 

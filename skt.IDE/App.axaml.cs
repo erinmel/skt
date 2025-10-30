@@ -6,13 +6,13 @@ using Avalonia.Svg.Skia;
 using skt.IDE.ViewModels;
 using skt.IDE.Views.Shell;
 using skt.IDE.Services;
-using skt.IDE.Services.Buss;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE;
 
 public class App : Application
 {
-    public static IEventBus EventBus { get; private set; } = new EventBus();
+    public static IMessenger Messenger { get; } = WeakReferenceMessenger.Default;
     private CompilerBridge? _compilerBridge; // keep reference
 
     public override void Initialize()
@@ -22,7 +22,7 @@ public class App : Application
         GC.KeepAlive(typeof(Avalonia.Svg.Skia.Svg).Assembly);
 
         AvaloniaXamlLoader.Load(this);
-        _compilerBridge ??= new CompilerBridge(EventBus);
+        _compilerBridge ??= new CompilerBridge(Messenger);
     }
 
     public override void OnFrameworkInitializationCompleted()

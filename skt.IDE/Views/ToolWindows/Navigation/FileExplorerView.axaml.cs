@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using skt.IDE.Services.Buss;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.Navigation;
 
@@ -99,7 +100,7 @@ public partial class FileExplorerView : UserControl
         // File: request to open
         if (File.Exists(selectedNode.FullPath))
         {
-            App.EventBus.Publish(new OpenFileRequestEvent(selectedNode.FullPath));
+            App.Messenger.Send(new OpenFileRequestEvent(selectedNode.FullPath));
             e.Handled = true;
         }
     }

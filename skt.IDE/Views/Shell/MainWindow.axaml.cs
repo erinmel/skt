@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Threading;
 using skt.IDE.Services.Buss;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.Shell;
 
@@ -54,9 +55,9 @@ public partial class MainWindow : Window
         ToolWindowStripControl.ToolPanelButtonClicked += OnToolWindowStrip_ToolPanelButtonClicked;
 
         // Subscribe to global requests to show tool windows or terminal tabs
-        App.EventBus.Subscribe<ShowToolWindowRequestEvent>(OnShowToolWindowRequest);
-        App.EventBus.Subscribe<ShowTerminalTabRequestEvent>(OnShowTerminalTabRequest);
-        App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
+        App.Messenger.Register<ShowToolWindowRequestEvent>(this, (r, m) => OnShowToolWindowRequest(m));
+        App.Messenger.Register<ShowTerminalTabRequestEvent>(this, (r, m) => OnShowTerminalTabRequest(m));
+        App.Messenger.Register<ProjectLoadedEvent>(this, (r, m) => OnProjectLoaded(m));
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)

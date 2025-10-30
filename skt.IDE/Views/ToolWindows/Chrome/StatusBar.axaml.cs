@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using skt.IDE.Services.Buss;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.Chrome;
 
@@ -26,18 +27,12 @@ public partial class StatusBar : UserControl
         _encodingTextBlock = this.FindControl<TextBlock>("EncodingTextBlock");
         _statusTextBlock = this.FindControl<TextBlock>("StatusTextBlock");
 
-        App.EventBus.Subscribe<StatusBarMessageEvent>(OnStatusBarMessage);
-        App.EventBus.Subscribe<CursorPositionEvent>(OnCursorPosition);
-        App.EventBus.Subscribe<FileEncodingChangedEvent>(OnFileEncodingChanged);
-        App.EventBus.Subscribe<SelectionInfoEvent>(OnSelectionInfo);
+        App.Messenger.Register<StatusBarMessageEvent>(this, (r, m) => OnStatusBarMessage(m));
+        App.Messenger.Register<CursorPositionEvent>(this, (r, m) => OnCursorPosition(m));
+        App.Messenger.Register<FileEncodingChangedEvent>(this, (r, m) => OnFileEncodingChanged(m));
+        App.Messenger.Register<SelectionInfoEvent>(this, (r, m) => OnSelectionInfo(m));
 
-        Unloaded += (_, _) =>
-        {
-            App.EventBus.Unsubscribe<StatusBarMessageEvent>(OnStatusBarMessage);
-            App.EventBus.Unsubscribe<CursorPositionEvent>(OnCursorPosition);
-            App.EventBus.Unsubscribe<FileEncodingChangedEvent>(OnFileEncodingChanged);
-            App.EventBus.Unsubscribe<SelectionInfoEvent>(OnSelectionInfo);
-        };
+        Unloaded += (_, _) => App.Messenger.UnregisterAll(this);
     }
 
     private async void OnStatusBarMessage(StatusBarMessageEvent e)

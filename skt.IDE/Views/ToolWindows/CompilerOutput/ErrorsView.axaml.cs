@@ -8,6 +8,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using skt.IDE.Services.Buss;
 using skt.IDE.ViewModels.ToolWindows;
 using Avalonia;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.CompilerOutput;
 
@@ -61,16 +62,21 @@ public partial class ErrorsView : UserControl
 
         FocusMainWindow();
 
-        App.EventBus.Publish(new OpenFileRequestEvent(filePath));
-        // Also request the terminal panel to open and select the correct tab
-        App.EventBus.Publish(new ShowToolWindowRequestEvent("TerminalToggle"));
-        App.EventBus.Publish(new ShowTerminalTabRequestEvent(PanelTabIndex));
+        App.Messenger.Send(new OpenFileRequestEvent(filePath));
 
-        // Use line/column event instead of computing raw offset
-        Dispatcher.UIThread.Post(() =>
+        // Use multiple delayed attempts to ensure caret is positioned after tab switch
+        for (int i = 0; i < 3; i++)
         {
-            App.EventBus.Publish(new SetCaretLineColumnRequestEvent(filePath, item.Line, item.Column));
-        }, DispatcherPriority.Background);
+            var delay = (i + 1) * 50; // 50ms, 100ms, 150ms
+            var line = item.Line;
+            var column = item.Column;
+            var path = filePath;
+
+            DispatcherTimer.RunOnce(() =>
+            {
+                App.Messenger.Send(new SetCaretLineColumnRequestEvent(path, line, column));
+            }, TimeSpan.FromMilliseconds(delay));
+        }
     }
 
     private static int ComputeOffsetFromLineColumn(string filePath, int line, int column)

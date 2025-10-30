@@ -5,6 +5,7 @@ using skt.IDE.Services.Buss;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Linq;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.CompilerOutput;
 
@@ -16,9 +17,8 @@ public partial class SemanticTreeView : UserControl
     {
         InitializeComponent();
 
-        var bus = App.EventBus;
-        bus.Subscribe<SemanticAnalysisCompletedEvent>(OnSemanticAnalysisCompleted);
-        bus.Subscribe<SemanticAnalysisFailedEvent>(OnSemanticAnalysisFailed);
+        App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (r, m) => OnSemanticAnalysisCompleted(m));
+        App.Messenger.Register<SemanticAnalysisFailedEvent>(this, (r, m) => OnSemanticAnalysisFailed(m));
 
         DataContextChanged += SemanticTreeView_DataContextChanged;
     }
