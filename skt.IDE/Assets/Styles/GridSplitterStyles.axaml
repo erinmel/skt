@@ -1,0 +1,35 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- GridSplitter styling: larger hit area, thin visual -->
+    <Style Selector="GridSplitter">
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="Transparent" Offset="0"/>
+                    <GradientStop Color="Transparent" Offset="0.45"/>
+                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.4"/>
+                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.6"/>
+                    <GradientStop Color="Transparent" Offset="0.55"/>
+                    <GradientStop Color="Transparent" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style Selector="GridSplitter[ResizeDirection=Rows]">
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Color="Transparent" Offset="0"/>
+                    <GradientStop Color="Transparent" Offset="0.45"/>
+                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.4"/>
+                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.6"/>
+                    <GradientStop Color="Transparent" Offset="0.55"/>
+                    <GradientStop Color="Transparent" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</Styles>

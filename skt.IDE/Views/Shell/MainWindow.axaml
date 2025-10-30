@@ -109,7 +109,7 @@
 
         <!-- Splitters -->
         <GridSplitter Grid.Row="1" Grid.Column="1"
-                     Width="2"
+                     Width="10"
                      HorizontalAlignment="Left"
                      ResizeDirection="Columns"
                      Margin="0"
@@ -117,7 +117,7 @@
 
         <!-- Horizontal splitter between main area and terminal -->
         <GridSplitter Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                     Height="2"
+                     Height="10"
                      VerticalAlignment="Top"
                      ResizeDirection="Rows"
                      Margin="0"

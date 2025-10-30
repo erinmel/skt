@@ -1,0 +1,65 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Base Button Style - Common properties for all buttons -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="Root"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="4"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Disabled button template content -->
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- Hover effect for all buttons -->
+    <Style Selector="Button:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+
+    <!-- Icon-only buttons (ToolIcon tag) -->
+    <Style Selector="Button[Tag=ToolIcon]">
+        <Setter Property="Padding" Value="6"/>
+    </Style>
+
+    <!-- Selected state for tool icons -->
+    <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+    </Style>
+
+    <!-- Window control buttons -->
+    <Style Selector="Button[Tag=WindowControl]">
+        <Setter Property="Padding" Value="8"/>
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="Height" Value="32"/>
+    </Style>
+
+    <!-- Window control button hover (must come before close button) -->
+    <Style Selector="Button[Tag=WindowControl]:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+
+    <!-- Special close button hover (must come last to override) -->
+    <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="#E81123"/>
+    </Style>
+
+    <!-- Disabled states -->
+    <Style Selector="Button:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+</Styles>
