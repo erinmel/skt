@@ -131,6 +131,7 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
     {
         if (_rootNodesInternal.Count == 0) return;
         CollapseAllNodesRecursively(_rootNodesInternal);
+        NotifyTreeDataGridToCollapseAll?.Invoke();
     }
 
     [RelayCommand]
@@ -153,6 +154,7 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
     }
 
     public event Action? NotifyTreeDataGridToExpandAll;
+    public event Action? NotifyTreeDataGridToCollapseAll;
 
     private void ExpandAllNodesRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
     {

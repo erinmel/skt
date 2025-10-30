@@ -48,6 +48,8 @@ public partial class SemanticTreeView : UserControl
 
             vm.NotifyTreeDataGridToExpandAll -= ExpandAllRowsInTreeDataGrid;
             vm.NotifyTreeDataGridToExpandAll += ExpandAllRowsInTreeDataGrid;
+            vm.NotifyTreeDataGridToCollapseAll -= CollapseAllRowsInTreeDataGrid;
+            vm.NotifyTreeDataGridToCollapseAll += CollapseAllRowsInTreeDataGrid;
         }
     }
 
@@ -78,10 +80,50 @@ public partial class SemanticTreeView : UserControl
 
     private void ExpandAllRowsInTreeDataGrid()
     {
-        System.Diagnostics.Debug.WriteLine("ExpandAllRowsInTreeDataGrid called");
         if (ViewModel?.RootNodes == null) return;
 
         ExpandAllNodesRecursively(ViewModel.RootNodes);
+
+        // Ensure the TreeDataGrid's internal source sees the expansion by toggling rows in the source
+        ForceExpandInSourceRecursively(ViewModel.RootNodes);
+
+        // Force TreeDataGrid to refresh visuals so the expanded state is reflected
+        Dispatcher.UIThread.Post(() =>
+        {
+            var src = SemanticTreeGrid.Source;
+            SemanticTreeGrid.Source = null;
+            SemanticTreeGrid.Source = src;
+        });
+    }
+
+    private void ForceExpandInSourceRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            TreeViewHelpers.TryExpandInSource(node);
+
+            var children = node.Children;
+            if (children.Count > 0)
+            {
+                ForceExpandInSourceRecursively(children);
+            }
+        }
+    }
+
+    private void CollapseAllRowsInTreeDataGrid()
+    {
+        System.Diagnostics.Debug.WriteLine("CollapseAllRowsInTreeDataGrid called");
+        if (ViewModel?.RootNodes == null) return;
+
+        CollapseAllNodesRecursively(ViewModel.RootNodes);
+
+        // Force TreeDataGrid to refresh visuals so the collapsed state is reflected
+        Dispatcher.UIThread.Post(() =>
+        {
+            var src = SemanticTreeGrid.Source;
+            SemanticTreeGrid.Source = null;
+            SemanticTreeGrid.Source = src;
+        });
     }
 
     private void ExpandAllNodesRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
@@ -95,6 +137,22 @@ public partial class SemanticTreeView : UserControl
                 if (children.Count > 0)
                 {
                     ExpandAllNodesRecursively(children);
+                }
+            }
+        }
+    }
+
+    private void CollapseAllNodesRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren)
+            {
+                node.IsExpanded = false;
+                var children = node.Children;
+                if (children.Count > 0)
+                {
+                    CollapseAllNodesRecursively(children);
                 }
             }
         }
