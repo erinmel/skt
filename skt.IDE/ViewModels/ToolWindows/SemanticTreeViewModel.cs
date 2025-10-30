@@ -201,16 +201,14 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
             Columns =
             {
                 new HierarchicalExpanderColumn<AnnotatedAstNodeViewModel>(
-                    new TextColumn<AnnotatedAstNodeViewModel, string>("Rule/Token", x => x.DisplayName),
+                    new TextColumn<AnnotatedAstNodeViewModel, string>("Token/Lexeme", x => x.DisplayName),
                     x => x.Children,
                     x => x.HasChildren,
                     x => x.IsExpanded),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Type", x => x.TypeValue),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Type Prop", x => x.TypePropagation),
                 new TextColumn<AnnotatedAstNodeViewModel, string>("Value", x => x.ValueValue),
-                new TextColumn<AnnotatedAstNodeViewModel, string>("Val Prop", x => x.ValuePropagation),
+                new TextColumn<AnnotatedAstNodeViewModel, string>("Type", x => x.TypeValue),
                 new TextColumn<AnnotatedAstNodeViewModel, int>("Line", x => x.Line),
-                new TextColumn<AnnotatedAstNodeViewModel, int>("Col", x => x.Column)
+                new TextColumn<AnnotatedAstNodeViewModel, int>("Column", x => x.Column)
             }
         };
     }
