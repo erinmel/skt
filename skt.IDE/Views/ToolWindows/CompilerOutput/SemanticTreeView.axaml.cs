@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using skt.IDE.ViewModels.ToolWindows;
 using skt.IDE.Services.Buss;
@@ -43,8 +45,9 @@ public partial class SemanticTreeView : UserControl
                 return (selectedPath, offset);
             };
 
-            vm.RestoreVisualStateRequested -= RestoreVisualState;
-            vm.RestoreVisualStateRequested += RestoreVisualState;
+
+            vm.NotifyTreeDataGridToExpandAll -= ExpandAllRowsInTreeDataGrid;
+            vm.NotifyTreeDataGridToExpandAll += ExpandAllRowsInTreeDataGrid;
         }
     }
 
@@ -66,112 +69,34 @@ public partial class SemanticTreeView : UserControl
 
     private void RestoreVisualState(string? nodePath, double verticalOffset)
     {
-        Dispatcher.UIThread.Post(() => _ = RestoreVisualStateAsync(nodePath, verticalOffset));
+        Dispatcher.UIThread.Post(() => _ = TreeViewHelpers.RestoreVisualStateAsync<AnnotatedAstNodeViewModel>(
+            SemanticTreeGrid,
+            ViewModel?.RootNodes ?? new ObservableCollection<AnnotatedAstNodeViewModel>(),
+            nodePath,
+            verticalOffset));
     }
 
-    private async System.Threading.Tasks.Task RestoreVisualStateAsync(string? nodePath, double verticalOffset)
+    private void ExpandAllRowsInTreeDataGrid()
     {
-        try
-        {
-            if (string.IsNullOrEmpty(nodePath))
-            {
-                SetScrollOffset(verticalOffset);
-                return;
-            }
+        System.Diagnostics.Debug.WriteLine("ExpandAllRowsInTreeDataGrid called");
+        if (ViewModel?.RootNodes == null) return;
 
-            if (DataContext is not SemanticTreeViewModel vm)
-                return;
-
-            var rootNodes = vm.RootNodes;
-            var target = FindNodeByPath(rootNodes, nodePath);
-            if (target == null)
-            {
-                SetScrollOffset(verticalOffset);
-                return;
-            }
-
-            ExpandAncestorsForPath(rootNodes, nodePath);
-
-            TryExpandInSource(target);
-
-            await System.Threading.Tasks.Task.Delay(50);
-
-            try
-            {
-                var row = SemanticTreeGrid.GetVisualDescendants()
-                    .OfType<Control>()
-                    .FirstOrDefault(c => c.DataContext == target);
-
-                if (row != null)
-                {
-                    row.Focus();
-                    row.BringIntoView();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Best-effort focus/bring-into-view failed: {ex}");
-            }
-
-            SetScrollOffset(verticalOffset);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"RestoreVisualState failed: {ex}");
-        }
+        ExpandAllNodesRecursively(ViewModel.RootNodes);
     }
 
-    private void TryExpandInSource(AnnotatedAstNodeViewModel target)
-    {
-        if (!target.IsExpanded)
-        {
-            target.IsExpanded = true;
-        }
-        else
-        {
-            target.IsExpanded = false;
-            target.IsExpanded = true;
-        }
-    }
-
-    private void SetScrollOffset(double verticalOffset)
-    {
-        var scrollViewer = SemanticTreeGrid.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-        if (scrollViewer != null)
-        {
-            scrollViewer.Offset = new Avalonia.Vector(scrollViewer.Offset.X, verticalOffset);
-        }
-    }
-
-    private AnnotatedAstNodeViewModel? FindNodeByPath(System.Collections.Generic.IEnumerable<AnnotatedAstNodeViewModel> nodes, string path)
+    private void ExpandAllNodesRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
     {
         foreach (var node in nodes)
         {
-            if (string.Equals(node.StableId, path, StringComparison.OrdinalIgnoreCase)) return node;
-            if (node.Children.Count > 0)
+            if (node.HasChildren)
             {
-                var found = FindNodeByPath(node.Children, path);
-                if (found != null) return found;
+                node.IsExpanded = true;
+                var children = node.Children;
+                if (children.Count > 0)
+                {
+                    ExpandAllNodesRecursively(children);
+                }
             }
-        }
-        return null;
-    }
-
-    private void ExpandAncestorsForPath(System.Collections.Generic.IEnumerable<AnnotatedAstNodeViewModel> nodes, string path)
-    {
-        var matchingNodes = nodes
-            .Where(n => path.StartsWith(n.StableId, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        foreach (var node in matchingNodes)
-        {
-            node.IsExpanded = true;
-            TryExpandInSource(node);
-            if (string.Equals(node.StableId, path, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-            ExpandAncestorsForPath(node.Children, path);
         }
     }
 }

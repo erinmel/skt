@@ -4,23 +4,28 @@
              x:Class="skt.IDE.Views.ToolWindows.CompilerOutput.SyntaxTreeView"
              x:DataType="vm:SyntaxTreeViewModel">
 
-    <TreeDataGrid Name="SyntaxTreeGrid"
-                  Source="{Binding TreeSource}"
-                  CanUserResizeColumns="True"
-                  CanUserSortColumns="False">
-        <TreeDataGrid.Styles>
-            <Style Selector="TreeDataGridRow">
-                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            </Style>
-            <Style Selector="TreeDataGridRow:nth-child(even)">
-                <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
-            </Style>
-            <Style Selector="TreeDataGridRow:pointerover /template/ Border#BackgroundBorder">
-                <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-            </Style>
-            <Style Selector="TreeDataGridCell">
-                <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            </Style>
-        </TreeDataGrid.Styles>
-    </TreeDataGrid>
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="4,2">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <Button Command="{Binding ExpandAllCommand}"
+                        ToolTip.Tip="Expand All Nodes"
+                        Content="Expand All"
+                        IsEnabled="{Binding TreeSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <Button Command="{Binding CollapseAllCommand}"
+                        ToolTip.Tip="Collapse All Nodes"
+                        Content="Collapse All"
+                        IsEnabled="{Binding TreeSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+        </Border>
+
+        <TreeDataGrid Name="SyntaxTreeGrid"
+                      Source="{Binding TreeSource}"
+                      Classes="skt-standard"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="False"/>
+    </DockPanel>
 </UserControl>

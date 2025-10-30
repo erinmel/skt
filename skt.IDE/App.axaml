@@ -31,6 +31,10 @@
         <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Fluent.axaml"/>
         <!-- AvaloniaEdit default control styles -->
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+        <!-- Custom TreeDataGrid styles -->
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/TreeDataGridStyles.axaml"/>
+        <!-- Custom Dialog styles -->
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/DialogStyles.axaml"/>
 
         <!-- Base Button Style - Common properties for all buttons -->
         <Style Selector="Button">
