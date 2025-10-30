@@ -121,6 +121,8 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     {
         if (_rootNodesInternal.Count == 0) return;
         ExpandAllNodesRecursively(_rootNodesInternal);
+        // Notify the view to refresh visuals in case the TreeDataGrid doesn't update immediately
+        NotifyTreeDataGridToExpandAll?.Invoke();
     }
 
     [RelayCommand]
@@ -128,6 +130,8 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     {
         if (_rootNodesInternal.Count == 0) return;
         CollapseAllNodesRecursively(_rootNodesInternal);
+        // Notify the view to collapse visual rows in the TreeDataGrid as well
+        NotifyTreeDataGridToCollapseAll?.Invoke();
     }
 
     [RelayCommand]
@@ -150,6 +154,7 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     }
 
     public event Action? NotifyTreeDataGridToExpandAll;
+    public event Action? NotifyTreeDataGridToCollapseAll;
 
     private void ExpandAllNodesRecursively(IEnumerable<AstNodeViewModel> nodes)
     {
@@ -170,9 +175,15 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     {
         foreach (var node in nodes)
         {
-            if (node.HasChildren && node.Children.Count > 0)
+            if (node.HasChildren)
             {
-                CollapseAllNodesRecursively(node.Children);
+                // Recurse only when there are actual children in the collection
+                if (node.Children.Count > 0)
+                {
+                    CollapseAllNodesRecursively(node.Children);
+                }
+
+                // Always collapse the node itself, even if its children were not yet materialized
                 node.IsExpanded = false;
             }
         }
