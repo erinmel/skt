@@ -1,0 +1,15 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- MenuItem disabled state -->
+    <Style Selector="MenuItem:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- Hide dropdown arrow on DropDownButton -->
+    <Style Selector="DropDownButton PathIcon">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+</Styles>
+
