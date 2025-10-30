@@ -5,6 +5,7 @@ using skt.IDE.Services.Buss;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Linq;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.CompilerOutput;
 
@@ -16,10 +17,8 @@ public partial class SyntaxTreeView : UserControl
     {
         InitializeComponent();
 
-        // Subscribe to syntax analysis events
-        var bus = App.EventBus;
-        bus.Subscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxAnalysisCompleted);
-        bus.Subscribe<SyntaxAnalysisFailedEvent>(OnSyntaxAnalysisFailed);
+        App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (r, m) => OnSyntaxAnalysisCompleted(m));
+        App.Messenger.Register<SyntaxAnalysisFailedEvent>(this, (r, m) => OnSyntaxAnalysisFailed(m));
 
         DataContextChanged += SyntaxTreeView_DataContextChanged;
     }

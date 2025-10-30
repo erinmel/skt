@@ -13,6 +13,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Avalonia.Controls.ApplicationLifetimes;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.Editor;
 
@@ -150,10 +151,10 @@ public partial class TextEditor : UserControl
 
         if (!_isSubscribed)
         {
-            App.EventBus.Subscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
-            App.EventBus.Subscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest);
-            App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
-            App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
+            App.Messenger.Register<SetCaretPositionRequestEvent>(this, (r, m) => OnSetCaretRequest(m));
+            App.Messenger.Register<SetCaretLineColumnRequestEvent>(this, (r, m) => OnSetCaretLineColumnRequest(m));
+            App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalCompleted(m));
+            App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => OnLexicalFailed(m));
             _isSubscribed = true;
         }
 
@@ -164,9 +165,9 @@ public partial class TextEditor : UserControl
             PublishBufferLexical();
         }, DispatcherPriority.Loaded);
 
-        if (DataContext is not ViewModels.DocumentViewModel doc ||
-            string.IsNullOrEmpty(doc.FilePath) ||
-            !PendingCarets.TryRemove(doc.FilePath, out var pendingOffset)) return;
+        if (DataContext is not ViewModels.DocumentViewModel doc
+            || string.IsNullOrEmpty(doc.FilePath)
+            || !PendingCarets.TryRemove(doc.FilePath, out var pendingOffset)) return;
         Dispatcher.UIThread.Post(() =>
         {
             ApplyCaretAndFocus(pendingOffset);
@@ -184,10 +185,7 @@ public partial class TextEditor : UserControl
         }
         if (_isSubscribed)
         {
-            App.EventBus.Unsubscribe<SetCaretPositionRequestEvent>(OnSetCaretRequest);
-            App.EventBus.Unsubscribe<SetCaretLineColumnRequestEvent>(OnSetCaretLineColumnRequest);
-            App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
-            App.EventBus.Unsubscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
+            App.Messenger.UnregisterAll(this);
             _isSubscribed = false;
         }
     }
@@ -222,9 +220,17 @@ public partial class TextEditor : UserControl
     {
         if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath))
         {
-            return; // no pending storage for line/col yet (offset path is used for pending)
+            return;
         }
-        if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase)) return;
+
+        if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            // File doesn't match current document - this request is for a different tab
+            // We can't convert line/column without the actual document, so just store a flag
+            // The tab will be activated by OpenFileRequestEvent, triggering DataContextChanged
+            return;
+        }
+
         if (_editor?.Document == null) return;
         int offset = MapLineColumnToOffset(_editor.Document, e.Line, e.Column);
         Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(offset), DispatcherPriority.Background);
@@ -293,7 +299,7 @@ public partial class TextEditor : UserControl
         _lastLexSnapshot = text;
         string? filePath = null;
         if (DataContext is ViewModels.DocumentViewModel doc) filePath = doc.FilePath;
-        App.EventBus.Publish(new TokenizeBufferRequestEvent(text, filePath));
+        App.Messenger.Send(new TokenizeBufferRequestEvent(text, filePath));
     }
 
     private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
@@ -334,7 +340,7 @@ public partial class TextEditor : UserControl
         var offset = _editor.CaretOffset;
         offset = Math.Clamp(offset, 0, _editor.Document.TextLength);
         var loc = _editor.Document.GetLocation(offset);
-        App.EventBus.Publish(new CursorPositionEvent(loc.Line, loc.Column));
+        App.Messenger.Send(new CursorPositionEvent(loc.Line, loc.Column));
     }
 
     private void PublishSelection()
@@ -348,13 +354,13 @@ public partial class TextEditor : UserControl
         if (length <= 0)
         {
             var loc = _editor.Document.GetLocation(_editor.CaretOffset);
-            App.EventBus.Publish(new SelectionInfoEvent(loc.Line, loc.Column, loc.Line, loc.Column, 0, 0));
+            App.Messenger.Send(new SelectionInfoEvent(loc.Line, loc.Column, loc.Line, loc.Column, 0, 0));
             return;
         }
         var startLoc = _editor.Document.GetLocation(start);
         var endLoc = _editor.Document.GetLocation(end);
         int lineBreaks = CountLineBreaks(_editor.Document, start, end);
-        App.EventBus.Publish(new SelectionInfoEvent(startLoc.Line, startLoc.Column, endLoc.Line, endLoc.Column, length, lineBreaks));
+        App.Messenger.Send(new SelectionInfoEvent(startLoc.Line, startLoc.Column, endLoc.Line, endLoc.Column, length, lineBreaks));
     }
 
     private static int CountLineBreaks(TextDocument doc, int start, int end)

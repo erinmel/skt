@@ -10,6 +10,7 @@ using System.IO;
 using System.Threading.Tasks;
 using skt.IDE.Views.Dialogs;
 using skt.IDE.Views.Shell;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.Chrome;
 public partial class Toolbar : UserControl
@@ -56,22 +57,16 @@ public partial class Toolbar : UserControl
             semanticMenuItem.IsEnabled = false;
 
         // React to project open so the toolbar can enable the New File button
-        App.EventBus.Subscribe<ProjectLoadedEvent>(OnProjectLoaded);
+        App.Messenger.Register<ProjectLoadedEvent>(this, (r, m) => OnProjectLoaded(m));
         // Subscribe to selected document changes so toolbar can update Save/SaveAs without going through MainWindowViewModel
-        App.EventBus.Subscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
+        App.Messenger.Register<SelectedDocumentChangedEvent>(this, (r, m) => OnSelectedDocumentChanged(m));
         // Subscribe to lexical analysis completion to enable syntax analysis
-        App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalAnalysisCompleted);
+        App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalAnalysisCompleted(m));
         // Subscribe to syntax analysis completion to enable semantic analysis
-        App.EventBus.Subscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxAnalysisCompleted);
+        App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (r, m) => OnSyntaxAnalysisCompleted(m));
 
         // Clean up on unload
-        Unloaded += (_, _) =>
-        {
-            App.EventBus.Unsubscribe<ProjectLoadedEvent>(OnProjectLoaded);
-            App.EventBus.Unsubscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
-            App.EventBus.Unsubscribe<LexicalAnalysisCompletedEvent>(OnLexicalAnalysisCompleted);
-            App.EventBus.Unsubscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxAnalysisCompleted);
-        };
+        Unloaded += (_, _) => App.Messenger.UnregisterAll(this);
     }
 
     private void OnProjectLoaded(ProjectLoadedEvent e)
@@ -84,7 +79,7 @@ public partial class Toolbar : UserControl
 
             if (!e.Success && DataContext is MainWindowViewModel)
             {
-                App.EventBus.Publish(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", true));
+                App.Messenger.Send(new StatusBarMessageEvent($"Failed to open project: {e.ErrorMessage}", true));
             }
         });
     }
@@ -134,7 +129,7 @@ public partial class Toolbar : UserControl
 
     private void SetTodoStatus(string text)
     {
-        App.EventBus.Publish(new StatusBarMessageEvent("TODO (toolbar): " + text, true));
+        App.Messenger.Send(new StatusBarMessageEvent("TODO (toolbar): " + text, true));
     }
 
     private void DragArea_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -177,7 +172,7 @@ public partial class Toolbar : UserControl
         {
             if (TopLevel.GetTopLevel(this) is not Window owner)
             {
-                App.EventBus.Publish(new StatusBarMessageEvent("Cannot open project dialog.", true));
+                App.Messenger.Send(new StatusBarMessageEvent("Cannot open project dialog.", true));
                 return;
             }
 
@@ -194,35 +189,35 @@ public partial class Toolbar : UserControl
                 if (!Directory.Exists(basePath)) Directory.CreateDirectory(basePath);
                 if (Directory.Exists(finalPath))
                 {
-                    App.EventBus.Publish(new StatusBarMessageEvent("Project already exists.", true));
+                    App.Messenger.Send(new StatusBarMessageEvent("Project already exists.", true));
                     return;
                 }
                 Directory.CreateDirectory(finalPath);
                 var mainFilePath = Path.Combine(finalPath, "main.skt");
                 var template = "main {\n\n}\n";
                 await File.WriteAllTextAsync(mainFilePath, template);
-                App.EventBus.Publish(new FileCreatedEvent(mainFilePath));
+                App.Messenger.Send(new FileCreatedEvent(mainFilePath));
 
                 // Open project
-                App.EventBus.Publish(new ProjectFolderSelectedEvent(finalPath));
+                App.Messenger.Send(new ProjectFolderSelectedEvent(finalPath));
                 // Open main file
-                App.EventBus.Publish(new OpenFileRequestEvent(mainFilePath));
+                App.Messenger.Send(new OpenFileRequestEvent(mainFilePath));
                 // Set caret after file open (schedule slight delay)
                 Dispatcher.UIThread.Post(() =>
                 {
                     var caretIndex = template.IndexOf("<- carete here", StringComparison.Ordinal);
                     if (caretIndex >= 0)
                     {
-                        App.EventBus.Publish(new SetCaretPositionRequestEvent(mainFilePath, caretIndex));
+                        App.Messenger.Send(new SetCaretPositionRequestEvent(mainFilePath, caretIndex));
                     }
                 }, DispatcherPriority.Background);
 
-                App.EventBus.Publish(new StatusBarMessageEvent($"Created project: {projectName}", 3000));
+                App.Messenger.Send(new StatusBarMessageEvent($"Created project: {projectName}", 3000));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error creating project: {ex}");
-                App.EventBus.Publish(new StatusBarMessageEvent("Failed to create project.", true));
+                App.Messenger.Send(new StatusBarMessageEvent("Failed to create project.", true));
             }
         }
         catch (Exception ex)
@@ -238,7 +233,7 @@ public partial class Toolbar : UserControl
             var top = TopLevel.GetTopLevel(this) as Window;
             if (top == null)
             {
-                App.EventBus.Publish(new StatusBarMessageEvent("Problem opening the file explorer.", true));
+                App.Messenger.Send(new StatusBarMessageEvent("Problem opening the file explorer.", true));
                 return;
             }
 
@@ -256,16 +251,16 @@ public partial class Toolbar : UserControl
                     var folderPath = folder.Path.LocalPath;
 
                     // Publish the selected folder path on the global EventBus
-                    App.EventBus.Publish(new ProjectFolderSelectedEvent(folderPath));
+                    App.Messenger.Send(new ProjectFolderSelectedEvent(folderPath));
 
                     // Publish a status update for the status bar
-                    App.EventBus.Publish(new StatusBarMessageEvent($"Project folder selected: {Path.GetFileName(folderPath)}", 3000));
+                    App.Messenger.Send(new StatusBarMessageEvent($"Project folder selected: {Path.GetFileName(folderPath)}", 3000));
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error opening folder picker: {ex}");
-                App.EventBus.Publish(new StatusBarMessageEvent("There was a problem opening the project.", true));
+                App.Messenger.Send(new StatusBarMessageEvent("There was a problem opening the project.", true));
             }
         }
         catch (Exception ex)
@@ -276,17 +271,17 @@ public partial class Toolbar : UserControl
 
     private void NewFileButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        App.EventBus.Publish(new CreateFileRequestEvent());
+        App.Messenger.Send(new CreateFileRequestEvent());
     }
 
     private void SaveButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        App.EventBus.Publish(new SaveFileRequestEvent());
+        App.Messenger.Send(new SaveFileRequestEvent());
     }
 
     private void SaveAsButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        App.EventBus.Publish(new SaveAsFilesRequestEvent());
+        App.Messenger.Send(new SaveAsFilesRequestEvent());
     }
 
     private void SettingsButton_Click(object? sender, RoutedEventArgs routedEventArgs)
@@ -320,43 +315,43 @@ public partial class Toolbar : UserControl
     {
         if (DataContext is not MainWindowViewModel vm)
         {
-            App.EventBus.Publish(new StatusBarMessageEvent("No context for lexical analysis", true));
+            App.Messenger.Send(new StatusBarMessageEvent("No context for lexical analysis", true));
             return;
         }
         var path = vm.TabbedEditorViewModel.SelectedDocument?.FilePath;
         if (string.IsNullOrEmpty(path))
         {
-            App.EventBus.Publish(new StatusBarMessageEvent("No file selected to tokenize", true));
+            App.Messenger.Send(new StatusBarMessageEvent("No file selected to tokenize", true));
             return;
         }
-        App.EventBus.Publish(new TokenizeFileRequestEvent(path, writeTokenFile: false));
-        App.EventBus.Publish(new ShowToolWindowRequestEvent("TokensToggle"));
-        App.EventBus.Publish(new StatusBarMessageEvent("Lexical analysis started (file)", 2000));
+        App.Messenger.Send(new TokenizeFileRequestEvent(path, writeTokenFile: false));
+        App.Messenger.Send(new ShowToolWindowRequestEvent("TokensToggle"));
+        App.Messenger.Send(new StatusBarMessageEvent("Lexical analysis started (file)", 2000));
     }
 
     private void SyntacticAnalysisMenuItem_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm)
         {
-            App.EventBus.Publish(new StatusBarMessageEvent("No context for syntax analysis", true));
+            App.Messenger.Send(new StatusBarMessageEvent("No context for syntax analysis", true));
             return;
         }
         var path = vm.TabbedEditorViewModel.SelectedDocument?.FilePath;
         if (string.IsNullOrEmpty(path))
         {
-            App.EventBus.Publish(new StatusBarMessageEvent("No file selected to parse", true));
+            App.Messenger.Send(new StatusBarMessageEvent("No file selected to parse", true));
             return;
         }
 
         // Call syntax analysis directly - it will cascade
-        App.EventBus.Publish(new ParseFileRequestEvent(path));
-        App.EventBus.Publish(new ShowToolWindowRequestEvent("SyntaxTreeToggle"));
-        App.EventBus.Publish(new StatusBarMessageEvent("Running syntax analysis", 2000));
+        App.Messenger.Send(new ParseFileRequestEvent(path));
+        App.Messenger.Send(new ShowToolWindowRequestEvent("SyntaxTreeToggle"));
+        App.Messenger.Send(new StatusBarMessageEvent("Running syntax analysis", 2000));
     }
 
     private void SemanticAnalysisMenuItem_Click(object? sender, RoutedEventArgs e)
     {
-        App.EventBus.Publish(new ShowToolWindowRequestEvent("SemanticTreeToggle"));
-        App.EventBus.Publish(new StatusBarMessageEvent("Semantic analysis running live", 2000));
+        App.Messenger.Send(new ShowToolWindowRequestEvent("SemanticTreeToggle"));
+        App.Messenger.Send(new StatusBarMessageEvent("Semantic analysis running live", 2000));
     }
 }

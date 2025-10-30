@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Services.Buss;
 using skt.Shared;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
@@ -33,12 +34,12 @@ public partial class TokensViewModel : ObservableObject, IDisposable
     {
         _source = CreateSource(_rows);
 
-        App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
-        App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
-        App.EventBus.Subscribe<FileOpenedEvent>(OnFileOpened);
-        App.EventBus.Subscribe<FileClosedEvent>(OnFileClosed);
-        App.EventBus.Subscribe<FileRenamedEvent>(OnFileRenamed);
-        App.EventBus.Subscribe<SelectedDocumentChangedEvent>(OnSelectedDocumentChanged);
+        App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalCompleted(m));
+        App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => OnLexicalFailed(m));
+        App.Messenger.Register<FileOpenedEvent>(this, (r, m) => OnFileOpened(m));
+        App.Messenger.Register<FileClosedEvent>(this, (r, m) => OnFileClosed(m));
+        App.Messenger.Register<FileRenamedEvent>(this, (r, m) => OnFileRenamed(m));
+        App.Messenger.Register<SelectedDocumentChangedEvent>(this, (r, m) => OnSelectedDocumentChanged(m));
     }
 
     private FlatTreeDataGridSource<TokenRow> CreateSource(IList<TokenRow> items) => new(items)
@@ -71,14 +72,12 @@ public partial class TokensViewModel : ObservableObject, IDisposable
             else
             {
                 Clear();
-                // Request tokenization for newly focused file (disk version; may be stale if dirty)
-                App.EventBus.Publish(new TokenizeFileRequestEvent(e.FilePath));
+                App.Messenger.Send(new TokenizeFileRequestEvent(e.FilePath));
             }
         }
         else if (e.IsDirty)
         {
-            // If file is current and dirty we can re-request tokenization (disk version may lag)
-            App.EventBus.Publish(new TokenizeFileRequestEvent(e.FilePath));
+            App.Messenger.Send(new TokenizeFileRequestEvent(e.FilePath));
         }
     }
 
