@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using skt.Shared;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls;
@@ -12,6 +14,7 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 {
     private ObservableCollection<AnnotatedAstNodeViewModel> _rootNodesInternal = new();
     private AnnotatedAstNodeViewModel? _programNode;
+    private readonly TreeExpansionManager<AnnotatedAstNodeViewModel> _expansionManager = new();
 
     [ObservableProperty]
     private string _statusMessage = "No semantic tree to display. Open a file and compile to see semantic analysis.";
@@ -22,10 +25,20 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
     public ObservableCollection<AnnotatedAstNodeViewModel> RootNodes => _rootNodesInternal;
 
     public Func<(string? selectedPath, double verticalOffset)>? RequestVisualState { get; set; }
-    public event Action<string?, double>? RestoreVisualStateRequested;
+
+    public TreeExpansionMode ExpansionMode
+    {
+        get => _expansionManager.ExpansionMode;
+        set
+        {
+            _expansionManager.ExpansionMode = value;
+            _expansionManager.ApplyExpansionMode(_rootNodesInternal);
+        }
+    }
 
     public SemanticTreeViewModel()
     {
+        _expansionManager.ExpansionMode = TreeExpansionMode.FullyExpanded;
         InitializeTreeSource();
     }
 
@@ -40,7 +53,8 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
                 new HierarchicalExpanderColumn<AnnotatedAstNodeViewModel>(
                     new TextColumn<AnnotatedAstNodeViewModel, string>("Rule/Token", x => x.DisplayName),
                     x => x.Children,
-                    x => x.HasChildren),
+                    x => x.HasChildren,
+                    x => x.IsExpanded),
                 new TextColumn<AnnotatedAstNodeViewModel, string>("Type", x => x.TypeValue),
                 new TextColumn<AnnotatedAstNodeViewModel, string>("Type Prop", x => x.TypePropagation),
                 new TextColumn<AnnotatedAstNodeViewModel, string>("Value", x => x.ValueValue),
@@ -63,14 +77,11 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var visualState = RequestVisualState?.Invoke();
-        var requestedSelectedPath = visualState?.selectedPath;
-        var requestedOffset = visualState?.verticalOffset ?? 0.0;
+        var isFirstLoad = _programNode == null;
 
         if (_programNode != null && rootNode.Rule == "program")
         {
             _programNode.UpdateFromAnnotatedNode(rootNode);
-            _programNode.IsExpanded = true;
         }
         else
         {
@@ -80,7 +91,6 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
             if (rootNode.Rule == "program")
             {
                 var programViewModel = new AnnotatedAstNodeViewModel(rootNode);
-                programViewModel.IsExpanded = true;
                 _programNode = programViewModel;
                 _rootNodesInternal.Add(programViewModel);
             }
@@ -95,7 +105,38 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
             ? $"Semantic tree generated with {errorCount} error(s)"
             : "Semantic tree generated successfully";
 
-        RestoreVisualStateRequested?.Invoke(requestedSelectedPath, requestedOffset);
+        if (isFirstLoad)
+        {
+            // On first load, expand all nodes after a brief delay for UI to settle
+            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    System.Diagnostics.Debug.WriteLine("First load - expanding all nodes");
+                    NotifyTreeDataGridToExpandAll?.Invoke();
+                });
+            });
+        }
+    }
+
+    [RelayCommand]
+    public void ExpandAll()
+    {
+        if (_rootNodesInternal.Count == 0) return;
+        ExpandAllNodesRecursively(_rootNodesInternal);
+    }
+
+    [RelayCommand]
+    public void CollapseAll()
+    {
+        if (_rootNodesInternal.Count == 0) return;
+        CollapseAllNodesRecursively(_rootNodesInternal);
+    }
+
+    [RelayCommand]
+    public void ClearTree()
+    {
+        Clear();
     }
 
     public void Clear()
@@ -110,9 +151,38 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
         TreeSource?.Dispose();
         TreeSource = null;
     }
+
+    public event Action? NotifyTreeDataGridToExpandAll;
+
+    private void ExpandAllNodesRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren)
+            {
+                node.IsExpanded = true;
+                if (node.Children.Count > 0)
+                {
+                    ExpandAllNodesRecursively(node.Children);
+                }
+            }
+        }
+    }
+
+    private void CollapseAllNodesRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren && node.Children.Count > 0)
+            {
+                CollapseAllNodesRecursively(node.Children);
+                node.IsExpanded = false;
+            }
+        }
+    }
 }
 
-public partial class AnnotatedAstNodeViewModel : ObservableObject
+public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeViewModel
 {
     private AnnotatedAstNode _annotatedNode;
     private bool _childrenLoaded;
@@ -147,10 +217,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
     {
         get
         {
-            if (!_childrenLoaded && _annotatedNode.Children.Count > 0)
-            {
-                LoadChildren();
-            }
+            // Children are now eagerly loaded in constructor
             return _children;
         }
     }
@@ -163,9 +230,10 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
         _annotatedNode = annotatedNode;
         UpdateDisplayProperties();
 
-        if (annotatedNode.Rule == "program")
+        // Eagerly load children for tree structure
+        if (_annotatedNode.Children.Count > 0)
         {
-            _isExpanded = true;
+            LoadChildren();
         }
     }
 
@@ -280,18 +348,28 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
 
     public void UpdateFromAnnotatedNode(AnnotatedAstNode newNode)
     {
+        var wasExpanded = IsExpanded;
         _annotatedNode = newNode;
         UpdateDisplayProperties();
 
         if (_childrenLoaded)
         {
-            UpdateChildren(newNode.Children);
+            UpdateChildren(newNode.Children, wasExpanded);
+        }
+        else if (wasExpanded && HasChildren)
+        {
+            LoadChildren();
+            IsExpanded = true;
         }
     }
 
-    private void UpdateChildren(List<AnnotatedAstNode> newChildren)
+    private void UpdateChildren(List<AnnotatedAstNode> newChildren, bool preserveExpansion = true)
     {
         var oldViewModels = new List<AnnotatedAstNodeViewModel>(_children);
+        var oldExpansionStates = preserveExpansion
+            ? oldViewModels.ToDictionary(vm => vm.GeneratePathId(), vm => vm.IsExpanded)
+            : new Dictionary<string, bool>();
+
         _children.Clear();
 
         for (int i = 0; i < newChildren.Count; i++)
@@ -306,7 +384,12 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
             }
             else
             {
-                _children.Add(new AnnotatedAstNodeViewModel(newChildNode));
+                var newViewModel = new AnnotatedAstNodeViewModel(newChildNode);
+                if (preserveExpansion && oldExpansionStates.TryGetValue(newViewModel.GeneratePathId(), out var wasExpanded))
+                {
+                    newViewModel.IsExpanded = wasExpanded;
+                }
+                _children.Add(newViewModel);
             }
         }
     }
@@ -326,10 +409,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
 
     partial void OnIsExpandedChanged(bool value)
     {
-        if (value && !_childrenLoaded && _annotatedNode.Children.Count > 0)
-        {
-            LoadChildren();
-        }
+        // Children are now eagerly loaded, no need for lazy loading
     }
 
     public bool IsTerminal => _annotatedNode.Token != null;

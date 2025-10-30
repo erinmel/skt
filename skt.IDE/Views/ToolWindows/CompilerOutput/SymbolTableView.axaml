@@ -6,21 +6,7 @@
 
   <TreeDataGrid Name="SymbolTableGrid"
                 Source="{Binding Source}"
+                Classes="skt-standard"
                 CanUserResizeColumns="True"
-                CanUserSortColumns="True">
-    <TreeDataGrid.Styles>
-      <Style Selector="TreeDataGridRow">
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-      </Style>
-      <Style Selector="TreeDataGridRow:nth-child(even)">
-        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
-      </Style>
-      <Style Selector="TreeDataGridRow:pointerover /template/ Border#BackgroundBorder">
-        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-      </Style>
-      <Style Selector="TreeDataGridCell">
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-      </Style>
-    </TreeDataGrid.Styles>
-  </TreeDataGrid>
+                CanUserSortColumns="True"/>
 </UserControl>

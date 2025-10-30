@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using skt.Shared;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls;
@@ -12,6 +14,7 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 {
     private ObservableCollection<AstNodeViewModel> _rootNodesInternal = new();
     private AstNodeViewModel? _programNode;
+    private readonly TreeExpansionManager<AstNodeViewModel> _expansionManager = new();
 
     [ObservableProperty]
     private string _statusMessage = "No syntax tree to display. Open a file and compile to see syntax analysis.";
@@ -22,10 +25,20 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
     public ObservableCollection<AstNodeViewModel> RootNodes => _rootNodesInternal;
 
     public Func<(string? selectedPath, double verticalOffset)>? RequestVisualState { get; set; }
-    public event Action<string?, double>? RestoreVisualStateRequested;
+
+    public TreeExpansionMode ExpansionMode
+    {
+        get => _expansionManager.ExpansionMode;
+        set
+        {
+            _expansionManager.ExpansionMode = value;
+            _expansionManager.ApplyExpansionMode(_rootNodesInternal);
+        }
+    }
 
     public SyntaxTreeViewModel()
     {
+        _expansionManager.ExpansionMode = TreeExpansionMode.FullyExpanded;
         InitializeTreeSource();
     }
 
@@ -40,7 +53,8 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
                 new HierarchicalExpanderColumn<AstNodeViewModel>(
                     new TextColumn<AstNodeViewModel, string>("Node", x => x.DisplayName),
                     x => x.Children,
-                    x => x.HasChildren),
+                    x => x.HasChildren,
+                    x => x.IsExpanded),
                 new TextColumn<AstNodeViewModel, string>("Token Type", x => x.TokenType),
                 new TextColumn<AstNodeViewModel, int>("Ln", x => x.Line),
                 new TextColumn<AstNodeViewModel, int>("Col", x => x.Column)
@@ -60,14 +74,11 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var visualState = RequestVisualState?.Invoke();
-        var requestedSelectedPath = visualState?.selectedPath;
-        var requestedOffset = visualState?.verticalOffset ?? 0.0;
+        var isFirstLoad = _programNode == null;
 
         if (_programNode != null && rootNode.Rule == "program")
         {
             _programNode.UpdateFromAstNode(rootNode);
-            _programNode.IsExpanded = true;
         }
         else
         {
@@ -77,7 +88,6 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
             if (rootNode.Rule == "program")
             {
                 var programViewModel = new AstNodeViewModel(rootNode);
-                programViewModel.IsExpanded = true;
                 _programNode = programViewModel;
                 _rootNodesInternal.Add(programViewModel);
             }
@@ -92,7 +102,38 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
             ? $"Syntax tree generated with {errorCount} error(s)"
             : "Syntax tree generated successfully";
 
-        RestoreVisualStateRequested?.Invoke(requestedSelectedPath, requestedOffset);
+        if (isFirstLoad)
+        {
+            // On first load, expand all nodes after a brief delay for UI to settle
+            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    System.Diagnostics.Debug.WriteLine("First load - expanding all nodes");
+                    NotifyTreeDataGridToExpandAll?.Invoke();
+                });
+            });
+        }
+    }
+
+    [RelayCommand]
+    public void ExpandAll()
+    {
+        if (_rootNodesInternal.Count == 0) return;
+        ExpandAllNodesRecursively(_rootNodesInternal);
+    }
+
+    [RelayCommand]
+    public void CollapseAll()
+    {
+        if (_rootNodesInternal.Count == 0) return;
+        CollapseAllNodesRecursively(_rootNodesInternal);
+    }
+
+    [RelayCommand]
+    public void ClearTree()
+    {
+        Clear();
     }
 
     public void Clear()
@@ -107,9 +148,38 @@ public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
         TreeSource?.Dispose();
         TreeSource = null;
     }
+
+    public event Action? NotifyTreeDataGridToExpandAll;
+
+    private void ExpandAllNodesRecursively(IEnumerable<AstNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren)
+            {
+                node.IsExpanded = true;
+                if (node.Children.Count > 0)
+                {
+                    ExpandAllNodesRecursively(node.Children);
+                }
+            }
+        }
+    }
+
+    private void CollapseAllNodesRecursively(IEnumerable<AstNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren && node.Children.Count > 0)
+            {
+                CollapseAllNodesRecursively(node.Children);
+                node.IsExpanded = false;
+            }
+        }
+    }
 }
 
-public partial class AstNodeViewModel : ObservableObject
+public partial class AstNodeViewModel : ObservableObject, ITreeNodeViewModel
 {
     private AstNode _astNode;
     private bool _childrenLoaded;
@@ -135,10 +205,7 @@ public partial class AstNodeViewModel : ObservableObject
     {
         get
         {
-            if (!_childrenLoaded && _astNode.Children.Count > 0)
-            {
-                LoadChildren();
-            }
+            // Children are now eagerly loaded in constructor
             return _children;
         }
     }
@@ -151,9 +218,10 @@ public partial class AstNodeViewModel : ObservableObject
         _astNode = astNode;
         UpdateDisplayProperties();
 
-        if (astNode.Rule == "program")
+        // Eagerly load children for tree structure
+        if (_astNode.Children.Count > 0)
         {
-            _isExpanded = true;
+            LoadChildren();
         }
     }
 
@@ -188,18 +256,28 @@ public partial class AstNodeViewModel : ObservableObject
 
     public void UpdateFromAstNode(AstNode newAstNode)
     {
+        var wasExpanded = IsExpanded;
         _astNode = newAstNode;
         UpdateDisplayProperties();
 
         if (_childrenLoaded)
         {
-            UpdateChildren(newAstNode.Children);
+            UpdateChildren(newAstNode.Children, wasExpanded);
+        }
+        else if (wasExpanded && HasChildren)
+        {
+            LoadChildren();
+            IsExpanded = true;
         }
     }
 
-    private void UpdateChildren(List<AstNode> newChildren)
+    private void UpdateChildren(List<AstNode> newChildren, bool preserveExpansion = true)
     {
         var oldViewModels = new List<AstNodeViewModel>(_children);
+        var oldExpansionStates = preserveExpansion
+            ? oldViewModels.ToDictionary(vm => vm.GeneratePathId(), vm => vm.IsExpanded)
+            : new Dictionary<string, bool>();
+
         _children.Clear();
 
         for (int i = 0; i < newChildren.Count; i++)
@@ -214,7 +292,12 @@ public partial class AstNodeViewModel : ObservableObject
             }
             else
             {
-                _children.Add(new AstNodeViewModel(newChildAst));
+                var newViewModel = new AstNodeViewModel(newChildAst);
+                if (preserveExpansion && oldExpansionStates.TryGetValue(newViewModel.GeneratePathId(), out var wasExpanded))
+                {
+                    newViewModel.IsExpanded = wasExpanded;
+                }
+                _children.Add(newViewModel);
             }
         }
     }
@@ -234,10 +317,7 @@ public partial class AstNodeViewModel : ObservableObject
 
     partial void OnIsExpandedChanged(bool value)
     {
-        if (value && !_childrenLoaded && _astNode.Children.Count > 0)
-        {
-            LoadChildren();
-        }
+        // Children are now eagerly loaded, no need for lazy loading
     }
 
     public bool IsTerminal => _astNode.Token != null;
