@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:skt.IDE.Views"
              x:Class="skt.IDE.Views.ToolWindows.ToolWindowStrip">
 
     <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
@@ -20,7 +21,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="File Explorer">
-                    <Image Source="{DynamicResource Icon.ToolWindowExplorer}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolWindowExplorer" IconSize="20"/>
                 </Button>
 
                 <Button Name="TokensToggle"
@@ -30,7 +31,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Tokens View">
-                    <Image Source="{DynamicResource Icon.ToolWindowTokens}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolWindowTokens" IconSize="20"/>
                 </Button>
 
                 <Button Name="SyntaxTreeToggle"
@@ -40,7 +41,17 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Syntax Tree">
-                    <Image Source="{DynamicResource Icon.ToolWindowSyntaxTree}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolWindowSyntaxTree" IconSize="20"/>
+                </Button>
+
+                <Button Name="SemanticTreeToggle"
+                        Tag="ToolIcon"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6,6"
+                        Margin="0,3"
+                        ToolTip.Tip="Semantic Tree">
+                    <views:SktIcon IconKey="Icon.ToolWindowSyntaxTree" IconSize="20"/>
                 </Button>
 
                 <Button Name="PhaseOutputToggle"
@@ -50,7 +61,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Phase Output">
-                    <Image Source="{DynamicResource Icon.ToolWindowIntermediateCode}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolWindowIntermediateCode" IconSize="20"/>
                 </Button>
             </StackPanel>
 
@@ -64,7 +75,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Terminal">
-                    <Image Source="{DynamicResource Icon.PanelTerminal}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.PanelTerminal" IconSize="20"/>
                 </Button>
 
                 <Button Name="OutputToggle"
@@ -74,7 +85,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Lexical Errors">
-                    <Image Source="{DynamicResource Icon.PanelOutput}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.PanelOutput" IconSize="20"/>
                 </Button>
 
                 <Button Name="ErrorsToggle"
@@ -84,7 +95,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Syntax Errors">
-                    <Image Source="{DynamicResource Icon.PanelErrors}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.PanelErrors" IconSize="20"/>
                 </Button>
 
                 <Button Name="BuildToggle"
@@ -94,7 +105,7 @@
                         Padding="6,6"
                         Margin="0,3"
                         ToolTip.Tip="Build">
-                    <Image Source="{DynamicResource Icon.PanelBuild}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.PanelBuild" IconSize="20"/>
                 </Button>
             </StackPanel>
         </Grid>

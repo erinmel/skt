@@ -94,18 +94,27 @@ public class SemanticAnalyzer
       case "--":
         AnalyzeIncrementDecrement(node);
         break;
-      case "if":
-        AnalyzeIfStatement(node);
+      case "branch":
+        AnalyzeBranchStatement(node);
         break;
       case "while":
       case "do":
         AnalyzeWhileStatement(node);
         break;
+      case ">>":
+        AnalyzeCinOperator(node);
+        break;
+      case "<<":
+        AnalyzeCoutOperator(node);
+        break;
       case "cin":
-        AnalyzeCinStatement(node);
+        AnalyzeCinKeyword(node);
         break;
       case "cout":
-        AnalyzeCoutStatement(node);
+        AnalyzeCoutKeyword(node);
+        break;
+      case "body":
+        AnalyzeBody(node);
         break;
       case "ID":
         AnalyzeIdentifier(node);
@@ -152,12 +161,12 @@ public class SemanticAnalyzer
           );
         }
 
-        // Set type attribute
-        child.DataType = dataType;
+        // Set type attribute (inherited from declaration)
+        child.SetTypeAttribute(dataType, AttributePropagation.Inherited, node.Rule);
       }
     }
 
-    node.DataType = dataType;
+    node.SetTypeAttribute(dataType, AttributePropagation.None, "declaration");
   }
 
   private void AnalyzeAssignment(AnnotatedAstNode node)
@@ -194,7 +203,7 @@ public class SemanticAnalyzer
 
       // Get the type of the variable
       string? varType = _symbolTable.GetSymbolType(varName, _currentScope);
-      leftNode.DataType = varType;
+      leftNode.SetTypeAttribute(varType, AttributePropagation.Inherited, "symbol_table");
 
       // Check type compatibility
       if (varType != null && rightNode.DataType != null)
@@ -212,7 +221,13 @@ public class SemanticAnalyzer
         }
       }
 
-      node.DataType = varType;
+      node.SetTypeAttribute(varType, AttributePropagation.Sibling, $"{leftNode.Rule}");
+
+      // If right side has a constant value, it flows to assignment
+      if (rightNode.IsConstant && rightNode.Value != null)
+      {
+        node.SetValueAttribute(rightNode.Value, AttributePropagation.Synthesized, rightNode.Rule);
+      }
     }
   }
 
@@ -234,7 +249,7 @@ public class SemanticAnalyzer
     AnalyzeNode(leftNode);
     AnalyzeNode(rightNode);
 
-    // Determine result type based on operand types
+    // Determine result type based on operand types (synthesized from children)
     string? resultType = InferArithmeticResultType(leftNode.DataType, rightNode.DataType);
 
     if (resultType == null && leftNode.DataType != null && rightNode.DataType != null)
@@ -244,18 +259,21 @@ public class SemanticAnalyzer
           $"Invalid operand types for arithmetic operator '{node.Rule}': '{leftNode.DataType}' and '{rightNode.DataType}'",
           node.Line, node.Column, node.EndLine, node.EndColumn
       );
-      node.DataType = "int"; // Default to avoid cascading errors
+      node.SetTypeAttribute("int", AttributePropagation.None, "error_recovery");
     }
     else
     {
-      node.DataType = resultType ?? "int";
+      node.SetTypeAttribute(resultType ?? "int", AttributePropagation.Synthesized, "children");
     }
 
-    // Check for constant folding
-    if (leftNode.IsConstant && rightNode.IsConstant)
+    // Check for constant folding - compute value if both operands are constants
+    if (leftNode.IsConstant && rightNode.IsConstant && leftNode.Value != null && rightNode.Value != null)
     {
-      node.IsConstant = true;
-      // Could calculate value here for optimization
+      object? computedValue = ComputeArithmeticValue(node.Rule, leftNode.Value, rightNode.Value);
+      if (computedValue != null)
+      {
+        node.SetValueAttribute(computedValue, AttributePropagation.Synthesized, "constant_folding");
+      }
     }
   }
 
@@ -272,8 +290,8 @@ public class SemanticAnalyzer
     AnalyzeNode(leftNode);
     AnalyzeNode(rightNode);
 
-    // Relational operators always return bool
-    node.DataType = "bool";
+    // Relational operators always return bool (synthesized)
+    node.SetTypeAttribute("bool", AttributePropagation.Synthesized, "relational_op");
 
     // Check if operands are comparable
     if (leftNode.DataType != null && rightNode.DataType != null)
@@ -285,6 +303,16 @@ public class SemanticAnalyzer
             $"Cannot compare '{leftNode.DataType}' with '{rightNode.DataType}'",
             node.Line, node.Column, node.EndLine, node.EndColumn
         );
+      }
+    }
+
+    // Constant folding for relational operations
+    if (leftNode.IsConstant && rightNode.IsConstant && leftNode.Value != null && rightNode.Value != null)
+    {
+      object? computedValue = ComputeRelationalValue(node.Rule, leftNode.Value, rightNode.Value);
+      if (computedValue != null)
+      {
+        node.SetValueAttribute(computedValue, AttributePropagation.Synthesized, "constant_folding");
       }
     }
   }
@@ -305,7 +333,7 @@ public class SemanticAnalyzer
       }
     }
 
-    node.DataType = "bool";
+    node.SetTypeAttribute("bool", AttributePropagation.Synthesized, "logical_op");
   }
 
   private void AnalyzeIncrementDecrement(AnnotatedAstNode node)
@@ -341,14 +369,18 @@ public class SemanticAnalyzer
           );
         }
 
-        node.DataType = varType;
+        node.SetTypeAttribute(varType, AttributePropagation.Synthesized, operand.Rule);
       }
     }
   }
 
-  private void AnalyzeIfStatement(AnnotatedAstNode node)
+  private void AnalyzeBranchStatement(AnnotatedAstNode node)
   {
-    AnalyzeWithScope(node, "if");
+    // Branch statements may affect control flow, analyze with caution
+    foreach (var child in node.Children)
+    {
+      AnalyzeNode(child);
+    }
   }
 
   private void AnalyzeWhileStatement(AnnotatedAstNode node)
@@ -372,8 +404,55 @@ public class SemanticAnalyzer
     _currentScope = previousScope;
   }
 
-  private void AnalyzeCinStatement(AnnotatedAstNode node)
+  private void AnalyzeCinOperator(AnnotatedAstNode node)
   {
+    // Analyze as a function call with cin as the callee
+    if (node.Children.Count > 0)
+    {
+      var firstChild = node.Children[0];
+      AnalyzeNode(firstChild);
+
+      if (firstChild.Rule == "ID" && firstChild.Token != null)
+      {
+        string varName = firstChild.Token.Value;
+
+        if (!_symbolTable.IsDeclared(varName, _currentScope))
+        {
+          ReportError(
+              SemanticErrorType.UndeclaredVariable,
+              $"Variable '{varName}' is used before declaration",
+              firstChild.Line, firstChild.Column, firstChild.EndLine, firstChild.EndColumn,
+              varName
+          );
+        }
+        else
+        {
+          firstChild.DataType = _symbolTable.GetSymbolType(varName, _currentScope);
+        }
+      }
+    }
+
+    // Set return type to void for cin operator
+    node.SetTypeAttribute("void", AttributePropagation.Synthesized, "cin_operator");
+  }
+
+  private void AnalyzeCoutOperator(AnnotatedAstNode node)
+  {
+    // Analyze as a function call with cout as the callee
+    foreach (var child in node.Children)
+    {
+      AnalyzeNode(child);
+    }
+
+    // Set return type to void for cout operator
+    node.SetTypeAttribute("void", AttributePropagation.Synthesized, "cout_operator");
+  }
+
+  private void AnalyzeCinKeyword(AnnotatedAstNode node)
+  {
+    // Handles the 'cin' keyword node and performs variable validation.
+    // Unlike AnalyzeCinOperator (which handles the '>>' operator node and does not validate variables),
+    // this method checks that each variable used with 'cin' is declared.
     foreach (var child in node.Children)
     {
       if (child.Rule == "ID" && child.Token != null)
@@ -401,8 +480,18 @@ public class SemanticAnalyzer
     }
   }
 
-  private void AnalyzeCoutStatement(AnnotatedAstNode node)
+  private void AnalyzeCoutKeyword(AnnotatedAstNode node)
   {
+    // Similar to AnalyzeCoutOperator, but for the 'cout' keyword usage
+    foreach (var child in node.Children)
+    {
+      AnalyzeNode(child);
+    }
+  }
+
+  private void AnalyzeBody(AnnotatedAstNode node)
+  {
+    // Body nodes are usually blocks of statements, analyze all children
     foreach (var child in node.Children)
     {
       AnalyzeNode(child);
@@ -425,9 +514,11 @@ public class SemanticAnalyzer
     var symbol = _symbolTable.Lookup(varName, _currentScope);
     if (symbol != null)
     {
-      node.DataType = symbol.DataType;
+      node.SetTypeAttribute(symbol.DataType, AttributePropagation.Inherited, "symbol_table");
+
+      // Record this as a reference to the variable
+      symbol.AddReference(node.Line, node.Column);
     }
-    // If not found and not a literal, it will be caught by assignment/usage analysis
   }
 
   private static void AnalyzeLiteral(AnnotatedAstNode node)
@@ -448,11 +539,10 @@ public class SemanticAnalyzer
     // Check for integer literals
     if (node.Token.Type == TokenType.Integer || int.TryParse(value, out _))
     {
-      node.DataType = "int";
-      node.IsConstant = true;
       if (int.TryParse(value, out int intValue))
       {
-        node.Value = intValue;
+        node.SetTypeAttribute("int", AttributePropagation.None, "literal");
+        node.SetValueAttribute(intValue, AttributePropagation.None, "literal");
       }
       return true;
     }
@@ -460,11 +550,10 @@ public class SemanticAnalyzer
     // Check for float literals
     if (node.Token.Type == TokenType.Real || float.TryParse(value, out _))
     {
-      node.DataType = "float";
-      node.IsConstant = true;
       if (float.TryParse(value, out float floatValue))
       {
-        node.Value = floatValue;
+        node.SetTypeAttribute("float", AttributePropagation.None, "literal");
+        node.SetValueAttribute(floatValue, AttributePropagation.None, "literal");
       }
       return true;
     }
@@ -472,18 +561,16 @@ public class SemanticAnalyzer
     // Check for string literals
     if (node.Token.Type == TokenType.String)
     {
-      node.DataType = "string";
-      node.IsConstant = true;
-      node.Value = value;
+      node.SetTypeAttribute("string", AttributePropagation.None, "literal");
+      node.SetValueAttribute(value, AttributePropagation.None, "literal");
       return true;
     }
 
     // Check for boolean literals
     if (node.Token.Type == TokenType.Boolean || value == "true" || value == "false")
     {
-      node.DataType = "bool";
-      node.IsConstant = true;
-      node.Value = value == "true";
+      node.SetTypeAttribute("bool", AttributePropagation.None, "literal");
+      node.SetValueAttribute(value == "true", AttributePropagation.None, "literal");
       return true;
     }
 
@@ -568,5 +655,132 @@ public class SemanticAnalyzer
     );
 
     _errors.Add(error);
+  }
+
+  private static object? ComputeArithmeticValue(string op, object? left, object? right)
+  {
+    // For now, only supports int and float, and basic ops
+    if (left is int leftInt && right is int rightInt)
+    {
+      return op switch
+      {
+        "+" => leftInt + rightInt,
+        "-" => leftInt - rightInt,
+        "*" => leftInt * rightInt,
+        "/" => leftInt / rightInt,
+        "%" => leftInt % rightInt,
+        "^" => (int)Math.Pow(leftInt, rightInt),
+        _ => null
+      };
+    }
+
+    if (left is float leftFloat && right is float rightFloat)
+    {
+      return op switch
+      {
+        "+" => leftFloat + rightFloat,
+        "-" => leftFloat - rightFloat,
+        "*" => leftFloat * rightFloat,
+        "/" => leftFloat / rightFloat,
+        "%" => leftFloat % rightFloat,
+        "^" => (float)Math.Pow(leftFloat, rightFloat),
+        _ => null
+      };
+    }
+
+    if (left is int intValue && right is float floatValue)
+    {
+      return op switch
+      {
+        "+" => intValue + floatValue,
+        "-" => intValue - floatValue,
+        "*" => intValue * floatValue,
+        "/" => intValue / floatValue,
+        "%" => intValue % floatValue,
+        "^" => (float)Math.Pow(intValue, floatValue),
+        _ => null
+      };
+    }
+
+    if (left is float floatValue2 && right is int intValue2)
+    {
+      return op switch
+      {
+        "+" => floatValue2 + intValue2,
+        "-" => floatValue2 - intValue2,
+        "*" => floatValue2 * intValue2,
+        "/" => floatValue2 / intValue2,
+        "%" => floatValue2 % intValue2,
+        "^" => (float)Math.Pow(floatValue2, intValue2),
+        _ => null
+      };
+    }
+
+    return null;
+  }
+
+  private static object? ComputeRelationalValue(string op, object? left, object? right)
+  {
+    if (left is null || right is null)
+      return null;
+
+    // For now, only supports int and float, and basic relational ops
+    if (left is int leftInt && right is int rightInt)
+    {
+      return op switch
+      {
+        "<" => leftInt < rightInt,
+        "<=" => leftInt <= rightInt,
+        ">" => leftInt > rightInt,
+        ">=" => leftInt >= rightInt,
+        "==" => leftInt == rightInt,
+        "!=" => leftInt != rightInt,
+        _ => null
+      };
+    }
+
+    if (left is float leftFloat && right is float rightFloat)
+    {
+      return op switch
+      {
+        "<" => leftFloat < rightFloat,
+        "<=" => leftFloat <= rightFloat,
+        ">" => leftFloat > rightFloat,
+        ">=" => leftFloat >= rightFloat,
+        "==" => leftFloat == rightFloat,
+        "!=" => leftFloat != rightFloat,
+        _ => null
+      };
+    }
+
+    if (left is int intValue && right is float floatValue)
+    {
+      return op switch
+      {
+        "<" => intValue < floatValue,
+        "<=" => intValue <= floatValue,
+        ">" => intValue > floatValue,
+        ">=" => intValue >= floatValue,
+        "==" => intValue == floatValue,
+        "!=" => intValue != floatValue,
+        _ => null
+      };
+    }
+
+    if (left is float floatValue2 && right is int intValue2)
+    {
+      return op switch
+      {
+        "<" => floatValue2 < intValue2,
+        "<=" => floatValue2 <= intValue2,
+        ">" => floatValue2 > intValue2,
+        ">=" => floatValue2 >= intValue2,
+        "==" => floatValue2 == intValue2,
+        "!=" => floatValue2 != intValue2,
+        _ => null
+      };
+    }
+
+    return null;
   }
 }

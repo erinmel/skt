@@ -85,6 +85,9 @@
                     <!-- Syntax Tree View -->
                     <toolviews:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding SyntaxTree}"/>
 
+                    <!-- Semantic Tree View -->
+                    <toolviews:SemanticTreeView Name="SemanticTreeContent" IsVisible="False" DataContext="{Binding SemanticTree}"/>
+
                     <!-- Phase Output View -->
                     <toolviews:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
                 </Grid>

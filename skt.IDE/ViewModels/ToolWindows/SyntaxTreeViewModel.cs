@@ -8,7 +8,7 @@ using Avalonia.Controls;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
-public partial class SyntaxTreeViewModel : ObservableObject
+public partial class SyntaxTreeViewModel : ObservableObject, IDisposable
 {
     private ObservableCollection<AstNodeViewModel> _rootNodesInternal = new();
     private AstNodeViewModel? _programNode;
@@ -31,6 +31,8 @@ public partial class SyntaxTreeViewModel : ObservableObject
 
     private void InitializeTreeSource()
     {
+        TreeSource?.Dispose();
+
         TreeSource = new HierarchicalTreeDataGridSource<AstNodeViewModel>(_rootNodesInternal)
         {
             Columns =
@@ -98,6 +100,12 @@ public partial class SyntaxTreeViewModel : ObservableObject
         _rootNodesInternal.Clear();
         _programNode = null;
         StatusMessage = "No syntax tree to display";
+    }
+
+    public void Dispose()
+    {
+        TreeSource?.Dispose();
+        TreeSource = null;
     }
 }
 

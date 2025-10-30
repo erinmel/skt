@@ -1,6 +1,40 @@
 namespace skt.Shared;
 
 /// <summary>
+/// Defines how a semantic attribute is propagated through the AST
+/// </summary>
+public enum AttributePropagation
+{
+  None,           // Attribute not set or not applicable
+  Synthesized,    // Computed from children (bottom-up)
+  Inherited,      // Passed from parent (top-down)
+  Sibling          // Propagated from sibling nodes
+}
+
+/// <summary>
+/// Represents a semantic attribute with its value and propagation information
+/// </summary>
+[Serializable]
+public class SemanticAttribute
+{
+  public string? Value { get; set; }
+  public AttributePropagation Propagation { get; set; }
+  public string? SourceNode { get; set; } // For debugging: where did this attribute come from?
+
+  public SemanticAttribute()
+  {
+    Propagation = AttributePropagation.None;
+  }
+
+  public SemanticAttribute(string? value, AttributePropagation propagation, string? sourceNode = null)
+  {
+    Value = value;
+    Propagation = propagation;
+    SourceNode = sourceNode;
+  }
+}
+
+/// <summary>
 /// AST Node with semantic attributes (inherited and synthesized attributes)
 /// </summary>
 [Serializable]
@@ -23,6 +57,10 @@ public class AnnotatedAstNode
   // Semantic attributes (inherited)
   public string? Scope { get; set; }              // Current scope
 
+  // Enhanced attribute tracking
+  public SemanticAttribute TypeAttribute { get; set; }    // Tracks how type is propagated
+  public SemanticAttribute ValueAttribute { get; set; }   // Tracks how value is propagated
+
   public AnnotatedAstNode(AstNode node)
   {
     Rule = node.Rule;
@@ -33,6 +71,8 @@ public class AnnotatedAstNode
     EndColumn = node.EndColumn;
     Children = [];
     Scope = "global";
+    TypeAttribute = new SemanticAttribute();
+    ValueAttribute = new SemanticAttribute();
   }
 
   public bool IsError => Rule.StartsWith("Error") || Rule.StartsWith("ERROR");
@@ -68,5 +108,55 @@ public class AnnotatedAstNode
     }
 
     return astNode;
+  }
+
+  /// <summary>
+  /// Sets the type attribute with propagation information
+  /// </summary>
+  public void SetTypeAttribute(string? type, AttributePropagation propagation, string? source = null)
+  {
+    DataType = type;
+    TypeAttribute = new SemanticAttribute(type, propagation, source);
+  }
+
+  /// <summary>
+  /// Sets the value attribute with propagation information
+  /// </summary>
+  public void SetValueAttribute(object? value, AttributePropagation propagation, string? source = null)
+  {
+    Value = value;
+    IsConstant = value != null;
+    ValueAttribute = new SemanticAttribute(value?.ToString(), propagation, source);
+  }
+
+  /// <summary>
+  /// Gets a summary of all semantic attributes for debugging/visualization
+  /// </summary>
+  public string GetAttributeSummary()
+  {
+    var parts = new List<string>();
+
+    if (!string.IsNullOrEmpty(DataType))
+    {
+      var typeInfo = $"Type: {DataType} [{TypeAttribute.Propagation}]";
+      if (!string.IsNullOrEmpty(TypeAttribute.SourceNode))
+        typeInfo += $" from {TypeAttribute.SourceNode}";
+      parts.Add(typeInfo);
+    }
+
+    if (Value != null)
+    {
+      var valueInfo = $"Value: {Value} [{ValueAttribute.Propagation}]";
+      if (!string.IsNullOrEmpty(ValueAttribute.SourceNode))
+        valueInfo += $" from {ValueAttribute.SourceNode}";
+      parts.Add(valueInfo);
+    }
+
+    if (!string.IsNullOrEmpty(Scope) && Scope != "global")
+    {
+      parts.Add($"Scope: {Scope}");
+    }
+
+    return parts.Count > 0 ? string.Join(", ", parts) : "No attributes";
   }
 }

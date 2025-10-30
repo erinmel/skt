@@ -107,3 +107,54 @@ public class SyntaxAnalysisFailedEvent
         Message = message;
     }
 }
+
+public class SemanticAnalysisRequestEvent
+{
+    public string? FilePath { get; }
+    public AstNode Ast { get; }
+    public bool FromBuffer { get; }
+
+    public SemanticAnalysisRequestEvent(AstNode ast, string? filePath, bool fromBuffer = false)
+    {
+        Ast = ast;
+        FilePath = filePath;
+        FromBuffer = fromBuffer;
+    }
+}
+
+public class SemanticAnalysisCompletedEvent
+{
+    public string? FilePath { get; }
+    public AnnotatedAstNode? AnnotatedAst { get; }
+    public SymbolTable SymbolTable { get; }
+    public List<SemanticError> Errors { get; }
+    public bool FromBuffer { get; }
+
+    public SemanticAnalysisCompletedEvent(
+        string? filePath,
+        AnnotatedAstNode? annotatedAst,
+        SymbolTable symbolTable,
+        List<SemanticError> errors,
+        bool fromBuffer = false)
+    {
+        FilePath = filePath;
+        AnnotatedAst = annotatedAst;
+        SymbolTable = symbolTable;
+        Errors = errors;
+        FromBuffer = fromBuffer;
+    }
+}
+
+public class SemanticAnalysisFailedEvent
+{
+    public string? FilePath { get; }
+    public string Message { get; }
+    public bool FromBuffer { get; }
+
+    public SemanticAnalysisFailedEvent(string? filePath, string message, bool fromBuffer = false)
+    {
+        FilePath = filePath;
+        Message = message;
+        FromBuffer = fromBuffer;
+    }
+}

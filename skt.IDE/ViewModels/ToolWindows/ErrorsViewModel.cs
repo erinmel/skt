@@ -45,9 +45,11 @@ public class ErrorsViewModel : ObservableObject
 {
     private readonly ObservableCollection<FileErrorGroup> _lexicalGroups = new();
     private readonly ObservableCollection<FileErrorGroup> _syntaxGroups = new();
+    private readonly ObservableCollection<FileErrorGroup> _semanticGroups = new();
 
     public ObservableCollection<FileErrorGroup> LexicalGroups => _lexicalGroups;
     public ObservableCollection<FileErrorGroup> SyntaxGroups => _syntaxGroups;
+    public ObservableCollection<FileErrorGroup> SemanticGroups => _semanticGroups;
 
     public ErrorsViewModel()
     {
@@ -55,6 +57,8 @@ public class ErrorsViewModel : ObservableObject
         App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
         App.EventBus.Subscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxCompleted);
         App.EventBus.Subscribe<SyntaxAnalysisFailedEvent>(OnSyntaxFailed);
+        App.EventBus.Subscribe<SemanticAnalysisCompletedEvent>(OnSemanticCompleted);
+        App.EventBus.Subscribe<SemanticAnalysisFailedEvent>(OnSemanticFailed);
         App.EventBus.Subscribe<FileClosedEvent>(OnFileClosed);
     }
 
@@ -63,6 +67,7 @@ public class ErrorsViewModel : ObservableObject
         if (string.IsNullOrEmpty(e.FilePath)) return;
         RemoveGroupIfExists(_lexicalGroups, e.FilePath);
         RemoveGroupIfExists(_syntaxGroups, e.FilePath);
+        RemoveGroupIfExists(_semanticGroups, e.FilePath);
     }
 
     private void RemoveGroupIfExists(ObservableCollection<FileErrorGroup> collection, string filePath)
@@ -109,6 +114,21 @@ public class ErrorsViewModel : ObservableObject
         Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_syntaxGroups, path, messages));
     }
 
+    private void OnSemanticCompleted(SemanticAnalysisCompletedEvent e)
+    {
+        var path = e.FilePath ?? string.Empty;
+        var errors = e.Errors ?? new List<SemanticError>();
+        var messages = errors.Select(err => (FormatSemanticError(err), err.Line, err.Column)).ToArray();
+        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_semanticGroups, path, messages));
+    }
+
+    private void OnSemanticFailed(SemanticAnalysisFailedEvent e)
+    {
+        var path = e.FilePath ?? string.Empty;
+        var message = e.Message;
+        Dispatcher.UIThread.Post(() => AddOrUpdateGroupWithMessages(_semanticGroups, path, new[] { (message, 0, 0) }));
+    }
+
     private string FormatParseError(ParseError err)
     {
         if (!string.IsNullOrEmpty(err.ExpectedToken) || !string.IsNullOrEmpty(err.FoundToken))
@@ -118,6 +138,19 @@ public class ErrorsViewModel : ObservableObject
             return string.IsNullOrWhiteSpace(expected + found) ? err.Message : $"{expected}{found} ({err.Message})";
         }
         return err.Message;
+    }
+
+    private string FormatSemanticError(SemanticError err)
+    {
+        var prefix = err.ErrorType switch
+        {
+            SemanticErrorType.UndeclaredVariable => "Undeclared variable",
+            SemanticErrorType.DuplicateDeclaration => "Duplicate declaration",
+            SemanticErrorType.TypeIncompatibility => "Type incompatibility",
+            SemanticErrorType.InvalidOperator => "Invalid operator",
+            _ => "Semantic error"
+        };
+        return $"{prefix}: {err.Message}";
     }
 
     private static string FormatError(ErrorToken err)

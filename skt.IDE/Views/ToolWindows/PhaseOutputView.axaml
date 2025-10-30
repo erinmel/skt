@@ -8,27 +8,40 @@
     <vm:PhaseOutputViewModel/>
   </Design.DataContext>
 
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
+  <UserControl.Styles>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      <Setter Property="Padding" Value="4,2"/>
+    </Style>
+    <Style Selector="ListBoxItem:nth-child(even)">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+  </UserControl.Styles>
 
-    <!-- Header -->
-    <Border Grid.Row="0" Padding="5">
-      <TextBlock Text="{Binding CurrentPhase}" FontWeight="Bold"/>
+  <DockPanel>
+    <Border DockPanel.Dock="Top"
+            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="8,4">
+      <TextBlock Text="{Binding CurrentPhase}"
+                 FontWeight="Bold"
+                 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                 FontSize="12"/>
     </Border>
 
-    <!-- Output -->
-    <ScrollViewer Grid.Row="1">
-      <ListBox ItemsSource="{Binding OutputLines}"
-               FontFamily="Consolas,monospace">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </ScrollViewer>
-  </Grid>
+    <ListBox ItemsSource="{Binding OutputLines}"
+             FontFamily="Consolas,monospace"
+             Background="Transparent"
+             BorderThickness="0">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
 </UserControl>

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:skt.IDE.ViewModels"
+             xmlns:views="using:skt.IDE.Views"
              x:Class="skt.IDE.Views.ToolWindows.Toolbar"
              x:DataType="vm:MainWindowViewModel">
 
@@ -15,7 +16,7 @@
 
             <!-- Logo and File Operations -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center" Name="LogoPanel">
-                <Image Source="{DynamicResource Icon.SktFile}" Width="30" Height="30" VerticalAlignment="Center"/>
+                <views:SktIcon IconKey="Icon.SktFile" IconSize="30" VerticalAlignment="Center"/>
 
                 <!-- File Menu Dropdown -->
                 <DropDownButton Name="FileMenuDropDown"
@@ -23,30 +24,30 @@
                                 BorderThickness="0"
                                 Padding="10,5">
                     <DropDownButton.Content>
-                        <Image Source="{DynamicResource Icon.ToolbarMenu}" Width="20" Height="20"/>
+                        <views:SktIcon IconKey="Icon.ToolbarMenu" IconSize="20"/>
                     </DropDownButton.Content>
                     <DropDownButton.Flyout>
                         <MenuFlyout>
                             <MenuItem Header="New Project" Click="NewProjectButton_Click">
                                 <MenuItem.Icon>
-                                    <Image Source="{DynamicResource Icon.ToolbarProjectNew}" Width="16" Height="16"/>
+                                    <views:SktIcon IconKey="Icon.ToolbarProjectNew" IconSize="16"/>
                                 </MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Open Project" Click="OpenProjectButton_Click">
                                 <MenuItem.Icon>
-                                    <Image Source="{DynamicResource Icon.ToolbarProjectOpen}" Width="16" Height="16"/>
+                                    <views:SktIcon IconKey="Icon.ToolbarProjectOpen" IconSize="16"/>
                                 </MenuItem.Icon>
                             </MenuItem>
                             <Separator/>
                             <MenuItem Header="New File" Click="NewFileButton_Click">
                                 <MenuItem.Icon>
-                                    <Image Source="{DynamicResource Icon.ToolbarFileNew}" Width="16" Height="16"/>
+                                    <views:SktIcon IconKey="Icon.ToolbarFileNew" IconSize="16"/>
                                 </MenuItem.Icon>
                             </MenuItem>
                             <Separator/>
                             <MenuItem Header="Settings" Click="SettingsButton_Click">
                                 <MenuItem.Icon>
-                                    <Image Source="{DynamicResource Icon.ToolbarSettings}" Width="16" Height="16"/>
+                                    <views:SktIcon IconKey="Icon.ToolbarSettings" IconSize="16"/>
                                 </MenuItem.Icon>
                             </MenuItem>
                         </MenuFlyout>
@@ -65,7 +66,7 @@
                         <MenuFlyout>
                             <MenuItem Header="Lexical" Name="LexicalAnalysisMenuItem" Click="LexicalAnalysisMenuItem_Click"/>
                             <MenuItem Header="Syntactic" Name="SyntacticAnalysisMenuItem" Click="SyntacticAnalysisMenuItem_Click" IsEnabled="False"/>
-                            <MenuItem Header="Semantic" IsEnabled="False"/>
+                            <MenuItem Header="Semantic" Name="SemanticAnalysisMenuItem" Click="SemanticAnalysisMenuItem_Click" IsEnabled="False"/>
                         </MenuFlyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>
@@ -77,7 +78,7 @@
                         Padding="10,5"
                         ToolTip.Tip="Open Project"
                         Click="OpenProjectButton_Click">
-                    <Image Source="{DynamicResource Icon.ToolbarProjectOpen}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolbarProjectOpen" IconSize="20"/>
                 </Button>
 
                 <!-- New Project Button -->
@@ -87,7 +88,7 @@
                         Padding="10,5"
                         ToolTip.Tip="New Project"
                         Click="NewProjectButton_Click">
-                    <Image Source="{DynamicResource Icon.ToolbarProjectNew}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolbarProjectNew" IconSize="20"/>
                 </Button>
 
                 <!-- New File Button -->
@@ -97,7 +98,7 @@
                         Padding="10,5"
                         ToolTip.Tip="New File"
                         Click="NewFileButton_Click">
-                    <Image Source="{DynamicResource Icon.ToolbarFileNew}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolbarFileNew" IconSize="20"/>
                 </Button>
 
 
@@ -108,7 +109,7 @@
                         Padding="10,5"
                         ToolTip.Tip="Save"
                         Click="SaveButton_Click">
-                    <Image Source="{DynamicResource Icon.ToolbarSave}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolbarSave" IconSize="20"/>
                 </Button>
 
                 <!-- Save As Button -->
@@ -118,7 +119,7 @@
                         Padding="10,5"
                         ToolTip.Tip="Save As"
                         Click="SaveAsButton_Click">
-                    <Image Source="{DynamicResource Icon.ToolbarSaveAs}" Width="20" Height="20"/>
+                    <views:SktIcon IconKey="Icon.ToolbarSaveAs" IconSize="20"/>
                 </Button>
             </StackPanel>
 
@@ -133,7 +134,7 @@
                         Padding="10,5"
                         ToolTip.Tip="Settings"
                         Click="SettingsButton_Click">
-                    <Image Source="{DynamicResource Icon.ToolbarSettings}" Width="16" Height="16"/>
+                    <views:SktIcon IconKey="Icon.ToolbarSettings" IconSize="16"/>
                 </Button>
 
                 <!-- Transparent spacer to separate settings from window controls -->
@@ -143,7 +144,7 @@
                         Tag="WindowControl"
                         ToolTip.Tip="Minimize"
                         Click="Minimize_Click">
-                    <Image Source="{DynamicResource Icon.Minimize}" Width="16" Height="16"/>
+                    <views:SktIcon IconKey="Icon.Minimize" IconSize="16"/>
                 </Button>
 
 
@@ -151,14 +152,14 @@
                         Tag="WindowControl"
                         ToolTip.Tip="{Binding WindowStateButtonTooltip}"
                         Click="Restore_Click">
-                    <Image Source="{Binding WindowStateIcon}" Width="16" Height="16"/>
+                    <views:SktIcon IconKey="{Binding WindowStateIconKey}" IconSize="16"/>
                 </Button>
 
                 <Button Name="CloseButton"
                         Tag="WindowControl"
                         ToolTip.Tip="Close"
                         Click="Close_Click">
-                    <Image Source="{DynamicResource Icon.Close}" Width="16" Height="16"/>
+                    <views:SktIcon IconKey="Icon.Close" IconSize="16"/>
                 </Button>
             </StackPanel>
         </Grid>

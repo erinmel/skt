@@ -6,6 +6,7 @@
              xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
              xmlns:vm="using:skt.IDE.ViewModels"
              xmlns:te="using:skt.IDE.Views.TextEditor"
+             xmlns:views="using:skt.IDE.Views"
              mc:Ignorable="d"
              d:DesignWidth="800" d:DesignHeight="450"
              x:Class="skt.IDE.Views.TextEditor.TabbedEditor"
@@ -107,7 +108,7 @@
                             ToolTip.Tip="Close Tab"
                             Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.CloseTabCommand}"
                             CommandParameter="{Binding}">
-                        <Image Source="{DynamicResource Icon.Close}" Width="6" Height="6"/>
+                        <views:SktIcon IconKey="Icon.Close" IconSize="6"/>
                     </Button>
                   </Grid>
 

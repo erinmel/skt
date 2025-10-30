@@ -13,6 +13,12 @@ public class SymbolTableEntry(string name, string dataType, string scope,
   public int DeclarationLine { get; set; } = declarationLine;
   public int DeclarationColumn { get; set; } = declarationColumn;
   public int MemoryOffset { get; set; } = memoryOffset;
+  public List<(int Line, int Column)> References { get; set; } = [];
+
+  public void AddReference(int line, int column)
+  {
+    References.Add((line, column));
+  }
 }
 
 /// <summary>

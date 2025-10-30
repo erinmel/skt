@@ -10,7 +10,7 @@ using skt.Shared;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
-public partial class TokensViewModel : ObservableObject
+public partial class TokensViewModel : ObservableObject, IDisposable
 {
     private readonly ObservableCollection<TokenRow> _rows = new();
 
@@ -162,5 +162,10 @@ public partial class TokensViewModel : ObservableObject
         TokenCount = 0;
         ErrorCount = 0;
         Source = CreateSource(_rows); // ensure grid shows empty state
+    }
+
+    public void Dispose()
+    {
+        Source?.Dispose();
     }
 }
