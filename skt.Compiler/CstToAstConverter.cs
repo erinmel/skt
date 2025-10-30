@@ -586,7 +586,15 @@ public class CstToAstConverter
             if (IsErrorNode(ifNode))
                 return CreateErrorPlaceholder(ifNode, "if");
 
-            var branchNode = new AstNode("branch", new List<AstNode>());
+            var branchNode = new AstNode(
+                rule: "branch",
+                children: new List<AstNode>(),
+                token: null,
+                line: ifNode.Line,
+                column: ifNode.Column,
+                endLine: ifNode.EndLine,
+                endColumn: ifNode.EndColumn
+            );
 
             // Condition
             var exprNode = FindChildByRule(ifNode, "expr");
@@ -603,7 +611,15 @@ public class CstToAstConverter
             var stmtsNodes = FindAllChildrenByRule(ifNode, "stmts");
             if (stmtsNodes.Count > 0)
             {
-                var ifBody = new AstNode("body", new List<AstNode>());
+                var ifBody = new AstNode(
+                    rule: "body",
+                    children: new List<AstNode>(),
+                    token: null,
+                    line: stmtsNodes[0].Line,
+                    column: stmtsNodes[0].Column,
+                    endLine: stmtsNodes[0].EndLine,
+                    endColumn: stmtsNodes[0].EndColumn
+                );
                 ProcessStatements(stmtsNodes[0], ifBody);
                 branchNode.Children.Add(ifBody);
             }
@@ -615,7 +631,15 @@ public class CstToAstConverter
                 var elseStmts = FindChildByRule(elseNode, "stmts");
                 if (elseStmts != null)
                 {
-                    var elseBody = new AstNode("body", new List<AstNode>());
+                    var elseBody = new AstNode(
+                        rule: "body",
+                        children: new List<AstNode>(),
+                        token: null,
+                        line: elseStmts.Line,
+                        column: elseStmts.Column,
+                        endLine: elseStmts.EndLine,
+                        endColumn: elseStmts.EndColumn
+                    );
                     ProcessStatements(elseStmts, elseBody);
                     branchNode.Children.Add(elseBody);
                 }
@@ -636,10 +660,19 @@ public class CstToAstConverter
             if (IsErrorNode(whileNode))
                 return CreateErrorPlaceholder(whileNode, "while");
 
-            var whileAst = new AstNode("while", new List<AstNode>());
+            var whileAst = new AstNode(
+                rule: "while",
+                children: new List<AstNode>(),
+                token: null,
+                line: whileNode.Line,
+                column: whileNode.Column,
+                endLine: whileNode.EndLine,
+                endColumn: whileNode.EndColumn
+            );
 
-            // Condition
-            var exprNode = FindChildByRule(whileNode, "expr");
+            // Grammar: ["while", "expr", "{", RuleStmts, "}"]
+            // Find expr as direct child to avoid nested expressions
+            var exprNode = FindDirectChildByRule(whileNode, "expr");
             if (exprNode != null)
             {
                 var condition = ConvertExpression(exprNode);
@@ -650,10 +683,18 @@ public class CstToAstConverter
             }
 
             // Body
-            var stmtsNode = FindChildByRule(whileNode, "stmts");
+            var stmtsNode = FindDirectChildByRule(whileNode, "stmts");
             if (stmtsNode != null)
             {
-                var body = new AstNode("body", new List<AstNode>());
+                var body = new AstNode(
+                    rule: "body",
+                    children: new List<AstNode>(),
+                    token: null,
+                    line: stmtsNode.Line,
+                    column: stmtsNode.Column,
+                    endLine: stmtsNode.EndLine,
+                    endColumn: stmtsNode.EndColumn
+                );
                 ProcessStatements(stmtsNode, body);
                 whileAst.Children.Add(body);
             }
@@ -673,19 +714,36 @@ public class CstToAstConverter
             if (IsErrorNode(doNode))
                 return CreateErrorPlaceholder(doNode, "do-while");
 
-            var doAst = new AstNode("do", new List<AstNode>());
+            var doAst = new AstNode(
+                rule: "do",
+                children: new List<AstNode>(),
+                token: null,
+                line: doNode.Line,
+                column: doNode.Column,
+                endLine: doNode.EndLine,
+                endColumn: doNode.EndColumn
+            );
 
-            // Body
-            var stmtsNode = FindChildByRule(doNode, "stmts");
+            // Grammar: ["do", "{", RuleStmts, "}", "while", "expr", ";"]
+            // Body comes first
+            var stmtsNode = FindDirectChildByRule(doNode, "stmts");
             if (stmtsNode != null)
             {
-                var body = new AstNode("body", new List<AstNode>());
+                var body = new AstNode(
+                    rule: "body",
+                    children: new List<AstNode>(),
+                    token: null,
+                    line: stmtsNode.Line,
+                    column: stmtsNode.Column,
+                    endLine: stmtsNode.EndLine,
+                    endColumn: stmtsNode.EndColumn
+                );
                 ProcessStatements(stmtsNode, body);
                 doAst.Children.Add(body);
             }
 
-            // Condition
-            var exprNode = FindChildByRule(doNode, "expr");
+            // Condition - find the last expr as direct child (after "while" keyword)
+            var exprNode = FindLastDirectChildByRule(doNode, "expr");
             if (exprNode != null)
             {
                 var condition = ConvertExpression(exprNode);
@@ -1030,5 +1088,32 @@ public class CstToAstConverter
 
             CollectChildrenByRule(child, rule, results);
         }
+    }
+
+    private AstNode? FindDirectChildByRule(AstNode node, string rule)
+    {
+        if (node.Children == null) return null;
+
+        foreach (var child in node.Children)
+        {
+            if (child.Rule == rule)
+                return child;
+        }
+
+        return null;
+    }
+
+    private AstNode? FindLastDirectChildByRule(AstNode node, string rule)
+    {
+        if (node.Children == null) return null;
+
+        AstNode? lastMatch = null;
+        foreach (var child in node.Children)
+        {
+            if (child.Rule == rule)
+                lastMatch = child;
+        }
+
+        return lastMatch;
     }
 }
