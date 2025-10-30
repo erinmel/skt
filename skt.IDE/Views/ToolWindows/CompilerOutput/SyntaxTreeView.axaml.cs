@@ -95,29 +95,36 @@ public partial class SyntaxTreeView : UserControl
          // Retry a few times: refresh source and re-apply TryExpand to handle virtualization/materialization delays
          Dispatcher.UIThread.Post(() =>
          {
-             _ = ExpandRetryAsync(ViewModel.RootNodes, SyntaxTreeGrid);
+             _ = ExpandRetryAsync(ViewModel.RootNodes);
          });
     }
 
-    private async System.Threading.Tasks.Task ExpandRetryAsync(IEnumerable<AstNodeViewModel> nodes, TreeDataGrid grid)
-    {
-        int attempts = 4;
-        var currentOffset = grid.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault()?.Offset.Y ?? 0;
-        for (int i = 0; i < attempts; i++)
-        {
-            await System.Threading.Tasks.Task.Delay(50 * (i + 1));
+    private async System.Threading.Tasks.Task ExpandRetryAsync(IEnumerable<AstNodeViewModel> nodes)
+     {
+          int attempts = 4;
+         var currentOffset = SyntaxTreeGrid.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault()?.Offset.Y ?? 0;
+         var vmSrc = ViewModel?.TreeSource;
+         for (int i = 0; i < attempts; i++)
+         {
+             await System.Threading.Tasks.Task.Delay(50 * (i + 1));
 
-            var src = grid.Source;
-            grid.Source = null;
-            grid.Source = src;
+             // Do UI work on UI thread to avoid cross-thread binding issues
+             await Dispatcher.UIThread.InvokeAsync(() =>
+             {
+                if (ViewModel != null)
+                {
+                    // Recreate the TreeSource so the TreeDataGrid binding receives a fresh source reflecting IsExpanded
+                    ViewModel.RefreshSource();
+                }
 
-            // Re-apply try-expand to encourage the source to mark rows expanded
-            ForceExpandInSourceRecursively(nodes);
+                 // Re-apply try-expand to encourage the source to mark rows expanded
+                 ForceExpandInSourceRecursively(nodes);
 
-            // Reapply scroll offset to further nudge layout and materialization
-            TreeViewHelpers.SetScrollOffset(grid, currentOffset);
-        }
-    }
+                 // Reapply scroll offset to further nudge layout and materialization
+                 TreeViewHelpers.SetScrollOffset(SyntaxTreeGrid, currentOffset);
+             });
+         }
+     }
 
     private void ForceExpandInSourceRecursively(IEnumerable<AstNodeViewModel> nodes)
     {
@@ -140,12 +147,10 @@ public partial class SyntaxTreeView : UserControl
 
         CollapseAllNodesRecursively(ViewModel.RootNodes);
 
-        // Force TreeDataGrid to refresh visuals so the collapsed state is reflected
+        // Force TreeDataGrid to refresh visuals so the collapsed state is reflected by recreating TreeSource
         Dispatcher.UIThread.Post(() =>
         {
-            var src = SyntaxTreeGrid.Source;
-            SyntaxTreeGrid.Source = null;
-            SyntaxTreeGrid.Source = src;
+            ViewModel.RefreshSource();
         });
     }
 

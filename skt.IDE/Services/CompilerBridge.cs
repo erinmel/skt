@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using skt.Compiler;
 using skt.IDE.Services.Buss;
 using skt.Shared;
@@ -11,9 +12,6 @@ namespace skt.IDE.Services;
 public class CompilerBridge
 {
     private readonly IMessenger _messenger;
-    private readonly LexicalAnalyzer _lexical = new();
-    private readonly SyntaxAnalyzer _syntax = new();
-    private readonly SemanticAnalyzer _semantic = new();
 
     public CompilerBridge(IMessenger messenger)
     {
@@ -26,7 +24,7 @@ public class CompilerBridge
         _messenger.Register<SemanticAnalysisRequestEvent>(this, (r, m) => OnSemanticAnalysisRequest(m));
     }
 
-    private void AnalyzeFileInMemory(string filePath)
+    private async void AnalyzeFileInMemory(string filePath)
     {
         try
         {
@@ -35,9 +33,14 @@ public class CompilerBridge
                 _messenger.Send(new LexicalAnalysisFailedEvent(filePath, "File not found", false));
                 return;
             }
-            var code = File.ReadAllText(filePath);
-            var (tokens, errors) = _lexical.Tokenize(code);
-            _messenger.Send(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, false));
+
+            var code = await File.ReadAllTextAsync(filePath);
+            await Task.Run(() =>
+            {
+                var lexical = new LexicalAnalyzer();
+                var (tokens, errors) = lexical.Tokenize(code);
+                _messenger.Send(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, false));
+            });
         }
         catch (Exception ex)
         {
@@ -45,14 +48,19 @@ public class CompilerBridge
         }
     }
 
-    private void AnalyzeBuffer(string content, string? filePath)
+    private async void AnalyzeBuffer(string content, string? filePath)
     {
         try
         {
-            var (tokens, errors) = _lexical.Tokenize(content);
+            var (tokens, errors) = await Task.Run(() =>
+            {
+                var lexical = new LexicalAnalyzer();
+                return lexical.Tokenize(content);
+            });
+
             _messenger.Send(new LexicalAnalysisCompletedEvent(filePath, tokens, errors, true));
 
-            ParseBuffer(tokens, filePath);
+            await ParseBuffer(tokens, filePath);
         }
         catch (Exception ex)
         {
@@ -60,7 +68,7 @@ public class CompilerBridge
         }
     }
 
-    private void PerformSyntaxAnalysis(string filePath)
+    private async void PerformSyntaxAnalysis(string filePath)
     {
         try
         {
@@ -70,21 +78,23 @@ public class CompilerBridge
                 return;
             }
 
-            var code = File.ReadAllText(filePath);
+            var code = await File.ReadAllTextAsync(filePath);
 
-            // Perform lexical analysis and write tokens to file (cascade)
-            var (tokens, lexErrors) = _lexical.TokenizeToFile(code, filePath);
-            _messenger.Send(new LexicalAnalysisCompletedEvent(filePath, tokens, lexErrors, false));
-
-            // Only continue with syntax if lexical analysis succeeded
-            if (lexErrors.Count > 0)
+            await Task.Run(() =>
             {
-                return;
-            }
+                var lexical = new LexicalAnalyzer();
+                var (tokens, lexErrors) = lexical.TokenizeToFile(code, filePath);
+                _messenger.Send(new LexicalAnalysisCompletedEvent(filePath, tokens, lexErrors, false));
 
-            // Parse using the token file
-            var (ast, errors) = _syntax.Parse(filePath);
-            _messenger.Send(new SyntaxAnalysisCompletedEvent(filePath, ast, errors));
+                if (lexErrors.Count > 0)
+                {
+                    return;
+                }
+
+                var syntax = new SyntaxAnalyzer();
+                var (ast, errors) = syntax.Parse(filePath);
+                _messenger.Send(new SyntaxAnalysisCompletedEvent(filePath, ast, errors));
+            });
         }
         catch (Exception ex)
         {
@@ -92,16 +102,21 @@ public class CompilerBridge
         }
     }
 
-    private void ParseBuffer(List<Token> tokens, string? filePath)
+    private async Task ParseBuffer(List<Token> tokens, string? filePath)
     {
         try
         {
-            var (ast, errors) = _syntax.ParseFromTokens(tokens);
+            var (ast, errors) = await Task.Run(() =>
+            {
+                var syntax = new SyntaxAnalyzer();
+                return syntax.ParseFromTokens(tokens);
+            });
+
             _messenger.Send(new SyntaxAnalysisCompletedEvent(filePath, ast, errors, true));
 
             if (ast != null)
             {
-                PerformSemanticAnalysisOnBuffer(ast, filePath);
+                await PerformSemanticAnalysisOnBuffer(ast, filePath);
             }
         }
         catch (Exception ex)
@@ -110,11 +125,16 @@ public class CompilerBridge
         }
     }
 
-    private void PerformSemanticAnalysis(SemanticAnalysisRequestEvent request)
+    private async void PerformSemanticAnalysis(SemanticAnalysisRequestEvent request)
     {
         try
         {
-            var (annotatedAst, symbolTable, errors) = _semantic.Analyze(request.Ast);
+            var (annotatedAst, symbolTable, errors) = await Task.Run(() =>
+            {
+                var semantic = new SemanticAnalyzer();
+                return semantic.Analyze(request.Ast);
+            });
+
             _messenger.Send(new SemanticAnalysisCompletedEvent(
                 request.FilePath,
                 annotatedAst,
@@ -129,11 +149,16 @@ public class CompilerBridge
         }
     }
 
-    private void PerformSemanticAnalysisOnBuffer(AstNode ast, string? filePath)
+    private async Task PerformSemanticAnalysisOnBuffer(AstNode ast, string? filePath)
     {
         try
         {
-            var (annotatedAst, symbolTable, errors) = _semantic.Analyze(ast);
+            var (annotatedAst, symbolTable, errors) = await Task.Run(() =>
+            {
+                var semantic = new SemanticAnalyzer();
+                return semantic.Analyze(ast);
+            });
+
             _messenger.Send(new SemanticAnalysisCompletedEvent(
                 filePath,
                 annotatedAst,
@@ -152,6 +177,6 @@ public class CompilerBridge
     private void OnTokenizeFileRequest(TokenizeFileRequestEvent e) => AnalyzeFileInMemory(e.FilePath);
     private void OnTokenizeBufferRequest(TokenizeBufferRequestEvent e) => AnalyzeBuffer(e.Content, e.FilePath);
     private void OnParseFileRequest(ParseFileRequestEvent e) => PerformSyntaxAnalysis(e.FilePath);
-    private void OnParseBufferRequest(ParseBufferRequestEvent e) => ParseBuffer(e.Tokens, e.FilePath);
+    private void OnParseBufferRequest(ParseBufferRequestEvent e) => _ = ParseBuffer(e.Tokens, e.FilePath);
     private void OnSemanticAnalysisRequest(SemanticAnalysisRequestEvent e) => PerformSemanticAnalysis(e);
 }

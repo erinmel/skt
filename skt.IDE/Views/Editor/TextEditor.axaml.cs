@@ -7,6 +7,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.Styling;
+using skt.IDE.Services;
 using skt.IDE.Services.Buss;
 using skt.Shared;
 using AvaloniaEdit;
@@ -31,11 +32,27 @@ public partial class TextEditor : UserControl
     private AvaloniaEdit.TextEditor? _editor;
     private bool _isSubscribed;
     private string _lastLexSnapshot = string.Empty;
-    private readonly List<Token> _currentTokens = new();
-    private readonly List<ErrorToken> _currentErrors = new();
+    private string? _currentDocumentPath;
     private SemanticColorizer? _colorizer;
+    private DocumentStateManager? _stateManager;
 
     private static readonly ConcurrentDictionary<string, int> PendingCarets = new();
+
+    private class TokenizationCache
+    {
+        public List<Token> Tokens { get; } = new();
+        public List<ErrorToken> Errors { get; } = new();
+        public string ContentHash { get; set; } = string.Empty;
+
+        public void Update(IEnumerable<Token> tokens, IEnumerable<ErrorToken> errors, string contentHash)
+        {
+            Tokens.Clear();
+            Tokens.AddRange(tokens);
+            Errors.Clear();
+            Errors.AddRange(errors);
+            ContentHash = contentHash;
+        }
+    }
 
     private static void FocusMainWindow()
     {
@@ -123,10 +140,37 @@ public partial class TextEditor : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_editor == null) return;
-        if (!(DataContext is ViewModels.DocumentViewModel doc) ||
-            string.IsNullOrEmpty(doc.FilePath) ||
-            !PendingCarets.TryRemove(doc.FilePath, out var pendingOffset)) return;
-        Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(pendingOffset), DispatcherPriority.Background);
+
+        if (DataContext is ViewModels.TextEditorViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+        {
+            _currentDocumentPath = doc.FilePath;
+
+            // Restore syntax highlighting from active editor
+            bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
+            _colorizer?.Update(doc.Tokens, doc.LexicalErrors, isDark);
+            _editor.TextArea.TextView.Redraw();
+
+            // Restore caret position
+            if (doc.CaretPosition > 0)
+            {
+                _editor.CaretOffset = Math.Clamp(doc.CaretPosition, 0, _editor.Document?.TextLength ?? 0);
+            }
+
+            // Handle pending caret position
+            if (PendingCarets.TryRemove(doc.FilePath, out var pendingOffset))
+            {
+                Dispatcher.UIThread.Post(() => ApplyCaretAndFocus(pendingOffset), DispatcherPriority.Background);
+            }
+
+            // Notify that document changed
+            App.Messenger.Send(new SelectedDocumentChangedEvent(doc.FilePath, true, doc.IsDirty));
+        }
+        else
+        {
+            _currentDocumentPath = null;
+            _colorizer?.Update(Array.Empty<Token>(), Array.Empty<ErrorToken>(), false);
+            _editor?.TextArea.TextView.Redraw();
+        }
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -135,6 +179,9 @@ public partial class TextEditor : UserControl
     {
         _editor = this.FindControl<AvaloniaEdit.TextEditor>("Editor");
         if (_editor == null) return;
+
+        // Get DocumentStateManager instance
+        _stateManager = App.Services?.GetService(typeof(DocumentStateManager)) as DocumentStateManager;
 
         if (_editor.Document == null)
             _editor.Document = new TextDocument(Text ?? string.Empty);
@@ -158,6 +205,15 @@ public partial class TextEditor : UserControl
             _isSubscribed = true;
         }
 
+        // Set current document path and restore state
+        if (DataContext is ViewModels.TextEditorViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
+        {
+            _currentDocumentPath = doc.FilePath;
+            bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
+            _colorizer.Update(doc.Tokens, doc.LexicalErrors, isDark);
+            _editor.TextArea.TextView.Redraw();
+        }
+
         Dispatcher.UIThread.Post(() =>
         {
             PublishCursor();
@@ -165,9 +221,9 @@ public partial class TextEditor : UserControl
             PublishBufferLexical();
         }, DispatcherPriority.Loaded);
 
-        if (DataContext is not ViewModels.DocumentViewModel doc
-            || string.IsNullOrEmpty(doc.FilePath)
-            || !PendingCarets.TryRemove(doc.FilePath, out var pendingOffset)) return;
+        if (DataContext is not ViewModels.TextEditorViewModel docForCaret
+            || string.IsNullOrEmpty(docForCaret.FilePath)
+            || !PendingCarets.TryRemove(docForCaret.FilePath, out var pendingOffset)) return;
         Dispatcher.UIThread.Post(() =>
         {
             ApplyCaretAndFocus(pendingOffset);
@@ -192,14 +248,13 @@ public partial class TextEditor : UserControl
 
     private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
     {
-        if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath))
+        if (DataContext is not ViewModels.TextEditorViewModel doc || string.IsNullOrEmpty(doc.FilePath))
         {
             PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, _) => e.CaretIndex);
             return;
         }
         if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
         {
-            // Different document instance: store for correct file
             PendingCarets.AddOrUpdate(e.FilePath, e.CaretIndex, (_, _) => e.CaretIndex);
             return;
         }
@@ -218,16 +273,13 @@ public partial class TextEditor : UserControl
 
     private void OnSetCaretLineColumnRequest(SetCaretLineColumnRequestEvent e)
     {
-        if (DataContext is not ViewModels.DocumentViewModel doc || string.IsNullOrEmpty(doc.FilePath))
+        if (DataContext is not ViewModels.TextEditorViewModel doc || string.IsNullOrEmpty(doc.FilePath))
         {
             return;
         }
 
         if (!string.Equals(doc.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
         {
-            // File doesn't match current document - this request is for a different tab
-            // We can't convert line/column without the actual document, so just store a flag
-            // The tab will be activated by OpenFileRequestEvent, triggering DataContextChanged
             return;
         }
 
@@ -298,40 +350,49 @@ public partial class TextEditor : UserControl
         if (text == _lastLexSnapshot) return;
         _lastLexSnapshot = text;
         string? filePath = null;
-        if (DataContext is ViewModels.DocumentViewModel doc) filePath = doc.FilePath;
+        if (DataContext is ViewModels.TextEditorViewModel doc)
+        {
+            filePath = doc.FilePath;
+            _currentDocumentPath = filePath;
+        }
         App.Messenger.Send(new TokenizeBufferRequestEvent(text, filePath));
     }
 
     private void OnLexicalCompleted(LexicalAnalysisCompletedEvent e)
     {
         if (_editor == null || _colorizer == null) return;
-        if (DataContext is ViewModels.DocumentViewModel doc &&
-            !string.Equals(doc.FilePath ?? string.Empty, e.FilePath ?? string.Empty, StringComparison.OrdinalIgnoreCase) &&
-            !e.FromBuffer) return;
 
-        _currentTokens.Clear();
-        _currentTokens.AddRange(e.Tokens);
-        _currentErrors.Clear();
-        _currentErrors.AddRange(e.Errors);
+        var eventPath = e.FilePath ?? string.Empty;
+        var docPath = _currentDocumentPath ?? string.Empty;
 
-        bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
-        _colorizer.Update(_currentTokens, _currentErrors, isDark);
-        _editor.TextArea.TextView.Redraw();
+        // Update state manager (it's already updated by DocumentStateManager itself)
+
+        // Only update colorizer if this event is for the current document
+        var isForCurrentDocument = string.Equals(docPath, eventPath, StringComparison.OrdinalIgnoreCase);
+
+        if (isForCurrentDocument)
+        {
+            bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
+            _colorizer.Update(e.Tokens, e.Errors, isDark);
+            _editor.TextArea.TextView.Redraw();
+        }
     }
 
     private void OnLexicalFailed(LexicalAnalysisFailedEvent e)
     {
         if (_editor == null || _colorizer == null) return;
-        if (DataContext is ViewModels.DocumentViewModel doc &&
-            !string.Equals(doc.FilePath ?? string.Empty, e.FilePath ?? string.Empty, StringComparison.OrdinalIgnoreCase) &&
-            !e.FromBuffer) return;
 
-        _currentTokens.Clear();
-        _currentErrors.Clear();
+        var eventPath = e.FilePath ?? string.Empty;
+        var docPath = _currentDocumentPath ?? string.Empty;
 
-        bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
-        _colorizer.Update(_currentTokens, _currentErrors, isDark);
-        _editor.TextArea.TextView.Redraw();
+        var isForCurrentDocument = string.Equals(docPath, eventPath, StringComparison.OrdinalIgnoreCase);
+
+        if (isForCurrentDocument)
+        {
+            bool isDark = (Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark) != ThemeVariant.Light;
+            _colorizer.Update(Array.Empty<Token>(), Array.Empty<ErrorToken>(), isDark);
+            _editor.TextArea.TextView.Redraw();
+        }
     }
 
     private void PublishCursor()

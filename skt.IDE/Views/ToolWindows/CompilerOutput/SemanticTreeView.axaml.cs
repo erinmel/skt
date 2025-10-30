@@ -87,13 +87,32 @@ public partial class SemanticTreeView : UserControl
         // Ensure the TreeDataGrid's internal source sees the expansion by toggling rows in the source
         ForceExpandInSourceRecursively(ViewModel.RootNodes);
 
-        // Force TreeDataGrid to refresh visuals so the expanded state is reflected
+        // Retry a few times to handle virtualization/materialization delays by toggling the view-model TreeSource
         Dispatcher.UIThread.Post(() =>
         {
-            var src = SemanticTreeGrid.Source;
-            SemanticTreeGrid.Source = null;
-            SemanticTreeGrid.Source = src;
+            _ = ExpandRetryAsync(ViewModel.RootNodes, SemanticTreeGrid);
         });
+    }
+
+    private async System.Threading.Tasks.Task ExpandRetryAsync(IEnumerable<AnnotatedAstNodeViewModel> nodes, TreeDataGrid grid)
+    {
+        int attempts = 4;
+        var currentOffset = grid.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault()?.Offset.Y ?? 0;
+        var vmSrc = ViewModel?.TreeSource;
+        for (int i = 0; i < attempts; i++)
+        {
+            await System.Threading.Tasks.Task.Delay(50 * (i + 1));
+
+            if (ViewModel != null)
+            {
+                ViewModel.TreeSource = null;
+                ViewModel.TreeSource = vmSrc;
+            }
+
+            ForceExpandInSourceRecursively(nodes);
+
+            TreeViewHelpers.SetScrollOffset(grid, currentOffset);
+        }
     }
 
     private void ForceExpandInSourceRecursively(IEnumerable<AnnotatedAstNodeViewModel> nodes)
@@ -112,17 +131,16 @@ public partial class SemanticTreeView : UserControl
 
     private void CollapseAllRowsInTreeDataGrid()
     {
-        System.Diagnostics.Debug.WriteLine("CollapseAllRowsInTreeDataGrid called");
         if (ViewModel?.RootNodes == null) return;
 
         CollapseAllNodesRecursively(ViewModel.RootNodes);
 
-        // Force TreeDataGrid to refresh visuals so the collapsed state is reflected
+        // Force TreeDataGrid to refresh visuals so the collapsed state is reflected by toggling the view-model TreeSource
         Dispatcher.UIThread.Post(() =>
         {
-            var src = SemanticTreeGrid.Source;
-            SemanticTreeGrid.Source = null;
-            SemanticTreeGrid.Source = src;
+            var src = ViewModel.TreeSource;
+            ViewModel.TreeSource = null;
+            ViewModel.TreeSource = src;
         });
     }
 

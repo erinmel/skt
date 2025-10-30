@@ -73,7 +73,7 @@
             </ItemsControl.ItemsPanel>
 
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:DocumentViewModel">
+              <DataTemplate x:DataType="vm:TextEditorViewModel">
                 <Border Name="TabBorder"
                         Classes="tab-item"
                         Classes.selected="{Binding IsSelected}"
@@ -92,7 +92,7 @@
 
                     <!-- Tab Title -->
                     <TextBlock Grid.Column="0"
-                               Text="{Binding Title}"
+                               Text="{Binding DisplayTitle}"
                                Classes="tab-title"
                                Classes.selected="{Binding IsSelected}"
                                VerticalAlignment="Center"
@@ -132,7 +132,7 @@
                     IsVisible="{Binding HasDocuments}"
                     Content="{Binding SelectedDocument}">
       <ContentControl.ContentTemplate>
-        <DataTemplate x:DataType="vm:DocumentViewModel">
+        <DataTemplate x:DataType="vm:TextEditorViewModel">
           <Grid>
             <!-- Custom Text Editor -->
             <te:TextEditor Text="{Binding Content, Mode=TwoWay}" Focusable="True" IsTabStop="True">

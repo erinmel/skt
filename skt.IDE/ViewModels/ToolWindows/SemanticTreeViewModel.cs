@@ -1,9 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using skt.IDE.Services;
+using skt.IDE.Services.Buss;
 using skt.Shared;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls;
@@ -15,6 +21,9 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
     private ObservableCollection<AnnotatedAstNodeViewModel> _rootNodesInternal = new();
     private AnnotatedAstNodeViewModel? _programNode;
     private readonly TreeExpansionManager<AnnotatedAstNodeViewModel> _expansionManager = new();
+    private CancellationTokenSource? _expansionCts;
+    private readonly Services.ActiveEditorService? _activeEditorService;
+    private ViewModels.TextEditorViewModel? _currentEditor;
 
     [ObservableProperty]
     private string _statusMessage = "No semantic tree to display. Open a file and compile to see semantic analysis.";
@@ -32,14 +41,140 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
         set
         {
             _expansionManager.ExpansionMode = value;
-            _expansionManager.ApplyExpansionMode(_rootNodesInternal);
+            _ = ApplyExpansionModeAsync();
         }
     }
 
     public SemanticTreeViewModel()
     {
         _expansionManager.ExpansionMode = TreeExpansionMode.FullyExpanded;
+        _activeEditorService = App.Services?.GetService(typeof(Services.ActiveEditorService)) as Services.ActiveEditorService;
         InitializeTreeSource();
+
+        App.Messenger.Register<ActiveEditorChangedEvent>(this, (_, e) => OnActiveEditorChanged(e));
+        App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (_, e) => OnSemanticAnalysisCompleted(e));
+    }
+
+    private void OnActiveEditorChanged(ActiveEditorChangedEvent e)
+    {
+        SaveCurrentEditorExpansionState();
+        _currentEditor = e.ActiveEditor;
+        LoadCurrentEditorTree();
+    }
+
+    private void SaveCurrentEditorExpansionState()
+    {
+        if (_currentEditor == null) return;
+
+        _currentEditor.SemanticTreeExpansionState.Clear();
+        SaveExpansionState(_rootNodesInternal, _currentEditor.SemanticTreeExpansionState);
+    }
+
+    private void SaveExpansionState(IEnumerable<AnnotatedAstNodeViewModel> nodes, Dictionary<string, bool> state)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren)
+            {
+                state[node.NodePath] = node.IsExpanded;
+                if (node.Children.Count > 0)
+                {
+                    SaveExpansionState(node.Children, state);
+                }
+            }
+        }
+    }
+
+    private void LoadCurrentEditorTree()
+    {
+        if (_currentEditor == null)
+        {
+            _rootNodesInternal.Clear();
+            _programNode = null;
+            StatusMessage = "No semantic tree to display. Open a file and compile to see semantic analysis.";
+            return;
+        }
+
+        UpdateTree(_currentEditor.SemanticTree, _currentEditor.SemanticErrors.ToList());
+
+        if (_currentEditor.SemanticTreeExpansionState.Count > 0)
+        {
+            RestoreExpansionState(_rootNodesInternal, _currentEditor.SemanticTreeExpansionState);
+        }
+    }
+
+    private void RestoreExpansionState(IEnumerable<AnnotatedAstNodeViewModel> nodes, Dictionary<string, bool> state)
+    {
+        foreach (var node in nodes)
+        {
+            if (state.TryGetValue(node.NodePath, out var isExpanded))
+            {
+                node.IsExpanded = isExpanded;
+
+                if (node.Children.Count > 0)
+                {
+                    RestoreExpansionState(node.Children, state);
+                }
+            }
+        }
+    }
+
+    private void OnSemanticAnalysisCompleted(SemanticAnalysisCompletedEvent e)
+    {
+        // Only update if this is for the currently active editor
+        if (_currentEditor != null && string.Equals(_currentEditor.FilePath, e.FilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateTree(e.AnnotatedAst, e.Errors);
+        }
+    }
+
+    private void SaveExpansionState(string filePath)
+    {
+        var state = _activeEditorService?.ActiveEditor?.SemanticTreeExpansionState;
+        if (state == null) return;
+
+        state.Clear();
+        SaveExpansionStateRecursive(_rootNodesInternal, state);
+    }
+
+    private void SaveExpansionStateRecursive(IEnumerable<AnnotatedAstNodeViewModel> nodes, Dictionary<string, bool> expansionState)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.HasChildren)
+            {
+                expansionState[node.NodePath] = node.IsExpanded;
+
+                if (node.Children.Count > 0)
+                {
+                    SaveExpansionStateRecursive(node.Children, expansionState);
+                }
+            }
+        }
+    }
+
+    private void RestoreExpansionState(string filePath)
+    {
+        var state = _activeEditorService?.ActiveEditor?.SemanticTreeExpansionState;
+        if (state == null || state.Count == 0) return;
+
+        RestoreExpansionStateRecursive(_rootNodesInternal, state);
+    }
+
+    private void RestoreExpansionStateRecursive(IEnumerable<AnnotatedAstNodeViewModel> nodes, Dictionary<string, bool> expansionState)
+    {
+        foreach (var node in nodes)
+        {
+            if (expansionState.TryGetValue(node.NodePath, out var isExpanded))
+            {
+                node.IsExpanded = isExpanded;
+
+                if (isExpanded && node.HasChildren && node.ChildrenLoaded && node.Children.Count > 0)
+                {
+                    RestoreExpansionStateRecursive(node.Children, expansionState);
+                }
+            }
+        }
     }
 
     private void InitializeTreeSource()
@@ -78,6 +213,7 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
         }
 
         var isFirstLoad = _programNode == null;
+        var filePathContext = _currentEditor?.FilePath;
 
         if (_programNode != null && rootNode.Rule == "program")
         {
@@ -90,13 +226,13 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 
             if (rootNode.Rule == "program")
             {
-                var programViewModel = new AnnotatedAstNodeViewModel(rootNode);
+                var programViewModel = new AnnotatedAstNodeViewModel(rootNode, 0);
                 _programNode = programViewModel;
                 _rootNodesInternal.Add(programViewModel);
             }
             else
             {
-                _rootNodesInternal.Add(new AnnotatedAstNodeViewModel(rootNode));
+                _rootNodesInternal.Add(new AnnotatedAstNodeViewModel(rootNode, 0));
             }
         }
 
@@ -107,34 +243,72 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 
         if (isFirstLoad)
         {
-            // On first load, expand all nodes after a brief delay for UI to settle
-            System.Threading.Tasks.Task.Delay(50).ContinueWith(_ =>
+            _ = Task.Delay(50).ContinueWith(async _ =>
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     System.Diagnostics.Debug.WriteLine("First load - expanding all nodes");
-                    NotifyTreeDataGridToExpandAll?.Invoke();
+                    await ExpandAllAsync();
                 });
             });
         }
     }
 
     [RelayCommand]
-    public void ExpandAll()
+    private async Task ExpandAllAsync()
     {
         if (_rootNodesInternal.Count == 0) return;
-        ExpandAllNodesRecursively(_rootNodesInternal);
+
+        _expansionCts?.Cancel();
+        _expansionCts = new CancellationTokenSource();
+
+        try
+        {
+            await _expansionManager.ExpandAllAsync(_rootNodesInternal, _expansionCts.Token);
+            NotifyTreeDataGridToExpandAll?.Invoke();
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("Expand all operation cancelled");
+        }
     }
 
     [RelayCommand]
-    public void CollapseAll()
+    private async Task CollapseAllAsync()
     {
         if (_rootNodesInternal.Count == 0) return;
-        CollapseAllNodesRecursively(_rootNodesInternal);
-        NotifyTreeDataGridToCollapseAll?.Invoke();
+
+        _expansionCts?.Cancel();
+        _expansionCts = new CancellationTokenSource();
+
+        try
+        {
+            await _expansionManager.CollapseAllAsync(_rootNodesInternal, _expansionCts.Token);
+            NotifyTreeDataGridToCollapseAll?.Invoke();
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("Collapse all operation cancelled");
+        }
     }
 
-    [RelayCommand]
+    private async Task ApplyExpansionModeAsync()
+    {
+        if (_rootNodesInternal.Count == 0) return;
+
+        _expansionCts?.Cancel();
+        _expansionCts = new CancellationTokenSource();
+
+        try
+        {
+            await _expansionManager.ApplyExpansionModeAsync(_rootNodesInternal, _expansionCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("Apply expansion mode cancelled");
+        }
+    }
+
     public void ClearTree()
     {
         Clear();
@@ -149,8 +323,15 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _expansionCts?.Cancel();
+        _expansionCts?.Dispose();
         TreeSource?.Dispose();
         TreeSource = null;
+    }
+
+    public void RefreshSource()
+    {
+        InitializeTreeSource();
     }
 
     public event Action? NotifyTreeDataGridToExpandAll;
@@ -187,7 +368,8 @@ public partial class SemanticTreeViewModel : ObservableObject, IDisposable
 public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeViewModel
 {
     private AnnotatedAstNode _annotatedNode;
-    private bool _childrenLoaded;
+    private string? _cachedNodePath;
+    private int _indexInParent;
 
     [ObservableProperty]
     private string _displayName = "";
@@ -213,30 +395,18 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
     [ObservableProperty]
     private bool _isExpanded;
 
-    private ObservableCollection<AnnotatedAstNodeViewModel> _children = new();
+    private readonly ObservableCollection<AnnotatedAstNodeViewModel> _children = new();
 
-    public ObservableCollection<AnnotatedAstNodeViewModel> Children
-    {
-        get
-        {
-            // Children are now eagerly loaded in constructor
-            return _children;
-        }
-    }
-
-    public bool ChildrenLoaded => _childrenLoaded;
+    public ObservableCollection<AnnotatedAstNodeViewModel> Children => _children;
+    public bool ChildrenLoaded => true;
     public AnnotatedAstNode AnnotatedNode => _annotatedNode;
 
-    public AnnotatedAstNodeViewModel(AnnotatedAstNode annotatedNode)
+    public AnnotatedAstNodeViewModel(AnnotatedAstNode annotatedNode, int indexInParent = 0)
     {
         _annotatedNode = annotatedNode;
+        _indexInParent = indexInParent;
         UpdateDisplayProperties();
-
-        // Eagerly load children for tree structure
-        if (_annotatedNode.Children.Count > 0)
-        {
-            LoadChildren();
-        }
+        LoadChildren();
     }
 
     private void UpdateDisplayProperties()
@@ -326,51 +496,28 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
         };
     }
 
-    private static string FormatPropagation(AttributePropagation propagation)
-    {
-        return propagation switch
-        {
-            AttributePropagation.Synthesized => "↑",
-            AttributePropagation.Inherited => "↓",
-            AttributePropagation.Sibling => "↔",
-            _ => ""
-        };
-    }
-
     private void LoadChildren()
     {
-        _childrenLoaded = true;
         _children.Clear();
 
-        foreach (var childNode in _annotatedNode.Children)
+        for (int i = 0; i < _annotatedNode.Children.Count; i++)
         {
-            _children.Add(new AnnotatedAstNodeViewModel(childNode));
+            _children.Add(new AnnotatedAstNodeViewModel(_annotatedNode.Children[i], i));
         }
     }
 
     public void UpdateFromAnnotatedNode(AnnotatedAstNode newNode)
     {
-        var wasExpanded = IsExpanded;
         _annotatedNode = newNode;
+        _cachedNodePath = null;
         UpdateDisplayProperties();
-
-        if (_childrenLoaded)
-        {
-            UpdateChildren(newNode.Children, wasExpanded);
-        }
-        else if (wasExpanded && HasChildren)
-        {
-            LoadChildren();
-            IsExpanded = true;
-        }
+        UpdateChildren(newNode.Children);
     }
 
-    private void UpdateChildren(List<AnnotatedAstNode> newChildren, bool preserveExpansion = true)
+    private void UpdateChildren(List<AnnotatedAstNode> newChildren)
     {
         var oldViewModels = new List<AnnotatedAstNodeViewModel>(_children);
-        var oldExpansionStates = preserveExpansion
-            ? oldViewModels.ToDictionary(vm => vm.GeneratePathId(), vm => vm.IsExpanded)
-            : new Dictionary<string, bool>();
+        var oldExpansionStates = oldViewModels.ToDictionary(vm => vm.NodePath, vm => vm.IsExpanded);
 
         _children.Clear();
 
@@ -386,10 +533,10 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
             }
             else
             {
-                var newViewModel = new AnnotatedAstNodeViewModel(newChildNode);
-                if (preserveExpansion && oldExpansionStates.TryGetValue(newViewModel.GeneratePathId(), out var wasExpanded))
+                var newViewModel = new AnnotatedAstNodeViewModel(newChildNode, i);
+                if (oldExpansionStates.TryGetValue(newViewModel.NodePath, out var isExpanded))
                 {
-                    newViewModel.IsExpanded = wasExpanded;
+                    newViewModel.IsExpanded = isExpanded;
                 }
                 _children.Add(newViewModel);
             }
@@ -409,23 +556,28 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject, ITreeNodeView
         return oldNode.Token == null && newNode.Token == null;
     }
 
-    partial void OnIsExpandedChanged(bool value)
-    {
-        // Children are now eagerly loaded, no need for lazy loading
-    }
-
     public bool IsTerminal => _annotatedNode.Token != null;
     public bool HasChildren => _annotatedNode.Children.Count > 0;
 
-    public string StableId => GeneratePathId();
-    public string NodePath => GeneratePathId();
+    public string StableId => NodePath;
+    public string NodePath
+    {
+        get
+        {
+            if (_cachedNodePath == null)
+            {
+                _cachedNodePath = GeneratePathId();
+            }
+            return _cachedNodePath;
+        }
+    }
 
     private string GeneratePathId()
     {
         if (_annotatedNode.Token != null && !string.IsNullOrEmpty(_annotatedNode.Token.Value))
         {
-            return $"{_annotatedNode.Token.Type}:{_annotatedNode.Token.Value}@{_annotatedNode.Line}:{_annotatedNode.Column}";
+            return $"{_annotatedNode.Token.Type}:{_annotatedNode.Token.Value}[{_indexInParent}]@{_annotatedNode.Line}:{_annotatedNode.Column}";
         }
-        return $"{_annotatedNode.Rule}@{_annotatedNode.Line}:{_annotatedNode.Column}";
+        return $"{_annotatedNode.Rule}[{_indexInParent}]@{_annotatedNode.Line}:{_annotatedNode.Column}";
     }
 }

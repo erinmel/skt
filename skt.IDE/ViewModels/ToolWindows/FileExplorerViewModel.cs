@@ -266,10 +266,17 @@ public partial class FileExplorerViewModel : ObservableObject
 
     private void ApplyExpandedState(FileNode node, HashSet<string> expanded)
     {
-        node.IsExpanded = expanded.Contains(node.FullPath);
-        foreach (var child in node.Children)
+        if (node.IsPlaceholder) return;
+
+        bool shouldBeExpanded = expanded.Contains(node.FullPath);
+        node.IsExpanded = shouldBeExpanded;
+
+        if (shouldBeExpanded && node.IsDirectory)
         {
-            ApplyExpandedState(child, expanded);
+            foreach (var child in node.Children.Where(c => !c.IsPlaceholder))
+            {
+                ApplyExpandedState(child, expanded);
+            }
         }
     }
 
