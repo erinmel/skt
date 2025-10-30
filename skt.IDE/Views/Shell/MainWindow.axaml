@@ -1,0 +1,126 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:skt.IDE.ViewModels"
+        xmlns:texteditorviews="using:skt.IDE.Views.Editor"
+        xmlns:toolviews="using:skt.IDE.Views.ToolWindows"
+        xmlns:chrome="using:skt.IDE.Views.ToolWindows.Chrome"
+        xmlns:navigation="using:skt.IDE.Views.ToolWindows.Navigation"
+        xmlns:compilerOutput="using:skt.IDE.Views.ToolWindows.CompilerOutput"
+        xmlns:terminal="using:skt.IDE.Views.ToolWindows.Terminal"
+        x:Class="skt.IDE.Views.Shell.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="avares://skt.IDE/Assets/SKT.ico"
+        Title="SKT IDE"
+        Width="1200"
+        Height="800"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        SystemDecorations="BorderOnly"
+        >
+
+    <Window.Styles>
+        <Style Selector="DropDownButton PathIcon">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </Window.Styles>
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <!-- Toolbar (this includes your custom window controls) -->
+            <RowDefinition Height="40"/>
+            <!-- Main content area -->
+            <RowDefinition Height="7*"/>
+            <!-- Terminal/Errors -->
+            <RowDefinition Height="0*" MinHeight="0"/>
+            <!-- Status bar -->
+            <RowDefinition Height="25"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <!-- Text Editor -->
+            <ColumnDefinition Width="5*"/>
+            <!-- Tools (File Explorer) -->
+            <ColumnDefinition Width="3*"/>
+            <!-- Tool Window (Very narrow, fixed width) -->
+            <ColumnDefinition Width="45" MinWidth="45" MaxWidth="45"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Custom Toolbar with Window Controls -->
+        <chrome:Toolbar Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Name="MainToolbar" />
+
+        <!-- Main Content Area -->
+        <Border Grid.Row="1" Grid.Column="0" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="0">
+                    <texteditorviews:TabbedEditor Name="TabbedEditorControl" DataContext="{Binding TabbedEditorViewModel}"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Tools/Tool Window Content (Dynamic content based on selected tool) -->
+        <Border Grid.Row="1" Grid.Column="1" Margin="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="5" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding SelectedToolWindowTitle}" FontWeight="Bold"/>
+                </Border>
+
+                <!-- Dynamic content based on selected tool window -->
+                <Grid Grid.Row="1">
+                    <!-- File Explorer (default) -->
+                    <navigation:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
+
+                    <!-- Tokens View -->
+                    <compilerOutput:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
+
+                    <!-- Syntax Tree View -->
+                    <compilerOutput:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding SyntaxTree}"/>
+
+                    <!-- Semantic Tree View -->
+                    <compilerOutput:SemanticTreeView Name="SemanticTreeContent" IsVisible="False" DataContext="{Binding SemanticTree}"/>
+
+                    <!-- Phase Output View -->
+                    <compilerOutput:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Tool Window (Toggle Buttons) -->
+        <chrome:ToolWindowStrip Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Name="ToolWindowStripControl" />
+
+        <!-- Terminal/Errors extracted to its own control -->
+        <terminal:TerminalPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Name="TerminalPanelControl" />
+
+        <!-- Status Bar -->
+        <chrome:StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"/>
+
+        <!-- Splitters -->
+        <GridSplitter Grid.Row="1" Grid.Column="1"
+                     Width="2"
+                     HorizontalAlignment="Left"
+                     ResizeDirection="Columns"
+                     Margin="0"
+                     Padding="0"/>
+
+        <!-- Horizontal splitter between main area and terminal -->
+        <GridSplitter Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                     Height="2"
+                     VerticalAlignment="Top"
+                     ResizeDirection="Rows"
+                     Margin="0"
+                     Padding="0"/>
+    </Grid>
+</Window>

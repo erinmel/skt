@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Svg.Skia;
 using skt.IDE.ViewModels;
-using skt.IDE.Views;
+using skt.IDE.Views.Shell;
 using skt.IDE.Services;
 using skt.IDE.Services.Buss;
 
