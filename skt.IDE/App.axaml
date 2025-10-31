@@ -32,6 +32,9 @@
         <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Fluent.axaml"/>
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
 
+        <!-- Central theme styles (tokens are separate resource dictionary) -->
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/ThemeStyles.axaml"/>
+
         <!-- Custom component styles -->
         <StyleInclude Source="avares://skt.IDE/Assets/Styles/ButtonStyles.axaml"/>
         <StyleInclude Source="avares://skt.IDE/Assets/Styles/ControlStyles.axaml"/>
@@ -43,6 +46,8 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Central theme tokens and shared resources (styles are loaded via StyleInclude above) -->
+                <ResourceInclude Source="avares://skt.IDE/Assets/Styles/ThemeResources.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/ToolIconResources.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FilesIconResource.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FoldersIconResource.axaml"/>

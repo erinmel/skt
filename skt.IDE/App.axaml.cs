@@ -29,6 +29,9 @@ public class App : Application
 
         // Initialize services
         InitializeServices();
+
+        // Apply default theme (Dark)
+        ThemeManager.ApplyTheme(Services != null ? skt.IDE.Services.AppThemeVariant.Dark : skt.IDE.Services.AppThemeVariant.Dark);
     }
 
     private void InitializeServices()

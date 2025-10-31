@@ -11,7 +11,7 @@
                         Background="{TemplateBinding Background}"
                         CornerRadius="4"
                         Padding="{TemplateBinding Padding}">
-                    <ContentPresenter Content="{TemplateBinding Content}"
+                    <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
                                       ContentTemplate="{TemplateBinding ContentTemplate}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"/>
@@ -25,9 +25,9 @@
         <Setter Property="Opacity" Value="0.4"/>
     </Style>
 
-    <!-- Hover effect for all buttons -->
+    <!-- Hover effect for all buttons (uses centralized hover brush) -->
     <Style Selector="Button:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
     </Style>
 
     <!-- Icon-only buttons (ToolIcon tag) -->
@@ -47,14 +47,17 @@
         <Setter Property="Height" Value="32"/>
     </Style>
 
-    <!-- Window control button hover (must come before close button) -->
+    <!-- Window control button hover (uses centralized hover brush) -->
     <Style Selector="Button[Tag=WindowControl]:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
     </Style>
 
-    <!-- Special close button hover (must come last to override) -->
+    <!-- Special close button hover (uses centralized close brush so it can be themed) -->
     <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="#E81123"/>
+        <Setter Property="Background" Value="{DynamicResource AppCloseButtonHoverBrush}"/>
+    </Style>
+    <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover">
+        <Setter Property="Foreground" Value="White"/>
     </Style>
 
     <!-- Disabled states -->
