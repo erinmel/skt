@@ -284,9 +284,24 @@ public partial class Toolbar : UserControl
         App.Messenger.Send(new SaveAsFilesRequestEvent());
     }
 
-    private void SettingsButton_Click(object? sender, RoutedEventArgs routedEventArgs)
+    private async void SettingsButton_Click(object? sender, RoutedEventArgs routedEventArgs)
     {
-        SetTodoStatus("Settings");
+        try
+        {
+            if (TopLevel.GetTopLevel(this) is not Window owner)
+            {
+                App.Messenger.Send(new StatusBarMessageEvent("Cannot open settings dialog.", true));
+                return;
+            }
+
+            var dialog = new SettingsDialog();
+            await dialog.ShowAsync(owner);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error opening SettingsDialog: {ex}");
+            App.Messenger.Send(new StatusBarMessageEvent("Failed to open settings.", true));
+        }
     }
 
     private void Minimize_Click(object? sender, RoutedEventArgs routedEventArgs)

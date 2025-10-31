@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="skt.IDE.Views.Dialogs.SettingsDialog"
+        Width="420" Height="200"
+        Title="Settings"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+      <TextBlock Text="Theme:" Width="60" VerticalAlignment="Center"/>
+      <ComboBox x:Name="ThemeCombo" Width="140">
+        <ComboBoxItem Content="Dark" />
+        <ComboBoxItem Content="Light" />
+      </ComboBox>
+      <Button Content="Apply" x:Name="ApplyThemeButton" Width="80" Margin="8,0,0,0"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0" VerticalAlignment="Center">
+      <TextBlock Text="App size:" Width="60" VerticalAlignment="Center"/>
+      <TextBox x:Name="AppFontSizeBox" Width="80"/>
+      <TextBlock Text="Editor size:" Width="80" Margin="8,0,0,0" VerticalAlignment="Center"/>
+      <TextBox x:Name="EditorFontSizeBox" Width="80"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Reload Icons" x:Name="ReloadIconsButton" Margin="0,0,8,0"/>
+      <Button Content="OK" x:Name="OkButton" IsDefault="True" Margin="0,0,8,0"/>
+      <Button Content="Cancel" x:Name="CancelButton" IsCancel="True"/>
+    </StackPanel>
+  </Grid>
+</Window>

@@ -1,6 +1,9 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!-- Mark this dictionary as an icon resource to allow ThemeManager to swap it -->
+    <x:Boolean x:Key="IsIconResource">True</x:Boolean>
+
     <!-- SVG Icons as DrawingImage resources -->
     <!-- Main SKT Icon -->
     <DrawingImage x:Key="Icon.Skt">

@@ -1,0 +1,26 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Generic control styles referencing tokens in ThemeResources.axaml -->
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource AppForegroundHighBrush}"/>
+    <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}"/>
+    <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+  </Style>
+
+  <Style Selector="TextBox, TextBox#InlineEditor">
+    <Setter Property="Foreground" Value="{DynamicResource AppForegroundHighBrush}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}"/>
+    <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="Foreground" Value="{DynamicResource AppForegroundHighBrush}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AppForegroundLowBrush}"/>
+    <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}"/>
+    <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+  </Style>
+
+</Styles>

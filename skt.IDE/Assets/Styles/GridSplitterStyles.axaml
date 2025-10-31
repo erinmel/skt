@@ -1,34 +1,40 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- GridSplitter styling: larger hit area, thin visual -->
+    <!-- GridSplitter styling: keep large hit area (Width/Height controlled where used) but render a thin visual line in the center -->
     <Style Selector="GridSplitter">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                    <GradientStop Color="Transparent" Offset="0"/>
-                    <GradientStop Color="Transparent" Offset="0.45"/>
-                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.4"/>
-                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.6"/>
-                    <GradientStop Color="Transparent" Offset="0.55"/>
-                    <GradientStop Color="Transparent" Offset="1"/>
-                </LinearGradientBrush>
-            </Setter.Value>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}">
+                    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <!-- Hit area uses the GridSplitter's full bounds (keeps easy dragging) -->
+                        <Border Background="Transparent"/>
+                        <!-- Thin visual line centered -->
+                        <Border Background="{DynamicResource AppSplitterLineBrush}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Stretch"
+                                Width="2"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
         </Setter>
     </Style>
 
     <Style Selector="GridSplitter[ResizeDirection=Rows]">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Color="Transparent" Offset="0"/>
-                    <GradientStop Color="Transparent" Offset="0.45"/>
-                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.4"/>
-                    <GradientStop Color="{DynamicResource SystemBaseMediumLowColor}" Offset="0.6"/>
-                    <GradientStop Color="Transparent" Offset="0.55"/>
-                    <GradientStop Color="Transparent" Offset="1"/>
-                </LinearGradientBrush>
-            </Setter.Value>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}">
+                    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Border Background="Transparent"/>
+                        <Border Background="{DynamicResource AppSplitterLineBrush}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"
+                                Height="2"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
         </Setter>
     </Style>
 
