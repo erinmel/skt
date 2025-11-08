@@ -223,14 +223,36 @@ public class SemanticAnalyzer
 
       node.SetTypeAttribute(varType, AttributePropagation.Sibling, $"{leftNode.Rule}");
 
-      // If right side has a constant value, it flows to assignment
-      if (rightNode.IsConstant && rightNode.Value != null)
+      // If right side has a value, update symbol table and propagate
+      if (rightNode.Value != null)
       {
-        node.SetValueAttribute(rightNode.Value, AttributePropagation.Synthesized, rightNode.Rule);
+        object? valueToStore = rightNode.Value;
+
+        // Convert value to correct type if needed
+        if (varType == "float" && rightNode.Value is int intVal)
+        {
+          // Type promotion: int to float
+          valueToStore = (float)intVal;
+        }
+        else if (varType == "int" && rightNode.Value is float floatVal)
+        {
+          // Type truncation: float to int (like in C)
+          valueToStore = (int)floatVal;
+        }
+        else if (varType == "int" && rightNode.Value is double doubleVal)
+        {
+          // Type truncation: double to int (like in C)
+          valueToStore = (int)doubleVal;
+        }
+
+        // Update the value in the assignment node to reflect the actual stored value
+        node.SetValueAttribute(valueToStore, AttributePropagation.Synthesized, rightNode.Rule);
+
+        // Update the variable's value in the symbol table
+        _symbolTable.SetSymbolValue(varName, _currentScope, valueToStore);
       }
     }
   }
-
   private void AnalyzeBinaryArithmeticOp(AnnotatedAstNode node)
   {
     if (node.Children.Count < 2)
@@ -518,6 +540,12 @@ public class SemanticAnalyzer
 
       // Record this as a reference to the variable
       symbol.AddReference(node.Line, node.Column);
+
+      // If the variable has a value stored, propagate it
+      if (symbol.Value != null)
+      {
+        node.SetValueAttribute(symbol.Value, AttributePropagation.Inherited, "symbol_table");
+      }
     }
   }
 
@@ -536,6 +564,17 @@ public class SemanticAnalyzer
   {
     if (node.Token == null) return false;
 
+    // Check for float literals first (before int, to prioritize float detection)
+    if (node.Token.Type == TokenType.Real || (value.Contains('.') && float.TryParse(value, out _)))
+    {
+      if (float.TryParse(value, out float floatValue))
+      {
+        node.SetTypeAttribute("float", AttributePropagation.None, "literal");
+        node.SetValueAttribute(floatValue, AttributePropagation.None, "literal");
+      }
+      return true;
+    }
+
     // Check for integer literals
     if (node.Token.Type == TokenType.Integer || int.TryParse(value, out _))
     {
@@ -543,17 +582,6 @@ public class SemanticAnalyzer
       {
         node.SetTypeAttribute("int", AttributePropagation.None, "literal");
         node.SetValueAttribute(intValue, AttributePropagation.None, "literal");
-      }
-      return true;
-    }
-
-    // Check for float literals
-    if (node.Token.Type == TokenType.Real || float.TryParse(value, out _))
-    {
-      if (float.TryParse(value, out float floatValue))
-      {
-        node.SetTypeAttribute("float", AttributePropagation.None, "literal");
-        node.SetValueAttribute(floatValue, AttributePropagation.None, "literal");
       }
       return true;
     }
