@@ -223,7 +223,7 @@ public class SemanticAnalyzer
 
       node.SetTypeAttribute(varType, AttributePropagation.Sibling, $"{leftNode.Rule}");
 
-      // If right side has a value, update symbol table and propagate
+      // If right side has a value, update symbol table and propagate to left node
       if (rightNode.Value != null)
       {
         object? valueToStore = rightNode.Value;
@@ -245,11 +245,13 @@ public class SemanticAnalyzer
           valueToStore = (int)doubleVal;
         }
 
-        // Update the value in the assignment node to reflect the actual stored value
-        node.SetValueAttribute(valueToStore, AttributePropagation.Synthesized, rightNode.Rule);
-
         // Update the variable's value in the symbol table
         _symbolTable.SetSymbolValue(varName, _currentScope, valueToStore);
+
+        // IMPORTANT: Update the left node (identifier) with the new value
+        // The value propagates between siblings (right to left), NOT through the parent
+        // So the assignment node (=) should NOT have a value attribute
+        leftNode.SetValueAttribute(valueToStore, AttributePropagation.Sibling, "assignment");
       }
     }
   }
