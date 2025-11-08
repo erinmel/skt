@@ -13,11 +13,17 @@ public class SymbolTableEntry(string name, string dataType, string scope,
   public int DeclarationLine { get; set; } = declarationLine;
   public int DeclarationColumn { get; set; } = declarationColumn;
   public int MemoryOffset { get; set; } = memoryOffset;
+  public object? Value { get; set; } = null;  // Current value of the variable
   public List<(int Line, int Column)> References { get; set; } = [];
 
   public void AddReference(int line, int column)
   {
     References.Add((line, column));
+  }
+
+  public void SetValue(object? value)
+  {
+    Value = value;
   }
 }
 
@@ -83,6 +89,26 @@ public class SymbolTable
   public bool IsDeclared(string name, string scope)
   {
     return Lookup(name, scope) != null;
+  }
+
+  /// <summary>
+  /// Sets the value of a symbol
+  /// </summary>
+  public void SetSymbolValue(string name, string scope, object? value)
+  {
+    var entry = Lookup(name, scope);
+    if (entry != null)
+    {
+      entry.SetValue(value);
+    }
+  }
+
+  /// <summary>
+  /// Gets the value of a symbol
+  /// </summary>
+  public object? GetSymbolValue(string name, string scope)
+  {
+    return Lookup(name, scope)?.Value;
   }
 
   /// <summary>
