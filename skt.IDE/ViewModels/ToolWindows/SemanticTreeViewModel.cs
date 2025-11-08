@@ -186,7 +186,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
 
         DataType = _annotatedNode.DataType ?? "";
         Scope = _annotatedNode.Scope ?? "";
-        Value = _annotatedNode.Value?.ToString() ?? "";
+        Value = ValueFormatter.FormatValue(_annotatedNode.Value);
         IsConstant = _annotatedNode.IsConstant ? "Yes" : "No";
     }
 
@@ -205,10 +205,7 @@ public partial class AnnotatedAstNodeViewModel : ObservableObject
     {
         get
         {
-            if (_annotatedNode.Value == null)
-                return "";
-
-            return _annotatedNode.Value.ToString() ?? "";
+            return ValueFormatter.FormatValue(_annotatedNode.Value);
         }
     }
 

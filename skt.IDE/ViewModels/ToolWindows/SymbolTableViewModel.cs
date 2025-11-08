@@ -16,14 +16,16 @@ public class SymbolRow
     public string Name { get; }
     public string DataType { get; }
     public string Scope { get; }
+    public string Value { get; }
     public string IsUsed { get; }
     public string Lines { get; }
 
-    public SymbolRow(string name, string dataType, string scope, bool isUsed, List<int> lines)
+    public SymbolRow(string name, string dataType, string scope, string value, bool isUsed, List<int> lines)
     {
         Name = name;
         DataType = dataType;
         Scope = scope;
+        Value = value;
         IsUsed = isUsed ? "Yes" : "No";
         Lines = string.Join(", ", lines);
     }
@@ -54,6 +56,7 @@ public partial class SymbolTableViewModel : ObservableObject, IDisposable
             new TextColumn<SymbolRow, string>("Name", x => x.Name),
             new TextColumn<SymbolRow, string>("Type", x => x.DataType),
             new TextColumn<SymbolRow, string>("Scope", x => x.Scope),
+            new TextColumn<SymbolRow, string>("Value", x => x.Value),
             new TextColumn<SymbolRow, string>("Used", x => x.IsUsed),
             new TextColumn<SymbolRow, string>("Line", x => x.Lines)
         }
@@ -73,8 +76,9 @@ public partial class SymbolTableViewModel : ObservableObject, IDisposable
                 allLines.AddRange(entry.References.Select(r => r.Line));
 
                 var isUsed = entry.References.Count > 0;
+                string valueStr = ValueFormatter.FormatValue(entry.Value);
 
-                _rows.Add(new SymbolRow(entry.Name, entry.DataType, entry.Scope, isUsed, allLines));
+                _rows.Add(new SymbolRow(entry.Name, entry.DataType, entry.Scope, valueStr, isUsed, allLines));
             }
 
             SymbolCount = entries.Count;
