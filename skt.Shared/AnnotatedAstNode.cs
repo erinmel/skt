@@ -126,7 +126,9 @@ public class AnnotatedAstNode
   {
     Value = value;
     IsConstant = value != null;
-    ValueAttribute = new SemanticAttribute(value?.ToString(), propagation, source);
+
+    string? valueString = value != null ? ValueFormatter.FormatValue(value) : null;
+    ValueAttribute = new SemanticAttribute(valueString, propagation, source);
   }
 
   /// <summary>
@@ -146,7 +148,8 @@ public class AnnotatedAstNode
 
     if (Value != null)
     {
-      var valueInfo = $"Value: {Value} [{ValueAttribute.Propagation}]";
+      string formattedValue = ValueFormatter.FormatValue(Value);
+      var valueInfo = $"Value: {formattedValue} [{ValueAttribute.Propagation}]";
       if (!string.IsNullOrEmpty(ValueAttribute.SourceNode))
         valueInfo += $" from {ValueAttribute.SourceNode}";
       parts.Add(valueInfo);
