@@ -198,12 +198,13 @@ internal static class Program
         if (symbolTable.Entries.Count > 0)
         {
             Console.WriteLine("Symbol Table:");
-            Console.WriteLine("-" + new string('-', 80));
-            Console.WriteLine($"{"Name",-15} {"Type",-10} {"Scope",-15} {"Line",-6} {"Offset",-8}");
-            Console.WriteLine(new string('-', 80));
+            Console.WriteLine("-" + new string('-', 100));
+            Console.WriteLine($"{"Name",-15} {"Type",-10} {"Scope",-15} {"Line",-6} {"Offset",-8} {"Value",-20}");
+            Console.WriteLine(new string('-', 100));
             foreach (var entry in symbolTable.Entries)
             {
-                Console.WriteLine($"{entry.Name,-15} {entry.DataType,-10} {entry.Scope,-15} {entry.DeclarationLine,-6} {entry.MemoryOffset,-8}");
+                string valueStr = ValueFormatter.FormatValue(entry.Value);
+                Console.WriteLine($"{entry.Name,-15} {entry.DataType,-10} {entry.Scope,-15} {entry.DeclarationLine,-6} {entry.MemoryOffset,-8} {valueStr,-20}");
             }
             Console.WriteLine();
         }
@@ -251,10 +252,11 @@ internal static class Program
     {
         string indent = new string(' ', depth * 2);
         string typeInfo = node.DataType != null ? $" : {node.DataType}" : "";
+        string valueInfo = node.Value != null ? $" = {ValueFormatter.FormatValue(node.Value)}" : "";
 
         Console.WriteLine(node.Token != null
-            ? $"{indent}├─ {node.Rule}: '{node.Token.Value}'{typeInfo}"
-            : $"{indent}├─ {node.Rule}{typeInfo}");
+            ? $"{indent}├─ {node.Rule}: '{node.Token.Value}'{typeInfo}{valueInfo}"
+            : $"{indent}├─ {node.Rule}{typeInfo}{valueInfo}");
 
         foreach (var child in node.Children)
         {
