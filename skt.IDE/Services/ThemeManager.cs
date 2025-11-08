@@ -15,6 +15,15 @@ namespace skt.IDE.Services
 
     public static class ThemeManager
     {
+        // Note: this ThemeManager intentionally does NOT try to load per-theme icon resource files
+        // (ToolIconResources.Dark.axaml / ToolIconResources.Light.axaml). Icons in this project use brushes
+        // (DynamicResource) and are resolved from the single `ToolIconResources.axaml`. UI controls should
+        // re-resolve icon resources when theme changes by listening to ThemeApplied (SktIcon already does this).
+
+        // Event raised after a theme is applied and resources (including icon resources) are reloaded.
+        // Subscribers should update any cached resources they hold (for example, SktIcon instances).
+        public static event Action<AppThemeVariant>? ThemeApplied;
+
         public static void ApplyTheme(AppThemeVariant variant)
         {
             var app = Application.Current;
@@ -45,7 +54,19 @@ namespace skt.IDE.Services
                 Console.WriteLine($"ThemeManager: failed to set theme tokens: {ex.Message}");
             }
 
-            ReloadIconResources(app, variant);
+            // Reload icon resources: remove any previously-merged icon dictionaries so that consumers
+            // re-resolve resources. Then ensure the single default icon resource dictionary is present.
+            ReloadIconResources(app);
+
+            // Notify subscribers that the theme was applied and resources reloaded.
+            try
+            {
+                ThemeApplied?.Invoke(variant);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: error while invoking ThemeApplied handlers: {ex.Message}");
+            }
         }
 
         private static void EnsureThemeResourcesLoaded(Application app)
@@ -67,33 +88,46 @@ namespace skt.IDE.Services
             }
         }
 
-        private static void ReloadIconResources(Application app, AppThemeVariant variant)
+        // Simplified icon reload: remove any merged icon dictionaries so controls re-resolve resources,
+        // then ensure the single default icons resource dictionary is present. This intentionally does
+        // not attempt to load per-theme icon files.
+        private static void ReloadIconResources(Application app)
         {
             if (app.Resources == null) return;
 
-            var fileName = variant == AppThemeVariant.Dark ? "ToolIconResources.Dark.axaml" : "ToolIconResources.Light.axaml";
-            var uri = new Uri($"avares://skt.IDE/Assets/Icons/{fileName}");
+            // Remove existing icon resource dictionaries so consumers will pick up the current resources.
+            var existing = app.Resources.MergedDictionaries.OfType<ResourceDictionary>()
+                .Where(rd => rd.ContainsKey("IsIconResource") && rd["IsIconResource"] is bool b && b)
+                .ToList();
+            foreach (var e in existing)
+                app.Resources.MergedDictionaries.Remove(e);
+
+            // Ensure default icons resource is present (App.axaml often already includes it).
             try
             {
-                var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(uri);
-                dict["IsIconResource"] = true;
-                app.Resources.MergedDictionaries.Add(dict);
+                EnsureDefaultIconResourceLoaded(app);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"ThemeManager: themed icons not found ({fileName}): {ex.Message}");
-                try
-                {
-                    var defaultUri = new Uri("avares://skt.IDE/Assets/Icons/ToolIconResources.axaml");
-                    var defaultDict = (ResourceDictionary)AvaloniaXamlLoader.Load(defaultUri);
-                    defaultDict["IsIconResource"] = true;
-                    app.Resources.MergedDictionaries.Add(defaultDict);
-                }
-                catch (Exception ex2)
-                {
-                    Console.WriteLine($"ThemeManager: failed to load default icons: {ex2.Message}");
-                }
+                // Silent fail: icon resources may be part of the app package; avoid noisy logs at runtime.
             }
+        }
+
+        // Ensure there is at least one icon resource dictionary merged into app resources.
+        private static void EnsureDefaultIconResourceLoaded(Application app)
+        {
+            // If there's already an icon resource present, nothing to do.
+            if (app.Resources.MergedDictionaries.OfType<ResourceDictionary>().Any(rd => rd.ContainsKey("IsIconResource") && rd["IsIconResource"] is bool b && b))
+                return;
+
+            // If the app's top-level resources already contain icon keys (e.g. from App.axaml ResourceInclude), don't load again.
+            if (app.Resources.ContainsKey("Icon.Skt"))
+                return;
+
+            var defaultUri = new Uri("avares://skt.IDE/Assets/Icons/ToolIconResources.axaml");
+            var defaultDict = (ResourceDictionary)AvaloniaXamlLoader.Load(defaultUri);
+            defaultDict["IsIconResource"] = true;
+            app.Resources.MergedDictionaries.Add(defaultDict);
         }
 
         public static void UpdateFontTokens(double appFontSize, double editorFontSize, string? appFontFamily = null, string? editorFontFamily = null)

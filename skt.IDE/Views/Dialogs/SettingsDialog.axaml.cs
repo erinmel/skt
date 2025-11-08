@@ -15,7 +15,6 @@ namespace skt.IDE.Views.Dialogs
             this.Opened += OnOpened;
 
             ApplyThemeButton.Click += OnApplyThemeClicked;
-            ReloadIconsButton.Click += OnReloadIconsClicked;
             OkButton.Click += OnOkClicked;
             CancelButton.Click += (_, _) => Close(false);
         }
@@ -62,12 +61,6 @@ namespace skt.IDE.Views.Dialogs
                 ThemeManager.ApplyTheme(AppThemeVariant.Dark);
             else
                 ThemeManager.ApplyTheme(AppThemeVariant.Light);
-        }
-
-        private void OnReloadIconsClicked(object? sender, RoutedEventArgs e)
-        {
-            var current = Application.Current?.RequestedThemeVariant ?? Avalonia.Styling.ThemeVariant.Dark;
-            ThemeManager.ApplyTheme(current == Avalonia.Styling.ThemeVariant.Dark ? AppThemeVariant.Dark : AppThemeVariant.Light);
         }
 
         private void OnOkClicked(object? sender, RoutedEventArgs e)

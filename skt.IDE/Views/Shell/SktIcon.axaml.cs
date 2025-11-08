@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Threading;
+using skt.IDE.Services;
 
 namespace skt.IDE.Views.Shell;
 
@@ -21,10 +23,29 @@ public partial class SktIcon : UserControl
     public static readonly StyledProperty<IBrush?> TintBrushProperty =
         AvaloniaProperty.Register<SktIcon, IBrush?>(nameof(TintBrush));
 
+    // When true, the icon size will be set based on the AppFontSize resource multiplied by IconScale.
+    public static readonly StyledProperty<bool> UseAppFontSizeProperty =
+        AvaloniaProperty.Register<SktIcon, bool>(nameof(UseAppFontSize), false);
+
+    public static readonly StyledProperty<double> IconScaleProperty =
+        AvaloniaProperty.Register<SktIcon, double>(nameof(IconScale), 1.0);
+
     public string IconKey
     {
         get => GetValue(IconKeyProperty);
         set => SetValue(IconKeyProperty, value);
+    }
+
+    public bool UseAppFontSize
+    {
+        get => GetValue(UseAppFontSizeProperty);
+        set => SetValue(UseAppFontSizeProperty, value);
+    }
+
+    public double IconScale
+    {
+        get => GetValue(IconScaleProperty);
+        set => SetValue(IconScaleProperty, value);
     }
 
     public double IconSize
@@ -55,6 +76,22 @@ public partial class SktIcon : UserControl
     {
         InitializeComponent();
         UpdateIcon();
+
+        // Subscribe to theme changes so we can reload the icon DrawingImage which may reference theme brushes.
+        ThemeManager.ThemeApplied += OnThemeApplied;
+    }
+
+    protected override void OnDetachedFromLogicalTree(Avalonia.LogicalTree.LogicalTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromLogicalTree(e);
+        // Unsubscribe to avoid memory leaks
+        ThemeManager.ThemeApplied -= OnThemeApplied;
+    }
+
+    private void OnThemeApplied(AppThemeVariant obj)
+    {
+        // Theme changed; re-run UpdateIcon on UI thread
+        Dispatcher.UIThread.Post(() => UpdateIcon());
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -77,10 +114,18 @@ public partial class SktIcon : UserControl
 
         if (!string.IsNullOrEmpty(IconKey))
         {
+            // Try to resolve the resource; if it's a DrawingImage, assign it. If resource lookup fails
+            // (because resources were reloaded), try to force a re-query by removing and re-adding merged dictionaries is not ideal here.
+            // Instead, we look up the resource each time UpdateIcon is called so we pick up the new DrawingImage instance.
             var resource = Application.Current?.FindResource(IconKey);
             if (resource is DrawingImage drawingImage)
             {
                 IconImage.Source = drawingImage;
+            }
+            else
+            {
+                // If not found, clear source to avoid showing stale image
+                IconImage.Source = null;
             }
         }
         else
@@ -88,9 +133,18 @@ public partial class SktIcon : UserControl
             IconImage.Source = null;
         }
 
-        IconImage.Width = !double.IsNaN(IconWidth) ? IconWidth : IconSize;
+        // Determine final size. If UseAppFontSize is enabled and an AppFontSize resource exists, use it.
+        double finalSize = IconSize;
+        if (UseAppFontSize && Application.Current?.Resources != null)
+        {
+            if (Application.Current.Resources.TryGetValue("AppFontSize", out var fontSizeObj) && fontSizeObj is double appFontSize)
+            {
+                finalSize = appFontSize * IconScale;
+            }
+        }
 
-        IconImage.Height = !double.IsNaN(IconHeight) ? IconHeight : IconSize;
+        IconImage.Width = !double.IsNaN(IconWidth) ? IconWidth : finalSize;
+        IconImage.Height = !double.IsNaN(IconHeight) ? IconHeight : finalSize;
 
         if (TintBrush != null)
         {
