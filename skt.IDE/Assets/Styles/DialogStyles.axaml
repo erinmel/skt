@@ -1,32 +1,48 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <Style Selector="Window.skt-dialog">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+    </Style>
+
     <Style Selector="Window.skt-dialog Border.surface">
-        <Setter Property="Padding" Value="16"/>
-        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="{DynamicResource ControlPadding}"/>
+        <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <Style Selector="Window.skt-dialog TextBlock">
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+
+    <Style Selector="Window.skt-dialog TextBox">
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+        <Setter Property="MinHeight" Value="{DynamicResource AppLineHeight}"/>
+    </Style>
+
+    <Style Selector="Window.skt-dialog ComboBox">
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+        <Setter Property="MinHeight" Value="{DynamicResource AppLineHeight}"/>
     </Style>
 
     <Style Selector="Window.skt-dialog Button">
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
         <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        <Setter Property="Padding" Value="10,6"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="{DynamicResource ButtonPaddingCompact}"/>
+        <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="MinWidth" Value="88"/>
+        <Setter Property="MinHeight" Value="{DynamicResource AppLineHeight}"/>
     </Style>
 
-    <Style Selector="Window.skt-dialog Button:pointerover /template/ Border#Root">
+    <Style Selector="Window.skt-dialog Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
     </Style>
 
-    <Style Selector="Window.skt-dialog Button:pressed /template/ Border#Root">
+    <Style Selector="Window.skt-dialog Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
     </Style>
 
@@ -35,12 +51,12 @@
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundAltHighBrush}"/>
     </Style>
 
-    <Style Selector="Window.skt-dialog Button[IsDefault=True]:pointerover /template/ Border#Root">
+    <Style Selector="Window.skt-dialog Button[IsDefault=True]:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
         <Setter Property="Opacity" Value="0.9"/>
     </Style>
 
-    <Style Selector="Window.skt-dialog Button[IsDefault=True]:pressed /template/ Border#Root">
+    <Style Selector="Window.skt-dialog Button[IsDefault=True]:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
         <Setter Property="Opacity" Value="0.8"/>
     </Style>

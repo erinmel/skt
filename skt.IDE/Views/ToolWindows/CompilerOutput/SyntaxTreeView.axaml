@@ -9,7 +9,7 @@
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
                 BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="4,2">
+                Padding="{DynamicResource ControlPaddingSmall}">
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                 <Button Command="{Binding ExpandAllCommand}"
                         ToolTip.Tip="Expand All Nodes"
@@ -25,6 +25,7 @@
         <TreeDataGrid Name="SyntaxTreeGrid"
                       Source="{Binding TreeSource}"
                       Classes="skt-standard"
+                      Margin="4,0,0,0"
                       CanUserResizeColumns="True"
                       CanUserSortColumns="False"/>
     </DockPanel>

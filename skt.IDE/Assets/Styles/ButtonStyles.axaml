@@ -1,7 +1,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:skt.IDE.Views.Shell">
 
-    <!-- Base Button Style - Common properties for all buttons -->
+    <!-- Base Button Style -->
     <Style Selector="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -20,49 +21,109 @@
         </Setter>
     </Style>
 
-    <!-- Disabled button template content -->
+    <!-- Disabled state: dim only the content, not the button background -->
     <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Opacity" Value="0.4"/>
     </Style>
 
-    <!-- Hover effect for all buttons (uses centralized hover brush) -->
-    <Style Selector="Button:pointerover /template/ Border#Root">
+    <!-- Icon-only buttons: avoid translucent square on hover/disabled -->
+    <Style Selector="Button[Tag=ToolIcon]:disabled">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="Button[Tag=ToolIcon]:disabled Image">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="Button[Tag=ToolIcon]:disabled shell|SktIcon">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="Button[Tag=ToolIcon]:disabled /template/ Border#Root">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="Button[Tag=ToolIcon]:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <Style Selector="DropDownButton[Tag=ToolIcon]:disabled">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:disabled Image">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:disabled shell|SktIcon">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:disabled /template/ Border#Root">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- Hover for regular buttons -->
+    <Style Selector="Button:pointerover">
         <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
     </Style>
 
-    <!-- Icon-only buttons (ToolIcon tag) -->
-    <Style Selector="Button[Tag=ToolIcon]">
-        <Setter Property="Padding" Value="6"/>
+    <!-- No hover background for icon-only buttons -->
+    <Style Selector="Button[Tag=ToolIcon]:pointerover">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button[Tag=ToolIcon]:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button[Tag=ToolIcon]:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="1"/>
     </Style>
 
-    <!-- Selected state for tool icons -->
-    <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
+    <Style Selector="DropDownButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:pointerover">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="DropDownButton[Tag=ToolIcon]:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- Icon-only button defaults -->
+    <Style Selector="Button[Tag=ToolIcon]">
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="DropDownButton[Tag=ToolIcon]">
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="Button[Tag=ToolIcon].selected">
         <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
     </Style>
 
-    <!-- Window control buttons -->
     <Style Selector="Button[Tag=WindowControl]">
-        <Setter Property="Padding" Value="8"/>
-        <Setter Property="Width" Value="46"/>
-        <Setter Property="Height" Value="32"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Width" Value="48"/>
+        <Setter Property="Height" Value="48"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
 
-    <!-- Window control button hover (uses centralized hover brush) -->
-    <Style Selector="Button[Tag=WindowControl]:pointerover /template/ Border#Root">
+    <Style Selector="Button[Tag=WindowControl]:pointerover">
         <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
     </Style>
 
-    <!-- Special close button hover (uses centralized close brush so it can be themed) -->
-    <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover /template/ Border#Root">
+    <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover">
         <Setter Property="Background" Value="{DynamicResource AppCloseButtonHoverBrush}"/>
     </Style>
     <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover">
-        <Setter Property="Foreground" Value="White"/>
-    </Style>
-
-    <!-- Disabled states -->
-    <Style Selector="Button:disabled">
-        <Setter Property="Opacity" Value="0.4"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppForegroundHighBrush}"/>
     </Style>
 
 </Styles>

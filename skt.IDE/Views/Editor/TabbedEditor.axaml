@@ -48,7 +48,7 @@
 
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="30"/>
+      <RowDefinition Height="{DynamicResource TabHeaderHeight}"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
@@ -79,9 +79,9 @@
                         Classes.selected="{Binding IsSelected}"
                         Background="Transparent"
                         BorderThickness="0,0,1,0"
-                        MinWidth="120"
-                        MaxWidth="200"
-                        Height="35"
+                        MinWidth="{DynamicResource TabMinWidth}"
+                        MaxWidth="{DynamicResource TabMaxWidth}"
+                        Height="{DynamicResource TabItemHeight}"
                         Cursor="Hand">
 
                   <Grid>
@@ -99,7 +99,7 @@
                                HorizontalAlignment="Left"
                                Margin="4,0,2,0"
                                TextTrimming="CharacterEllipsis"
-                               FontSize="13"/>
+                               FontSize="{DynamicResource AppFontSizeSmall}"/>
 
                     <!-- Close Button -->
                     <Button Grid.Column="1"

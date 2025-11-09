@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Markup.Xaml;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Layout;
 
 namespace skt.IDE.Services
 {
@@ -16,6 +17,12 @@ namespace skt.IDE.Services
     public static class ThemeManager
     {
         public static event Action<AppThemeVariant>? ThemeApplied;
+
+        // Define sensible min/max bounds for fonts. These can be tuned later or made configurable.
+        private const double AppFontSizeMin = 10.0;
+        private const double AppFontSizeMax = 22.0;
+        private const double EditorFontSizeMin = 8.0;
+        private const double EditorFontSizeMax = 28.0;
 
         public static void ApplyTheme(AppThemeVariant variant)
         {
@@ -102,6 +109,15 @@ namespace skt.IDE.Services
                 if (!app.Resources.TryGetValue("AppFontSize", out _))
                 {
                     var themeRes = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://skt.IDE/Assets/Styles/ThemeResources.axaml"));
+                    // mark the loaded theme resources so we can detect/refresh them later when font tokens change
+                    try
+                    {
+                        themeRes["IsThemeResources"] = true;
+                    }
+                    catch
+                    {
+                        // ignore if the dictionary is read-only for some reason
+                    }
                     app.Resources.MergedDictionaries.Add(themeRes);
                 }
             }
@@ -158,14 +174,100 @@ namespace skt.IDE.Services
             var app = Application.Current;
             if (app == null) return;
 
-            app.Resources["AppFontSize"] = appFontSize;
-            app.Resources["EditorFontSize"] = editorFontSize;
+            // Clamp incoming font sizes to sensible bounds so UI remains usable and responsive.
+            var clampedAppFontSize = Math.Clamp(appFontSize, AppFontSizeMin, AppFontSizeMax);
+            var clampedEditorFontSize = Math.Clamp(editorFontSize, EditorFontSizeMin, EditorFontSizeMax);
+
+            app.Resources["AppFontSize"] = clampedAppFontSize;
+            app.Resources["EditorFontSize"] = clampedEditorFontSize;
 
             if (!string.IsNullOrEmpty(appFontFamily))
                 app.Resources["AppFontFamily"] = appFontFamily;
 
             if (!string.IsNullOrEmpty(editorFontFamily))
                 app.Resources["EditorFontFamily"] = editorFontFamily;
+
+            // Derived tokens for responsive design:
+            // - Line height is typically 1.2x font size but can be adjusted; expose as explicit tokens.
+            // - Small variants for use in denser UI (tabs, headers) computed as scale of main font.
+            // - IconScaleDefault helps icons size relative to AppFontSize when UseAppFontSize is true
+            try
+            {
+                double appLineHeight = Math.Round(clampedAppFontSize * 1.25, 2); // a bit more than 1.2 for legibility
+                double editorLineHeight = Math.Round(clampedEditorFontSize * 1.4, 2); // editors usually need slightly larger line spacing
+                double appFontSizeSmall = Math.Round(clampedAppFontSize * 0.9, 2);
+                double editorFontSizeSmall = Math.Round(clampedEditorFontSize * 0.9, 2);
+                double iconDefaultScale = 1.0; // icons will typically multiply AppFontSize by IconScale when UseAppFontSize is true
+
+                app.Resources["AppLineHeight"] = appLineHeight;
+                app.Resources["EditorLineHeight"] = editorLineHeight;
+                app.Resources["AppFontSizeSmall"] = appFontSizeSmall;
+                app.Resources["EditorFontSizeSmall"] = editorFontSizeSmall;
+                app.Resources["IconDefaultScale"] = iconDefaultScale;
+
+                // Derived layout tokens based on font size to keep UI proportions consistent.
+                // These are conservative multipliers chosen to keep elements usable across font ranges.
+                double toolbarHeight = Math.Round(clampedAppFontSize * 2.6); // e.g. 14 -> 36
+                double tabHeaderHeight = Math.Round(clampedAppFontSize * 2.2); // e.g. 14 -> 31
+                double tabItemHeight = Math.Round(clampedAppFontSize * 2.5); // e.g. 14 -> 35
+                double tabMinWidth = Math.Round(clampedAppFontSize * 8.5); // e.g. 14 -> 119
+                double tabMaxWidth = Math.Round(clampedAppFontSize * 14.0); // e.g. 14 -> 196
+                double toolStripWidth = Math.Round(clampedAppFontSize * 3.2); // e.g. 14 -> 45
+                double splitterThickness = Math.Max(6, Math.Round(clampedAppFontSize * 0.75)); // minimum 6
+                double statusBarHeight = Math.Round(clampedAppFontSize * 1.8); // e.g. 14 -> 25
+
+                // GridLength expected by RowDefinition/ColumnDefinition in XAML
+                var glToolbar = new GridLength(toolbarHeight, GridUnitType.Pixel);
+                var glTabHeader = new GridLength(tabHeaderHeight, GridUnitType.Pixel);
+                app.Resources["ToolbarHeight"] = glToolbar;
+                app.Resources["TabHeaderHeight"] = glTabHeader;
+                app.Resources["TabItemHeight"] = tabItemHeight;
+                app.Resources["TabMinWidth"] = tabMinWidth;
+                app.Resources["TabMaxWidth"] = tabMaxWidth;
+                var glToolStrip = new GridLength(toolStripWidth, GridUnitType.Pixel);
+                var glStatusBar = new GridLength(statusBarHeight, GridUnitType.Pixel);
+                app.Resources["ToolStripWidth"] = glToolStrip;
+                app.Resources["ToolStripWidthValue"] = toolStripWidth; // Double for MinWidth/MaxWidth
+                app.Resources["SplitterThickness"] = splitterThickness; // splitter thickness is a double property
+                app.Resources["StatusBarHeight"] = glStatusBar;
+
+                // Window/dialog defaults scaled slightly by font size
+                app.Resources["WindowDefaultWidth"] = Math.Max(800, Math.Round(clampedAppFontSize * 85));
+                app.Resources["WindowDefaultHeight"] = Math.Max(600, Math.Round(clampedAppFontSize * 57));
+                app.Resources["DialogDefaultWidth"] = Math.Round(clampedAppFontSize * 30);
+                app.Resources["DialogDefaultHeight"] = Math.Round(clampedAppFontSize * 14);
+
+                // Spacing and padding derived from font size for consistent responsive design
+                double paddingH = Math.Max(6, Math.Round(clampedAppFontSize * 0.7));
+                double paddingV = Math.Max(3, Math.Round(clampedAppFontSize * 0.35));
+                double paddingCompactH = Math.Max(4, Math.Round(clampedAppFontSize * 0.45));
+                double paddingCompactV = Math.Max(2, Math.Round(clampedAppFontSize * 0.28));
+                double controlPaddingH = Math.Max(6, Math.Round(clampedAppFontSize * 0.57));
+                double controlPaddingV = Math.Max(3, Math.Round(clampedAppFontSize * 0.28));
+                double controlPaddingSmallH = Math.Max(3, Math.Round(clampedAppFontSize * 0.28));
+                double controlPaddingSmallV = Math.Max(1, Math.Round(clampedAppFontSize * 0.14));
+
+                app.Resources["ButtonPadding"] = new Thickness(paddingH, paddingV);
+                app.Resources["ButtonPaddingCompact"] = new Thickness(paddingCompactH, paddingCompactV);
+                app.Resources["ControlPadding"] = new Thickness(controlPaddingH, controlPaddingV);
+                app.Resources["ControlPaddingSmall"] = new Thickness(controlPaddingSmallH, controlPaddingSmallV);
+
+                // Icon sizes scaled from app font size
+                app.Resources["IconSizeToolbar"] = Math.Round(clampedAppFontSize * 1.4); // e.g. 14 -> 20
+                app.Resources["IconSizeMenu"] = Math.Round(clampedAppFontSize * 1.15); // e.g. 14 -> 16
+                app.Resources["IconSizeLogo"] = Math.Round(clampedAppFontSize * 2.1); // e.g. 14 -> 29
+                app.Resources["SplitterVisualLineThickness"] = Math.Max(1, Math.Round(clampedAppFontSize * 0.14));
+
+                // Also expose min/max so consumers (or settings UI) can show limits.
+                app.Resources["AppFontSizeMin"] = AppFontSizeMin;
+                app.Resources["AppFontSizeMax"] = AppFontSizeMax;
+                app.Resources["EditorFontSizeMin"] = EditorFontSizeMin;
+                app.Resources["EditorFontSizeMax"] = EditorFontSizeMax;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: failed to refresh theme/icon resources after font update: {ex.Message}");
+            }
 
             // Notify subscribers that font tokens changed so controls that size based on AppFontSize can update.
             try

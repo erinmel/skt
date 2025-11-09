@@ -15,7 +15,19 @@
 
     <Style Selector="TreeDataGrid.skt-standard TreeDataGridCell">
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+    </Style>
+
+    <!-- TreeDataGrid column headers responsive to font size -->
+    <Style Selector="TreeDataGrid.skt-standard TreeDataGridColumnHeader">
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="{DynamicResource ControlPaddingSmall}"/>
+    </Style>
+
+    <!-- TreeDataGrid rows responsive to font size -->
+    <Style Selector="TreeDataGrid.skt-standard TreeDataGridRow">
+        <Setter Property="MinHeight" Value="{DynamicResource AppLineHeight}"/>
     </Style>
 
 </Styles>
-

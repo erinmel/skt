@@ -26,11 +26,11 @@
             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
             BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
             BorderThickness="0,0,0,1"
-            Padding="8,4">
+            Padding="{DynamicResource ControlPadding}">
       <TextBlock Text="{Binding CurrentPhase}"
                  FontWeight="Bold"
                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                 FontSize="12"/>
+                 FontSize="{DynamicResource AppFontSizeSmall}"/>
     </Border>
 
     <ListBox ItemsSource="{Binding OutputLines}"

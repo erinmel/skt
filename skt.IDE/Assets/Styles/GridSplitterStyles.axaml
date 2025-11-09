@@ -14,7 +14,7 @@
                         <Border Background="{DynamicResource AppSplitterLineBrush}"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Stretch"
-                                Width="2"/>
+                                Width="{DynamicResource SplitterVisualLineThickness}"/>
                     </Grid>
                 </Border>
             </ControlTemplate>
@@ -31,7 +31,7 @@
                         <Border Background="{DynamicResource AppSplitterLineBrush}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Stretch"
-                                Height="2"/>
+                                Height="{DynamicResource SplitterVisualLineThickness}"/>
                     </Grid>
                 </Border>
             </ControlTemplate>

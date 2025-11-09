@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System;
+using skt.IDE.Views.Shell;
 
 namespace skt.IDE.Views.ToolWindows.Chrome;
 
@@ -22,23 +23,23 @@ public partial class ToolWindowStrip : UserControl
             var tokens = this.FindControl<Button>("TokensToggle");
             var syntax = this.FindControl<Button>("SyntaxTreeToggle");
             var semantic = this.FindControl<Button>("SemanticTreeToggle");
-            var phase = this.FindControl<Button>("PhaseOutputToggle");
 
             var terminal = this.FindControl<Button>("TerminalToggle");
-            var output = this.FindControl<Button>("OutputToggle");
-            var errors = this.FindControl<Button>("ErrorsToggle");
-            var build = this.FindControl<Button>("BuildToggle");
+            var tokenErrors = this.FindControl<Button>("TokenErrorsToggle");
+            var syntaxErrors = this.FindControl<Button>("SyntaxErrorsToggle");
+            var semanticErrors = this.FindControl<Button>("SemanticErrorsToggle");
+            var symbolTablePanel = this.FindControl<Button>("SymbolTablePanelToggle");
 
             if (fe is not null) fe.Click += ToolWindowToggle_Click;
             if (tokens is not null) tokens.Click += ToolWindowToggle_Click;
             if (syntax is not null) syntax.Click += ToolWindowToggle_Click;
             if (semantic is not null) semantic.Click += ToolWindowToggle_Click;
-            if (phase is not null) phase.Click += ToolWindowToggle_Click;
 
             if (terminal is not null) terminal.Click += ToolPanelToggle_Click;
-            if (output is not null) output.Click += ToolPanelToggle_Click;
-            if (errors is not null) errors.Click += ToolPanelToggle_Click;
-            if (build is not null) build.Click += ToolPanelToggle_Click;
+            if (tokenErrors is not null) tokenErrors.Click += ToolPanelToggle_Click;
+            if (syntaxErrors is not null) syntaxErrors.Click += ToolPanelToggle_Click;
+            if (semanticErrors is not null) semanticErrors.Click += ToolPanelToggle_Click;
+            if (symbolTablePanel is not null) symbolTablePanel.Click += ToolPanelToggle_Click;
         }
         catch(Exception ex)
         {
@@ -79,7 +80,6 @@ public partial class ToolWindowStrip : UserControl
         TokensToggle.Classes.Remove(SelectedCssClass);
         SyntaxTreeToggle.Classes.Remove(SelectedCssClass);
         SemanticTreeToggle.Classes.Remove(SelectedCssClass);
-        PhaseOutputToggle.Classes.Remove(SelectedCssClass);
     }
 
     public void SetSelectedToolWindow(string buttonName)
@@ -100,18 +100,16 @@ public partial class ToolWindowStrip : UserControl
             case nameof(SemanticTreeToggle):
                 SemanticTreeToggle.Classes.Add(SelectedCssClass);
                 break;
-            case nameof(PhaseOutputToggle):
-                PhaseOutputToggle.Classes.Add(SelectedCssClass);
-                break;
         }
     }
 
     public void ClearPanelSelection()
     {
         TerminalToggle.Classes.Remove(SelectedCssClass);
-        OutputToggle.Classes.Remove(SelectedCssClass);
-        ErrorsToggle.Classes.Remove(SelectedCssClass);
-        BuildToggle.Classes.Remove(SelectedCssClass);
+        TokenErrorsToggle.Classes.Remove(SelectedCssClass);
+        SyntaxErrorsToggle.Classes.Remove(SelectedCssClass);
+        SemanticErrorsToggle.Classes.Remove(SelectedCssClass);
+        SymbolTablePanelToggle.Classes.Remove(SelectedCssClass);
     }
 
     public void SetSelectedPanel(string buttonName)
@@ -123,15 +121,46 @@ public partial class ToolWindowStrip : UserControl
             case nameof(TerminalToggle):
                 TerminalToggle.Classes.Add(SelectedCssClass);
                 break;
-            case nameof(OutputToggle):
-                OutputToggle.Classes.Add(SelectedCssClass);
+            case nameof(TokenErrorsToggle):
+                TokenErrorsToggle.Classes.Add(SelectedCssClass);
                 break;
-            case nameof(ErrorsToggle):
-                ErrorsToggle.Classes.Add(SelectedCssClass);
+            case nameof(SyntaxErrorsToggle):
+                SyntaxErrorsToggle.Classes.Add(SelectedCssClass);
                 break;
-            case nameof(BuildToggle):
-                BuildToggle.Classes.Add(SelectedCssClass);
+            case nameof(SemanticErrorsToggle):
+                SemanticErrorsToggle.Classes.Add(SelectedCssClass);
+                break;
+            case nameof(SymbolTablePanelToggle):
+                SymbolTablePanelToggle.Classes.Add(SelectedCssClass);
                 break;
         }
     }
+
+    public void SetTokenErrorsIconAlert(bool hasErrors)
+    {
+        var icon = this.FindControl<SktIcon>("TokenErrorsIcon");
+        if (icon != null)
+        {
+            icon.IconKey = hasErrors ? "Icon.TokenizationErrorsAlert" : "Icon.TokenizationErrors";
+        }
+    }
+
+    public void SetSyntaxErrorsIconAlert(bool hasErrors)
+    {
+        var icon = this.FindControl<SktIcon>("SyntaxErrorsIcon");
+        if (icon != null)
+        {
+            icon.IconKey = hasErrors ? "Icon.SyntaxErrorsAlert" : "Icon.SyntaxErrors";
+        }
+    }
+
+    public void SetSemanticErrorsIconAlert(bool hasErrors)
+    {
+        var icon = this.FindControl<SktIcon>("SemanticErrorsIcon");
+        if (icon != null)
+        {
+            icon.IconKey = hasErrors ? "Icon.SemanticErrorsAlert" : "Icon.SemanticErrors";
+        }
+    }
 }
+

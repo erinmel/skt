@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -14,9 +15,27 @@ namespace skt.IDE.Views.Dialogs
             InitializeComponent();
             this.Opened += OnOpened;
 
+            // Populate font size ComboBoxes
+            PopulateFontSizeComboBoxes();
+
             ApplyThemeButton.Click += OnApplyThemeClicked;
             OkButton.Click += OnOkClicked;
             CancelButton.Click += (_, _) => Close(false);
+        }
+
+        private void PopulateFontSizeComboBoxes()
+        {
+            // App font sizes: 10-24 (reasonable range for UI)
+            for (int i = 10; i <= 24; i++)
+            {
+                AppFontSizeCombo.Items.Add(new ComboBoxItem { Content = i.ToString() });
+            }
+
+            // Editor font sizes: 8-28 (wider range for code editing)
+            for (int i = 8; i <= 28; i++)
+            {
+                EditorFontSizeCombo.Items.Add(new ComboBoxItem { Content = i.ToString() });
+            }
         }
 
         private void OnOpened(object? sender, EventArgs e)
@@ -27,9 +46,20 @@ namespace skt.IDE.Views.Dialogs
             // Set theme combo
             ThemeCombo.SelectedIndex = settings.Theme == "Dark" ? 0 : 1;
             
-            // Set font sizes
-            AppFontSizeBox.Text = settings.AppFontSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            EditorFontSizeBox.Text = settings.EditorFontSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            // Set font sizes - find matching items
+            var appFontItem = AppFontSizeCombo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => item.Content?.ToString() == ((int)settings.AppFontSize).ToString());
+            if (appFontItem != null)
+                AppFontSizeCombo.SelectedItem = appFontItem;
+            else
+                AppFontSizeCombo.SelectedIndex = 4; // Default to 14
+
+            var editorFontItem = EditorFontSizeCombo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => item.Content?.ToString() == ((int)settings.EditorFontSize).ToString());
+            if (editorFontItem != null)
+                EditorFontSizeCombo.SelectedItem = editorFontItem;
+            else
+                EditorFontSizeCombo.SelectedIndex = 6; // Default to 14 (8,9,10,11,12,13,14)
         }
 
         private void OnApplyThemeClicked(object? sender, RoutedEventArgs e)
@@ -50,16 +80,25 @@ namespace skt.IDE.Views.Dialogs
 
         private void OnOkClicked(object? sender, RoutedEventArgs e)
         {
-            if (!double.TryParse(AppFontSizeBox.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var appSize))
-                appSize = 14.0;
-            if (!double.TryParse(EditorFontSizeBox.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var editorSize))
-                editorSize = 14.0;
+            // Get font sizes from ComboBoxes
+            var appFontItem = AppFontSizeCombo.SelectedItem as ComboBoxItem;
+            var editorFontItem = EditorFontSizeCombo.SelectedItem as ComboBoxItem;
+            
+            double appSize = 14.0;
+            double editorSize = 14.0;
 
+            if (appFontItem?.Content != null && double.TryParse(appFontItem.Content.ToString(), out var parsedAppSize))
+                appSize = parsedAppSize;
+
+            if (editorFontItem?.Content != null && double.TryParse(editorFontItem.Content.ToString(), out var parsedEditorSize))
+                editorSize = parsedEditorSize;
+
+            // Apply font tokens immediately
             ThemeManager.UpdateFontTokens(appSize, editorSize);
 
             // Save all settings
-            var item = ThemeCombo.SelectedItem as ComboBoxItem;
-            var theme = item?.Content?.ToString() == "Dark" ? "Dark" : "Light";
+            var themeItem = ThemeCombo.SelectedItem as ComboBoxItem;
+            var theme = themeItem?.Content?.ToString() == "Dark" ? "Dark" : "Light";
             
             var settings = new UserSettings
             {
@@ -69,7 +108,6 @@ namespace skt.IDE.Views.Dialogs
             };
             SettingsManager.Save(settings);
 
-            OnApplyThemeClicked(sender, e);
 
             Close(true);
         }

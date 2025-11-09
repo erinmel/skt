@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using skt.IDE.ViewModels;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Threading;
@@ -16,16 +17,16 @@ public partial class MainWindow : Window
         FileExplorer,
         Tokens,
         SyntaxTree,
-        SemanticTree,
-        PhaseOutput
+        SemanticTree
     }
 
     private enum TerminalPanelType
     {
         Terminal,
-        Errors,
-        Syntax,
-        Other
+        TokenErrors,
+        SyntaxErrors,
+        SemanticErrors,
+        SymbolTable
     }
 
     private static class ToolWindowTitles
@@ -34,7 +35,6 @@ public partial class MainWindow : Window
         public const string Tokens = "Tokens";
         public const string SyntaxTree = "Syntax Tree";
         public const string SemanticTree = "Semantic Tree";
-        public const string PhaseOutput = "Phase Output";
     }
 
     private MainWindowViewModel? ViewModel => DataContext as MainWindowViewModel;
@@ -58,6 +58,14 @@ public partial class MainWindow : Window
         App.Messenger.Register<ShowToolWindowRequestEvent>(this, (r, m) => OnShowToolWindowRequest(m));
         App.Messenger.Register<ShowTerminalTabRequestEvent>(this, (r, m) => OnShowTerminalTabRequest(m));
         App.Messenger.Register<ProjectLoadedEvent>(this, (r, m) => OnProjectLoaded(m));
+
+        // Subscribe to error events to update icons
+        App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => UpdateErrorIcons());
+        App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => UpdateErrorIcons());
+        App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (r, m) => UpdateErrorIcons());
+        App.Messenger.Register<SyntaxAnalysisFailedEvent>(this, (r, m) => UpdateErrorIcons());
+        App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (r, m) => UpdateErrorIcons());
+        App.Messenger.Register<SemanticAnalysisFailedEvent>(this, (r, m) => UpdateErrorIcons());
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -112,9 +120,10 @@ public partial class MainWindow : Window
         var panelType = e.TabIndex switch
         {
             0 => TerminalPanelType.Terminal,
-            1 => TerminalPanelType.Errors,
-            2 => TerminalPanelType.Syntax,
-            3 => TerminalPanelType.Other,
+            1 => TerminalPanelType.TokenErrors,
+            2 => TerminalPanelType.SyntaxErrors,
+            3 => TerminalPanelType.SemanticErrors,
+            4 => TerminalPanelType.SymbolTable,
             _ => TerminalPanelType.Terminal
         };
 
@@ -150,7 +159,6 @@ public partial class MainWindow : Window
             "TokensToggle" => ToolWindowType.Tokens,
             "SyntaxTreeToggle" => ToolWindowType.SyntaxTree,
             "SemanticTreeToggle" => ToolWindowType.SemanticTree,
-            "PhaseOutputToggle" => ToolWindowType.PhaseOutput,
             _ => ToolWindowType.FileExplorer
         };
     }
@@ -182,7 +190,6 @@ public partial class MainWindow : Window
             ToolWindowType.Tokens => ToolWindowTitles.Tokens,
             ToolWindowType.SyntaxTree => ToolWindowTitles.SyntaxTree,
             ToolWindowType.SemanticTree => ToolWindowTitles.SemanticTree,
-            ToolWindowType.PhaseOutput => ToolWindowTitles.PhaseOutput,
             _ => ToolWindowTitles.FileExplorer
         };
     }
@@ -194,13 +201,11 @@ public partial class MainWindow : Window
         var tokens = this.FindControl<Control>("TokensContent");
         var syntax = this.FindControl<Control>("SyntaxTreeContent");
         var semantic = this.FindControl<Control>("SemanticTreeContent");
-        var phaseOutput = this.FindControl<Control>("PhaseOutputContent");
 
         if (fileExplorer is not null) fileExplorer.IsVisible = _selectedToolWindow == ToolWindowType.FileExplorer;
         if (tokens is not null) tokens.IsVisible = _selectedToolWindow == ToolWindowType.Tokens;
         if (syntax is not null) syntax.IsVisible = _selectedToolWindow == ToolWindowType.SyntaxTree;
         if (semantic is not null) semantic.IsVisible = _selectedToolWindow == ToolWindowType.SemanticTree;
-        if (phaseOutput is not null) phaseOutput.IsVisible = _selectedToolWindow == ToolWindowType.PhaseOutput;
     }
 
     private void UpdateToolWindowSelection()
@@ -217,7 +222,6 @@ public partial class MainWindow : Window
             ToolWindowType.Tokens => "TokensToggle",
             ToolWindowType.SyntaxTree => "SyntaxTreeToggle",
             ToolWindowType.SemanticTree => "SemanticTreeToggle",
-            ToolWindowType.PhaseOutput => "PhaseOutputToggle",
             _ => "FileExplorerToggle"
         };
     }
@@ -231,10 +235,10 @@ public partial class MainWindow : Window
         return buttonName switch
         {
             "TerminalToggle" => TerminalPanelType.Terminal,
-            // Map OutputToggle -> Lexical Errors panel, ErrorsToggle -> Syntax Errors panel
-            "OutputToggle" => TerminalPanelType.Errors,
-            "ErrorsToggle" => TerminalPanelType.Syntax,
-            "BuildToggle" => TerminalPanelType.Other,
+            "TokenErrorsToggle" => TerminalPanelType.TokenErrors,
+            "SyntaxErrorsToggle" => TerminalPanelType.SyntaxErrors,
+            "SemanticErrorsToggle" => TerminalPanelType.SemanticErrors,
+            "SymbolTablePanelToggle" => TerminalPanelType.SymbolTable,
              _ => TerminalPanelType.Terminal
          };
      }
@@ -282,10 +286,10 @@ public partial class MainWindow : Window
         return panel switch
         {
             TerminalPanelType.Terminal => "TerminalToggle",
-            // Use OutputToggle for lexical/errors panel, ErrorsToggle for syntax panel
-            TerminalPanelType.Errors => "OutputToggle",
-            TerminalPanelType.Syntax => "ErrorsToggle",
-            TerminalPanelType.Other => "BuildToggle",
+            TerminalPanelType.TokenErrors => "TokenErrorsToggle",
+            TerminalPanelType.SyntaxErrors => "SyntaxErrorsToggle",
+            TerminalPanelType.SemanticErrors => "SemanticErrorsToggle",
+            TerminalPanelType.SymbolTable => "SymbolTablePanelToggle",
             _ => "TerminalToggle"
         };
     }
@@ -305,11 +309,30 @@ public partial class MainWindow : Window
         return panelType switch
         {
             TerminalPanelType.Terminal => 0,
-            TerminalPanelType.Errors => 1,   // Lexical Errors
-            TerminalPanelType.Syntax => 2,   // Syntax Errors
-            TerminalPanelType.Other => 3,    // Other Errors
+            TerminalPanelType.TokenErrors => 1,   // Lexical/Token Errors tab
+            TerminalPanelType.SyntaxErrors => 2,   // Syntax Errors tab
+            TerminalPanelType.SemanticErrors => 3,   // Semantic Errors tab
+            TerminalPanelType.SymbolTable => 4,    // Symbol Table tab
             _ => 0
         };
+    }
+
+    private void UpdateErrorIcons()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var vm = ViewModel;
+            if (vm?.Errors == null) return;
+
+            // Update icon based on whether there are errors in each category
+            var hasTokenErrors = vm.Errors.LexicalGroups.Any(g => g.Errors.Count > 0);
+            var hasSyntaxErrors = vm.Errors.SyntaxGroups.Any(g => g.Errors.Count > 0);
+            var hasSemanticErrors = vm.Errors.SemanticGroups.Any(g => g.Errors.Count > 0);
+
+            ToolWindowStripControl.SetTokenErrorsIconAlert(hasTokenErrors);
+            ToolWindowStripControl.SetSyntaxErrorsIconAlert(hasSyntaxErrors);
+            ToolWindowStripControl.SetSemanticErrorsIconAlert(hasSemanticErrors);
+        });
     }
 
     #endregion

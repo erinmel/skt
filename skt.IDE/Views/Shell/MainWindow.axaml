@@ -11,8 +11,8 @@
         x:DataType="vm:MainWindowViewModel"
         Icon="avares://skt.IDE/Assets/SKT.ico"
         Title="SKT IDE"
-        Width="1200"
-        Height="800"
+        Width="{DynamicResource WindowDefaultWidth}"
+        Height="{DynamicResource WindowDefaultHeight}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         SystemDecorations="BorderOnly"
@@ -29,16 +29,16 @@
     </Design.DataContext>
 
 
-    <Grid x:Name="RootGrid">
+    <Grid x:Name="RootGrid" Margin="0">
         <Grid.RowDefinitions>
             <!-- Toolbar (this includes your custom window controls) -->
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="{DynamicResource ToolbarHeight}"/>
             <!-- Main content area -->
             <RowDefinition Height="7*"/>
             <!-- Terminal/Errors -->
             <RowDefinition Height="0*" MinHeight="0"/>
             <!-- Status bar -->
-            <RowDefinition Height="25"/>
+            <RowDefinition Height="{DynamicResource StatusBarHeight}"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
@@ -47,14 +47,14 @@
             <!-- Tools (File Explorer) -->
             <ColumnDefinition Width="3*"/>
             <!-- Tool Window (Very narrow, fixed width) -->
-            <ColumnDefinition Width="45" MinWidth="45" MaxWidth="45"/>
+            <ColumnDefinition Width="{DynamicResource ToolStripWidth}" MinWidth="{DynamicResource ToolStripWidthValue}" MaxWidth="{DynamicResource ToolStripWidthValue}"/>
         </Grid.ColumnDefinitions>
 
         <!-- Custom Toolbar with Window Controls -->
-        <chrome:Toolbar Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Name="MainToolbar" />
+        <chrome:Toolbar Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Name="MainToolbar" Margin="0" />
 
         <!-- Main Content Area -->
-        <Border Grid.Row="1" Grid.Column="0" Margin="2">
+        <Border Grid.Row="1" Grid.Column="0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -67,10 +67,10 @@
         </Border>
 
         <!-- Tools/Tool Window Content (Dynamic content based on selected tool) -->
-        <Border Grid.Row="1" Grid.Column="1" Margin="2">
+        <Border Grid.Row="1" Grid.Column="1">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="30"/>
+                    <RowDefinition Height="{DynamicResource TabHeaderHeight}"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -108,16 +108,16 @@
         <chrome:StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"/>
 
         <!-- Splitters -->
-        <GridSplitter Grid.Row="1" Grid.Column="1"
-                     Width="10"
-                     HorizontalAlignment="Left"
+        <GridSplitter Grid.Row="1" Grid.Column="0"
+                     Width="{DynamicResource SplitterThickness}"
+                     HorizontalAlignment="Right"
                      ResizeDirection="Columns"
                      Margin="0"
                      Padding="0"/>
 
         <!-- Horizontal splitter between main area and terminal -->
         <GridSplitter Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                     Height="10"
+                     Height="{DynamicResource SplitterThickness}"
                      VerticalAlignment="Top"
                      ResizeDirection="Rows"
                      Margin="0"

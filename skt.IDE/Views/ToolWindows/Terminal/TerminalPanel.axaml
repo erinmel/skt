@@ -11,14 +11,14 @@
     </Style>
     <Style Selector="TabItem">
       <Setter Property="Padding" Value="10,6"/>
-      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
       <Setter Property="FontWeight" Value="Bold"/>
     </Style>
     <Style Selector="ScrollViewer">
       <Setter Property="Padding" Value="0"/>
     </Style>
     <Style Selector="TextBox">
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontSize" Value="{DynamicResource EditorFontSize}"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
@@ -47,14 +47,6 @@
       </TabItem>
       <TabItem Header="Symbol Table">
         <compilerOutput:SymbolTableView DataContext="{Binding SymbolTable}" />
-      </TabItem>
-      <TabItem Header="Other Errors">
-        <ScrollViewer>
-          <TextBox AcceptsReturn="True"
-                   FontFamily="Consolas,monospace"
-                   Text="{Binding OtherErrors}"
-                   IsReadOnly="True"/>
-        </ScrollViewer>
       </TabItem>
     </TabControl>
   </Border>

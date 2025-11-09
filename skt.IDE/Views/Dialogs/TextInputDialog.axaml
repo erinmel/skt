@@ -7,14 +7,15 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Title="Input"
-        SystemDecorations="BorderOnly"
-        Background="{DynamicResource SystemControlBackgroundAltMediumLowBrush}">
-  <Grid RowDefinitions="Auto,Auto,Auto" Margin="12">
-    <TextBlock x:Name="MessageText" Grid.Row="0" Margin="0,0,0,8" TextWrapping="Wrap"/>
-    <TextBox x:Name="InputBox" Grid.Row="1"/>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
-      <Button x:Name="OkButton" IsDefault="True">OK</Button>
-      <Button x:Name="CancelButton" IsCancel="True">Cancel</Button>
-    </StackPanel>
-  </Grid>
+        SystemDecorations="BorderOnly">
+  <Border Classes="surface" Padding="16">
+    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
+      <TextBlock x:Name="MessageText" Grid.Row="0" TextWrapping="Wrap"/>
+      <TextBox x:Name="InputBox" Grid.Row="1"/>
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,8,0,0">
+        <Button x:Name="OkButton" IsDefault="True" MinWidth="88">OK</Button>
+        <Button x:Name="CancelButton" IsCancel="True" MinWidth="88">Cancel</Button>
+      </StackPanel>
+    </Grid>
+  </Border>
 </Window>

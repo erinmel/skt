@@ -23,9 +23,8 @@ public partial class SktIcon : UserControl
     public static readonly StyledProperty<IBrush?> TintBrushProperty =
         AvaloniaProperty.Register<SktIcon, IBrush?>(nameof(TintBrush));
 
-    // When true, the icon size will be set based on the AppFontSize resource multiplied by IconScale.
     public static readonly StyledProperty<bool> UseAppFontSizeProperty =
-        AvaloniaProperty.Register<SktIcon, bool>(nameof(UseAppFontSize), false);
+        AvaloniaProperty.Register<SktIcon, bool>(nameof(UseAppFontSize), true);
 
     public static readonly StyledProperty<double> IconScaleProperty =
         AvaloniaProperty.Register<SktIcon, double>(nameof(IconScale), 1.0);
@@ -135,12 +134,9 @@ public partial class SktIcon : UserControl
 
         // Determine final size. If UseAppFontSize is enabled and an AppFontSize resource exists, use it.
         double finalSize = IconSize;
-        if (UseAppFontSize && Application.Current?.Resources != null)
+        if (UseAppFontSize && Application.Current?.Resources != null && Application.Current.Resources.TryGetValue("AppFontSize", out var fontSizeObj) && fontSizeObj is double appFontSize)
         {
-            if (Application.Current.Resources.TryGetValue("AppFontSize", out var fontSizeObj) && fontSizeObj is double appFontSize)
-            {
-                finalSize = appFontSize * IconScale;
-            }
+            finalSize = appFontSize * IconScale;
         }
 
         IconImage.Width = !double.IsNaN(IconWidth) ? IconWidth : finalSize;
@@ -158,7 +154,7 @@ public partial class SktIcon : UserControl
         else
         {
             IconImage.OpacityMask = null;
-            Background = null;
+            Background = Avalonia.Media.Brushes.Transparent;
         }
     }
 }

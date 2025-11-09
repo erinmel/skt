@@ -14,8 +14,8 @@
       <Setter Property="FontWeight" Value="Bold"/>
     </Style>
   </Window.Styles>
-  <Border Classes="surface">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,* ,Auto" ColumnSpacing="8" RowSpacing="10">
+  <Border Classes="surface" Padding="16">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,* ,Auto" ColumnSpacing="12" RowSpacing="12">
       <TextBlock Grid.Row="0" Grid.Column="0" Text="Base Path" VerticalAlignment="Center"/>
       <TextBox Grid.Row="0" Grid.Column="1" Name="BasePathTextBox"/>
       <Button Grid.Row="0" Grid.Column="2" Name="BrowseButton">Browse...</Button>
@@ -28,9 +28,9 @@
 
       <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Name="WarningText"/>
 
-      <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-        <Button Name="CancelButton" IsCancel="True">Cancel</Button>
-        <Button Name="CreateButton" IsDefault="True">Create</Button>
+      <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,8,0,0">
+        <Button Name="CancelButton" IsCancel="True" MinWidth="88">Cancel</Button>
+        <Button Name="CreateButton" IsDefault="True" MinWidth="88">Create</Button>
       </StackPanel>
     </Grid>
   </Border>

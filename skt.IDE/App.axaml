@@ -41,6 +41,7 @@
         <StyleInclude Source="avares://skt.IDE/Assets/Styles/GridSplitterStyles.axaml"/>
         <StyleInclude Source="avares://skt.IDE/Assets/Styles/TreeDataGridStyles.axaml"/>
         <StyleInclude Source="avares://skt.IDE/Assets/Styles/DialogStyles.axaml"/>
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/ErrorsViewStyles.axaml"/>
     </Application.Styles>
 
     <Application.Resources>
@@ -51,8 +52,8 @@
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/ToolIconResources.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FilesIconResource.axaml"/>
                 <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FoldersIconResource.axaml"/>
-                <!-- Syntax token colors -->
-                <ResourceInclude Source="avares://skt.IDE/Assets/Colors/SyntaxColors.axaml"/>
+                <!-- Syntax token colors (loaded at runtime by ThemeManager) -->
+                <!-- Removed static ResourceInclude to avoid duplicate resource registration -->
             </ResourceDictionary.MergedDictionaries>
 
             <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
