@@ -15,13 +15,6 @@ namespace skt.IDE.Services
 
     public static class ThemeManager
     {
-        // Note: this ThemeManager intentionally does NOT try to load per-theme icon resource files
-        // (ToolIconResources.Dark.axaml / ToolIconResources.Light.axaml). Icons in this project use brushes
-        // (DynamicResource) and are resolved from the single `ToolIconResources.axaml`. UI controls should
-        // re-resolve icon resources when theme changes by listening to ThemeApplied (SktIcon already does this).
-
-        // Event raised after a theme is applied and resources (including icon resources) are reloaded.
-        // Subscribers should update any cached resources they hold (for example, SktIcon instances).
         public static event Action<AppThemeVariant>? ThemeApplied;
 
         public static void ApplyTheme(AppThemeVariant variant)
@@ -33,7 +26,6 @@ namespace skt.IDE.Services
 
             EnsureThemeResourcesLoaded(app);
 
-            // Ensure high/low foreground tokens reflect the chosen theme (dark => white text)
             try
             {
                 if (variant == AppThemeVariant.Dark)
@@ -54,9 +46,30 @@ namespace skt.IDE.Services
                 Console.WriteLine($"ThemeManager: failed to set theme tokens: {ex.Message}");
             }
 
-            // Reload icon resources: remove any previously-merged icon dictionaries so that consumers
+            // Reload icon resources: remove any previously-merged icon dictionaries so consumers
             // re-resolve resources. Then ensure the single default icon resource dictionary is present.
             ReloadIconResources(app);
+
+            // Reload syntax token colors so Tok.*.Dark and Tok.*.Light entries are reloaded
+            // (this allows editing or replacing SyntaxColors.axaml at runtime to take effect).
+            try
+            {
+                ReloadSyntaxTokenResources(app);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: failed to reload syntax token resources: {ex.Message}");
+            }
+
+            // Apply base Tok.* keys mapped to the active theme (Tok.<Name> -> Tok.<Name>.<Dark|Light>)
+            try
+            {
+                ApplyActiveSyntaxTokenKeys(app, variant);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: failed to apply active syntax token keys: {ex.Message}");
+            }
 
             // Notify subscribers that the theme was applied and resources reloaded.
             try
@@ -66,6 +79,16 @@ namespace skt.IDE.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"ThemeManager: error while invoking ThemeApplied handlers: {ex.Message}");
+            }
+
+            // As a fallback, ask TextEditor to update all registered instances (avoids visual-tree traversal).
+            try
+            {
+                skt.IDE.Views.Editor.TextEditor.ApplyThemeToAll(variant);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: failed to notify TextEditor instances: {ex.Message}");
             }
         }
 
@@ -143,6 +166,17 @@ namespace skt.IDE.Services
 
             if (!string.IsNullOrEmpty(editorFontFamily))
                 app.Resources["EditorFontFamily"] = editorFontFamily;
+
+            // Notify subscribers that font tokens changed so controls that size based on AppFontSize can update.
+            try
+            {
+                var current = app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Dark ? AppThemeVariant.Dark : AppThemeVariant.Light;
+                ThemeApplied?.Invoke(current);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: error while invoking ThemeApplied after UpdateFontTokens: {ex.Message}");
+            }
         }
 
         public static void ToggleTheme()
@@ -151,6 +185,63 @@ namespace skt.IDE.Services
             if (app == null) return;
             var current = app.RequestedThemeVariant;
             ApplyTheme(current == Avalonia.Styling.ThemeVariant.Dark ? AppThemeVariant.Light : AppThemeVariant.Dark);
+        }
+
+        // Reload the syntax color tokens resource dictionary so brushes are freshly reloaded
+        // (useful when changing theme or editing the axaml file on disk).
+        private static void ReloadSyntaxTokenResources(Application app)
+        {
+            if (app.Resources == null) return;
+
+            // Remove any existing merged dictionaries that look like the syntax colors dictionary
+            var existing = app.Resources.MergedDictionaries.OfType<ResourceDictionary>()
+                .Where(rd => rd.ContainsKey("Tok.Integer.Dark") || rd.ContainsKey("Tok.Integer.Light") || (rd.ContainsKey("IsSyntaxColors") && rd["IsSyntaxColors"] is bool b && b))
+                .ToList();
+            foreach (var e in existing)
+                app.Resources.MergedDictionaries.Remove(e);
+
+            // Load the syntax colors resource dictionary anew
+            try
+            {
+                var syntaxUri = new Uri("avares://skt.IDE/Assets/Colors/SyntaxColors.axaml");
+                var syntaxDict = (ResourceDictionary)AvaloniaXamlLoader.Load(syntaxUri);
+                // mark it so future reloads can detect it
+                syntaxDict["IsSyntaxColors"] = true;
+                app.Resources.MergedDictionaries.Add(syntaxDict);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ThemeManager: failed to load SyntaxColors.axaml: {ex.Message}");
+            }
+        }
+
+        // After reloading the syntax token dictionaries, set base Tok.<Name> resource keys to
+        // point to the currently active themed brushes (Tok.<Name> -> Tok.<Name>.<Dark|Light>).
+        private static void ApplyActiveSyntaxTokenKeys(Application app, AppThemeVariant variant)
+        {
+            if (app.Resources == null) return;
+            string suffix = variant == AppThemeVariant.Dark ? "Dark" : "Light";
+
+            var tokenNames = new[] { "Integer", "Real", "Boolean", "String", "Identifier", "Reserved", "Comment", "Operator", "Symbol", "Error" };
+            foreach (var name in tokenNames)
+            {
+                var themedKey = $"Tok.{name}.{suffix}";
+                var baseKey = $"Tok.{name}";
+                
+                // Use TryFindResource to search in merged dictionaries
+                if (app.TryFindResource(themedKey, out var value))
+                {
+                    app.Resources[baseKey] = value;
+                }
+                else
+                {
+                    // If no themed key exists, remove any base mapping so GetResource falls back to other mechanisms.
+                    if (app.Resources.ContainsKey(baseKey))
+                    {
+                        app.Resources.Remove(baseKey);
+                    }
+                }
+            }
         }
     }
 }

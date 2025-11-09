@@ -108,8 +108,9 @@
                             ToolTip.Tip="Close Tab"
                             Command="{Binding ElementName=TabbedEditorRoot, Path=ViewModel.CloseTabCommand}"
                             CommandParameter="{Binding}">
-                        <views:SktIcon IconKey="Icon.Close" IconSize="6"/>
-                    </Button>
+                            <!-- Use app font size so icons scale with UI font settings; IconScale ~0.8 fits small close buttons -->
+                            <views:SktIcon IconKey="Icon.Close" UseAppFontSize="True" IconScale="0.6"/>
+                        </Button>
                   </Grid>
 
                   <!-- Click handler for tab selection -->

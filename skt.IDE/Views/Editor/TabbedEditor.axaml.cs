@@ -1,10 +1,10 @@
-using skt.IDE.ViewModels;
-
-namespace skt.IDE.Views.Editor;
-
+using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using skt.IDE.ViewModels;
 using System.Threading.Tasks;
+
+namespace skt.IDE.Views.Editor;
 
 public partial class TabbedEditor : UserControl
 {

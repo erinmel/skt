@@ -6,7 +6,6 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
-using Avalonia.Styling;
 using skt.IDE.Services;
 using skt.IDE.Services.Buss;
 using skt.Shared;
@@ -15,6 +14,7 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.Messaging;
+using Avalonia.Styling;
 
 namespace skt.IDE.Views.Editor;
 
@@ -34,24 +34,25 @@ public partial class TextEditor : UserControl
     private string _lastLexSnapshot = string.Empty;
     private string? _currentDocumentPath;
     private SemanticColorizer? _colorizer;
-    private DocumentStateManager? _stateManager;
 
     private static readonly ConcurrentDictionary<string, int> PendingCarets = new();
+    private static readonly ConcurrentDictionary<TextEditor, byte> s_instances = new();
 
-    private class TokenizationCache
+    // Called by ThemeManager to forward theme changes to all registered editors.
+    public static void ApplyThemeToAll(AppThemeVariant variant)
     {
-        public List<Token> Tokens { get; } = new();
-        public List<ErrorToken> Errors { get; } = new();
-        public string ContentHash { get; set; } = string.Empty;
-
-        public void Update(IEnumerable<Token> tokens, IEnumerable<ErrorToken> errors, string contentHash)
+        try
         {
-            Tokens.Clear();
-            Tokens.AddRange(tokens);
-            Errors.Clear();
-            Errors.AddRange(errors);
-            ContentHash = contentHash;
+            foreach (var editor in s_instances.Keys)
+            {
+                var ed = editor;
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try { ed.ApplyTheme(variant); } catch { }
+                });
+            }
         }
+        catch { }
     }
 
     private static void FocusMainWindow()
@@ -135,6 +136,85 @@ public partial class TextEditor : UserControl
         DetachedFromVisualTree += OnDetached;
         PropertyChanged += OnTextPropertyChanged;
         DataContextChanged += OnDataContextChanged;
+
+        // Subscribe to theme changes so this editor updates its brushes and colorizer
+        ThemeManager.ThemeApplied += OnThemeApplied;
+    }
+
+    // Internal handler subscribed to ThemeManager.ThemeApplied. Forwards to ApplyTheme on UI thread.
+    private void OnThemeApplied(AppThemeVariant variant)
+    {
+        Dispatcher.UIThread.Post(() => ApplyTheme(variant));
+    }
+
+    // Called by containers (e.g. TabbedEditor) to apply a new theme variant to this editor.
+    public void ApplyTheme(AppThemeVariant variant)
+    {
+        Console.WriteLine($"  TextEditor.ApplyTheme: Applying {variant} theme to editor (document: {_currentDocumentPath ?? "no document"})");
+        bool isDark = variant == AppThemeVariant.Dark;
+
+        // Update semantic colorizer to change suffix/brush lookups and invalidate cached pens
+        Console.WriteLine($"    - Updating colorizer isDark={isDark}");
+        _colorizer?.ApplyTheme(isDark);
+
+        // Force re-attach the colorizer to the TextView to ensure it re-processes lines
+        try
+        {
+            if (_editor?.TextArea?.TextView != null && _colorizer != null)
+            {
+                var tv = _editor.TextArea.TextView;
+                // remove then re-add so the TextView re-evaluates line transformers
+                if (tv.LineTransformers.Contains(_colorizer))
+                {
+                    tv.LineTransformers.Remove(_colorizer);
+                    tv.LineTransformers.Add(_colorizer);
+                }
+                if (tv.BackgroundRenderers.Contains(_colorizer))
+                {
+                    tv.BackgroundRenderers.Remove(_colorizer);
+                    tv.BackgroundRenderers.Add(_colorizer);
+                }
+            }
+        }
+        catch { }
+
+        // Also refresh syntax colors from current ViewModel tokens to force a re-colorize pass
+        try
+        {
+            Console.WriteLine($"    - Refreshing syntax colors");
+            RefreshSyntaxColors(variant);
+            Console.WriteLine($"    - Syntax colors refreshed");
+        }
+        catch { }
+
+        // Update editor-level resources (font size, foreground/background) from application resources
+        var app = Application.Current;
+        if (app?.Resources != null && _editor != null)
+        {
+            if (app.Resources.TryGetValue("EditorFontSize", out var efs) && efs is double ef)
+                _editor.FontSize = ef;
+
+            if (app.Resources.TryGetValue("AppForegroundHighBrush", out var fg) && fg is IBrush fb)
+                _editor.Foreground = fb;
+
+            if (app.Resources.TryGetValue("AppBackgroundBrush", out var bg) && bg is IBrush bb)
+                _editor.Background = bb;
+        }
+
+        // Force redraw so token brushes are re-resolved
+        _editor?.TextArea?.TextView?.Redraw();
+    }
+
+    // Force the colorizer to re-run using current ViewModel tokens (useful after resources reload).
+    public void RefreshSyntaxColors(AppThemeVariant variant)
+    {
+        if (_colorizer == null || _editor == null) return;
+        if (DataContext is ViewModels.TextEditorViewModel vm)
+        {
+            bool isDark = variant == AppThemeVariant.Dark;
+            _colorizer.Update(vm.Tokens, vm.LexicalErrors, isDark);
+            _editor.TextArea.TextView.Redraw();
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -177,11 +257,10 @@ public partial class TextEditor : UserControl
 
     private void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        // Register instance for global theme notifications
+        s_instances.TryAdd(this, 0);
         _editor = this.FindControl<AvaloniaEdit.TextEditor>("Editor");
         if (_editor == null) return;
-
-        // Get DocumentStateManager instance
-        _stateManager = App.Services?.GetService(typeof(DocumentStateManager)) as DocumentStateManager;
 
         if (_editor.Document == null)
             _editor.Document = new TextDocument(Text ?? string.Empty);
@@ -233,6 +312,8 @@ public partial class TextEditor : UserControl
 
     private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        // Unregister instance
+        s_instances.TryRemove(this, out _);
         if (_editor != null)
         {
             _editor.TextChanged -= OnEditorTextChanged;
@@ -244,6 +325,9 @@ public partial class TextEditor : UserControl
             App.Messenger.UnregisterAll(this);
             _isSubscribed = false;
         }
+
+        // Unsubscribe theme handler to avoid leaks
+        ThemeManager.ThemeApplied -= OnThemeApplied;
     }
 
     private void OnSetCaretRequest(SetCaretPositionRequestEvent e)
@@ -488,6 +572,14 @@ public partial class TextEditor : UserControl
             _errorPen = null; // theme or content may have changed
         }
 
+        // New: allow theme changes to be applied without re-supplying tokens (keeps current token map)
+        public void ApplyTheme(bool isDark)
+        {
+            _isDark = isDark;
+            // Invalidate cached pen so it's recreated with the new brush
+            _errorPen = null;
+        }
+
         private static void ExplodeMultiLine(int startLine, int endLine, int startCol, int endCol, TokenType type, Dictionary<int, List<SpanPart>> target)
         {
             if (endLine < startLine) return;
@@ -559,8 +651,49 @@ public partial class TextEditor : UserControl
                 TokenType.Error => $"Tok.Error.{suffix}",
                 _ => string.Empty
             };
-            if (!string.IsNullOrEmpty(key) && Application.Current != null && Application.Current.TryFindResource(key, out var res) && res is IBrush b)
-                return b;
+            // First try the base key (Tok.<Name>) which ThemeManager now maps to the active themed brush.
+            string baseKey = type switch
+            {
+                TokenType.Integer => "Tok.Integer",
+                TokenType.Real => "Tok.Real",
+                TokenType.Boolean => "Tok.Boolean",
+                TokenType.String => "Tok.String",
+                TokenType.Identifier => "Tok.Identifier",
+                TokenType.ReservedWord => "Tok.Reserved",
+                TokenType.Comment => "Tok.Comment",
+                TokenType.ArithmeticOperator => "Tok.Operator",
+                TokenType.RelationalOperator => "Tok.Operator",
+                TokenType.LogicalOperator => "Tok.Operator",
+                TokenType.AssignmentOperator => "Tok.Operator",
+                TokenType.ShiftOperator => "Tok.Operator",
+                TokenType.Symbol => "Tok.Symbol",
+                TokenType.Error => "Tok.Error",
+                _ => string.Empty
+            };
+
+            // Prefer the themed keys (Tok.*.Dark / Tok.*.Light) from the merged SyntaxColors dictionary.
+            if (!string.IsNullOrEmpty(key) && Application.Current != null && Application.Current.TryFindResource(key, out var themedRes) && themedRes is IBrush themedBrush)
+            {
+#if DEBUG
+                // Log successful resolution (only once per key to avoid spam)
+                System.Diagnostics.Debug.WriteLine($"      GetBrush: Found {key} -> {themedBrush}");
+#endif
+                return themedBrush;
+            }
+
+            // Fallback to base key mapping applied by ThemeManager (Tok.<Name>)
+            if (!string.IsNullOrEmpty(baseKey) && Application.Current != null && Application.Current.TryFindResource(baseKey, out var baseRes2) && baseRes2 is IBrush baseBrush2)
+                return baseBrush2;
+
+#if DEBUG
+            // Debugging help: log when neither themed nor base key found so fallback used
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"SemanticColorizer: no resource for {key} or {baseKey}; using fallback for dark={_isDark}");
+            }
+            catch { }
+#endif
+
             if (Fallback.TryGetValue(type, out var fb))
                 return new SolidColorBrush(_isDark ? fb.dark : fb.light);
             return _isDark ? Brushes.White : Brushes.Black;

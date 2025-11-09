@@ -30,8 +30,9 @@ public class App : Application
         // Initialize services
         InitializeServices();
 
-        // Apply default theme (Dark)
-        ThemeManager.ApplyTheme(Services != null ? skt.IDE.Services.AppThemeVariant.Dark : skt.IDE.Services.AppThemeVariant.Dark);
+        // Load and apply saved user settings (theme, fonts, etc.)
+        var settings = SettingsManager.Load();
+        SettingsManager.ApplySettings(settings);
     }
 
     private void InitializeServices()

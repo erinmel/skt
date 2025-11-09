@@ -3,10 +3,10 @@
 
   <!-- Font tokens -->
   <FontFamily x:Key="AppFontFamily">Segoe UI, Arial, sans-serif</FontFamily>
-  <x:Double x:Key="AppFontSize">12</x:Double>
+  <x:Double x:Key="AppFontSize">14</x:Double>
 
   <FontFamily x:Key="EditorFontFamily">Consolas, monospace</FontFamily>
-  <x:Double x:Key="EditorFontSize">12</x:Double>
+  <x:Double x:Key="EditorFontSize">14</x:Double>
 
   <!-- System brush aliases (prefer system brushes, fall back to sensible defaults) -->
   <StaticResource x:Key="AppBackgroundBrush" ResourceKey="SystemControlPageBackgroundChromeLowBrush" />
