@@ -10,7 +10,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Models;
 using Avalonia.Threading;
 using skt.IDE.Services.Buss;
-using CommunityToolkit.Mvvm.Messaging;
 using Timer = System.Timers.Timer;
 
 namespace skt.IDE.ViewModels.ToolWindows;
@@ -64,10 +63,10 @@ public partial class FileExplorerViewModel : ObservableObject
     public FileExplorerViewModel()
     {
         ProjectName = NoProjectName;
-        App.Messenger.Register<FileCreatedEvent>(this, (r, m) => OnFileCreated(m));
-        App.Messenger.Register<FileUpdatedEvent>(this, (r, m) => OnFileUpdated(m));
-        App.Messenger.Register<CreateFileRequestEvent>(this, (r, m) => AddNewFile(null));
-        App.Messenger.Register<ProjectFolderSelectedEvent>(this, (r, m) => OnProjectFolderSelected(m));
+        App.EventBus.Subscribe<FileCreatedEvent>(OnFileCreated);
+        App.EventBus.Subscribe<FileUpdatedEvent>(OnFileUpdated);
+        App.EventBus.Subscribe<CreateFileRequestEvent>(_ => AddNewFile(null));
+        App.EventBus.Subscribe<ProjectFolderSelectedEvent>(OnProjectFolderSelected);
         AddNewFileCommand = new RelayCommand<FileNode>(AddNewFile);
         AddNewFolderCommand = new RelayCommand<FileNode>(AddNewFolder);
         RenameResourceCommand = new RelayCommand<FileNode>(RenameResource);
@@ -134,7 +133,7 @@ public partial class FileExplorerViewModel : ObservableObject
             && e.OldFullPath.StartsWith(_currentProjectPath, StringComparison.OrdinalIgnoreCase)
             && e.FullPath.StartsWith(_currentProjectPath, StringComparison.OrdinalIgnoreCase))
         {
-            App.Messenger.Send(new FileRenamedEvent(e.OldFullPath, e.FullPath));
+            App.EventBus.Publish(new FileRenamedEvent(e.OldFullPath, e.FullPath));
         }
         _debounceTimer.Stop();
         _debounceTimer.Start();
@@ -266,17 +265,10 @@ public partial class FileExplorerViewModel : ObservableObject
 
     private void ApplyExpandedState(FileNode node, HashSet<string> expanded)
     {
-        if (node.IsPlaceholder) return;
-
-        bool shouldBeExpanded = expanded.Contains(node.FullPath);
-        node.IsExpanded = shouldBeExpanded;
-
-        if (shouldBeExpanded && node.IsDirectory)
+        node.IsExpanded = expanded.Contains(node.FullPath);
+        foreach (var child in node.Children)
         {
-            foreach (var child in node.Children.Where(c => !c.IsPlaceholder))
-            {
-                ApplyExpandedState(child, expanded);
-            }
+            ApplyExpandedState(child, expanded);
         }
     }
 
@@ -387,8 +379,8 @@ public partial class FileExplorerViewModel : ObservableObject
     {
         ProjectName = NoProjectName;
         _currentProjectPath = string.Empty;
-        App.Messenger.Send(new ProjectLoadedEvent(projectPath, success: false, errorMessage: "Project folder does not exist."));
-        App.Messenger.Send(new StatusBarMessageEvent("Failed to open project: Project folder does not exist.", true));
+        App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: false, errorMessage: "Project folder does not exist."));
+        App.EventBus.Publish(new StatusBarMessageEvent("Failed to open project: Project folder does not exist.", true));
     }
 
     private async Task<List<string>> BuildTopPathsAsync(string projectPath)
@@ -435,10 +427,10 @@ public partial class FileExplorerViewModel : ObservableObject
 
     private void PublishProjectLoaded(string projectPath, bool announce)
     {
-        App.Messenger.Send(new ProjectLoadedEvent(projectPath, success: true));
+        App.EventBus.Publish(new ProjectLoadedEvent(projectPath, success: true));
         if (announce)
         {
-            App.Messenger.Send(new StatusBarMessageEvent($"Project loaded: {Path.GetFileName(projectPath)}", 3000));
+            App.EventBus.Publish(new StatusBarMessageEvent($"Project loaded: {Path.GetFileName(projectPath)}", 3000));
         }
     }
 
@@ -470,8 +462,8 @@ public partial class FileExplorerViewModel : ObservableObject
                 Directory.CreateDirectory(targetDir);
                 var createdPath = GetUniqueFilePath(targetDir, "New File", ".skt");
                 await WithWatcherSuppressedAsync(() => Task.Run(() => File.WriteAllText(createdPath, string.Empty)));
-                App.Messenger.Send(new FileCreatedEvent(createdPath));
-                App.Messenger.Send(new StatusBarMessageEvent($"Created: {Path.GetFileName(createdPath)}", 3000));
+                App.EventBus.Publish(new FileCreatedEvent(createdPath));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Created: {Path.GetFileName(createdPath)}", 3000));
             }
             catch (Exception ex)
             {
@@ -499,8 +491,8 @@ public partial class FileExplorerViewModel : ObservableObject
             {
                 string createdDir = GetUniqueDirectoryPath(targetDir, "New Folder");
                 await WithWatcherSuppressedAsync(() => Task.Run(() => Directory.CreateDirectory(createdDir)));
-                App.Messenger.Send(new FileCreatedEvent(createdDir));
-                App.Messenger.Send(new StatusBarMessageEvent($"Folder created: {Path.GetFileName(createdDir)}", 3000));
+                App.EventBus.Publish(new FileCreatedEvent(createdDir));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Folder created: {Path.GetFileName(createdDir)}", 3000));
             }
             catch (Exception ex)
             {
@@ -537,29 +529,28 @@ public partial class FileExplorerViewModel : ObservableObject
         node.CancelInlineEdit();
     }
 
-    public async Task<bool> CommitInlineRename(FileNode node)
+    public async Task CommitInlineRename(FileNode? node)
     {
-        if (node == null) return false;
+        if (node == null) return;
         var rawNewName = node.Name.Trim();
         if (string.IsNullOrWhiteSpace(rawNewName))
         {
             node.CancelInlineEdit();
-            return false;
+            return;
         }
 
-        var invalidChars = Path.GetInvalidFileNameChars();
-        if (invalidChars.Any(rawNewName.Contains))
+        if (Path.GetInvalidFileNameChars().Any(rawNewName.Contains))
         {
-            App.Messenger.Send(new StatusBarMessageEvent("Invalid characters in name", true));
+            App.EventBus.Publish(new StatusBarMessageEvent("Invalid characters in name", true));
             node.CancelInlineEdit();
-            return false;
+            return;
         }
 
         var parentDir = Path.GetDirectoryName(node.FullPath);
         if (string.IsNullOrEmpty(parentDir))
         {
             node.CancelInlineEdit();
-            return false;
+            return;
         }
 
         var oldPath = node.FullPath;
@@ -570,14 +561,14 @@ public partial class FileExplorerViewModel : ObservableObject
         if (string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && !onlyCaseChanged)
         {
             node.CompleteInlineEdit();
-            return true;
+            return;
         }
 
         if (!onlyCaseChanged && (Directory.Exists(newPath) || File.Exists(newPath)))
         {
-            App.Messenger.Send(new StatusBarMessageEvent("A file or folder with that name already exists", true));
+            App.EventBus.Publish(new StatusBarMessageEvent("A file or folder with that name already exists", true));
             node.CancelInlineEdit();
-            return false;
+            return;
         }
 
         try
@@ -585,21 +576,19 @@ public partial class FileExplorerViewModel : ObservableObject
             await WithWatcherSuppressedAsync(() => Task.Run(() => MoveWithCaseHandling(oldPath, newPath, node.IsDirectory, onlyCaseChanged)));
             node.FullPath = newPath;
             node.CompleteInlineEdit();
-            App.Messenger.Send(new FileRenamedEvent(oldPath, newPath));
-            App.Messenger.Send(new FileUpdatedEvent(newPath));
-            App.Messenger.Send(new StatusBarMessageEvent($"Renamed to: {rawNewName}", 2000));
-            return true;
+            App.EventBus.Publish(new FileRenamedEvent(oldPath, newPath));
+            App.EventBus.Publish(new FileUpdatedEvent(newPath));
+            App.EventBus.Publish(new StatusBarMessageEvent($"Renamed to: {rawNewName}", 2000));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Rename failed: {ex}");
-            App.Messenger.Send(new StatusBarMessageEvent("Rename failed", true));
-            return false;
+            App.EventBus.Publish(new StatusBarMessageEvent("Rename failed", true));
+            node.CancelInlineEdit();
+            return;
         }
-        finally
-        {
-            await RefreshFileTree();
-        }
+
+        await RefreshFileTree();
     }
 
     private void Copy(FileNode? node)
@@ -667,14 +656,14 @@ public partial class FileExplorerViewModel : ObservableObject
             if (_isCutOperation)
             {
                 await WithWatcherSuppressedAsync(() => Task.Run(() => Directory.Move(srcPath, target)));
-                App.Messenger.Send(new FileUpdatedEvent(target));
-                App.Messenger.Send(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
+                App.EventBus.Publish(new FileUpdatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
             }
             else
             {
                 await WithWatcherSuppressedAsync(() => Task.Run(() => CopyDirectoryRecursive(srcPath, target)));
-                App.Messenger.Send(new FileCreatedEvent(target));
-                App.Messenger.Send(new StatusBarMessageEvent($"Folder copied: {Path.GetFileName(target)}", 3000));
+                App.EventBus.Publish(new FileCreatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Folder copied: {Path.GetFileName(target)}", 3000));
             }
             return;
         }
@@ -691,14 +680,14 @@ public partial class FileExplorerViewModel : ObservableObject
             if (_isCutOperation)
             {
                 await WithWatcherSuppressedAsync(() => Task.Run(() => File.Move(srcPath, target)));
-                App.Messenger.Send(new FileUpdatedEvent(target));
-                App.Messenger.Send(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
+                App.EventBus.Publish(new FileUpdatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Moved: {Path.GetFileName(target)}", 3000));
             }
             else
             {
                 await WithWatcherSuppressedAsync(() => Task.Run(() => File.Copy(srcPath, target)));
-                App.Messenger.Send(new FileCreatedEvent(target));
-                App.Messenger.Send(new StatusBarMessageEvent($"Copied: {Path.GetFileName(target)}", 3000));
+                App.EventBus.Publish(new FileCreatedEvent(target));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Copied: {Path.GetFileName(target)}", 3000));
             }
         }
     }
@@ -718,8 +707,8 @@ public partial class FileExplorerViewModel : ObservableObject
                         if (node.IsDirectory) Directory.Delete(node.FullPath, true);
                         else File.Delete(node.FullPath);
                     }));
-                App.Messenger.Send(new FileUpdatedEvent(node.FullPath));
-                App.Messenger.Send(new StatusBarMessageEvent($"Deleted: {Path.GetFileName(node.FullPath)}", 3000));
+                App.EventBus.Publish(new FileUpdatedEvent(node.FullPath));
+                App.EventBus.Publish(new StatusBarMessageEvent($"Deleted: {Path.GetFileName(node.FullPath)}", 3000));
             }
             catch (Exception ex)
             {

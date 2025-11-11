@@ -34,7 +34,7 @@ public class LexicalAnalysisCompletedEvent
     public List<ErrorToken> Errors { get; }
     public bool FromBuffer { get; }
 
-    public LexicalAnalysisCompletedEvent(string? filePath, List<Token> tokens, List<ErrorToken> errors, bool fromBuffer = false)
+    public LexicalAnalysisCompletedEvent(string? filePath, List<Token> tokens, List<ErrorToken> errors, bool fromBuffer)
     {
         FilePath = filePath;
         Tokens = tokens;

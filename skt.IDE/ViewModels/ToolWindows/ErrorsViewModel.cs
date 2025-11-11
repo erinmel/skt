@@ -7,7 +7,6 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Services.Buss;
 using skt.Shared;
-using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
@@ -47,7 +46,6 @@ public class ErrorsViewModel : ObservableObject
     private readonly ObservableCollection<FileErrorGroup> _lexicalGroups = new();
     private readonly ObservableCollection<FileErrorGroup> _syntaxGroups = new();
     private readonly ObservableCollection<FileErrorGroup> _semanticGroups = new();
-    private readonly Services.ActiveEditorService? _activeEditorService;
 
     public ObservableCollection<FileErrorGroup> LexicalGroups => _lexicalGroups;
     public ObservableCollection<FileErrorGroup> SyntaxGroups => _syntaxGroups;
@@ -55,15 +53,13 @@ public class ErrorsViewModel : ObservableObject
 
     public ErrorsViewModel()
     {
-        _activeEditorService = App.Services?.GetService(typeof(Services.ActiveEditorService)) as Services.ActiveEditorService;
-
-        App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalCompleted(m));
-        App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => OnLexicalFailed(m));
-        App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (r, m) => OnSyntaxCompleted(m));
-        App.Messenger.Register<SyntaxAnalysisFailedEvent>(this, (r, m) => OnSyntaxFailed(m));
-        App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (r, m) => OnSemanticCompleted(m));
-        App.Messenger.Register<SemanticAnalysisFailedEvent>(this, (r, m) => OnSemanticFailed(m));
-        App.Messenger.Register<FileClosedEvent>(this, (r, m) => OnFileClosed(m));
+        App.EventBus.Subscribe<LexicalAnalysisCompletedEvent>(OnLexicalCompleted);
+        App.EventBus.Subscribe<LexicalAnalysisFailedEvent>(OnLexicalFailed);
+        App.EventBus.Subscribe<SyntaxAnalysisCompletedEvent>(OnSyntaxCompleted);
+        App.EventBus.Subscribe<SyntaxAnalysisFailedEvent>(OnSyntaxFailed);
+        App.EventBus.Subscribe<SemanticAnalysisCompletedEvent>(OnSemanticCompleted);
+        App.EventBus.Subscribe<SemanticAnalysisFailedEvent>(OnSemanticFailed);
+        App.EventBus.Subscribe<FileClosedEvent>(OnFileClosed);
     }
 
     private void OnFileClosed(FileClosedEvent e)

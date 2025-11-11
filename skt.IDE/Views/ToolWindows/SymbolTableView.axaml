@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.SymbolTableView"
+             x:DataType="vm:SymbolTableViewModel">
+
+  <TreeDataGrid Name="SymbolTableGrid"
+                Source="{Binding Source}"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="True">
+    <TreeDataGrid.Styles>
+      <Style Selector="TreeDataGridRow">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridRow:nth-child(even)">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridRow:pointerover /template/ Border#BackgroundBorder">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+      </Style>
+      <Style Selector="TreeDataGridCell">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      </Style>
+    </TreeDataGrid.Styles>
+  </TreeDataGrid>
+</UserControl>
