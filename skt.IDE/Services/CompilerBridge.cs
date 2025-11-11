@@ -24,7 +24,7 @@ public class CompilerBridge
         _messenger.Register<SemanticAnalysisRequestEvent>(this, (r, m) => OnSemanticAnalysisRequest(m));
     }
 
-    private async void AnalyzeFileInMemory(string filePath)
+    private async Task AnalyzeFileInMemory(string filePath)
     {
         try
         {
