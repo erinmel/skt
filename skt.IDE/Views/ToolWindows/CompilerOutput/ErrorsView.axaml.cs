@@ -9,6 +9,7 @@ using skt.IDE.Services.Buss;
 using skt.IDE.ViewModels.ToolWindows;
 using Avalonia;
 using CommunityToolkit.Mvvm.Messaging;
+using System.Diagnostics;
 
 namespace skt.IDE.Views.ToolWindows.CompilerOutput;
 
@@ -42,7 +43,7 @@ public partial class ErrorsView : UserControl
 
     private static void FocusMainWindow()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var win = desktop.MainWindow;
             if (win != null)
@@ -96,6 +97,10 @@ public partial class ErrorsView : UserControl
             offset += col - 1;
             return Math.Clamp(offset, 0, text.Length);
         }
-        catch { return 0; }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"ErrorsView.ComputeOffsetFromLineColumn: {ex}");
+            return 0;
+        }
     }
 }

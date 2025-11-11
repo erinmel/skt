@@ -1,11 +1,11 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using skt.Compiler;
 using skt.IDE.Services.Buss;
 using skt.IDE.ViewModels;
-using skt.Shared;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Services;
@@ -81,7 +81,7 @@ public class DocumentStateManager
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error analyzing document {filePath}: {ex.Message}");
+            Debug.WriteLine($"DocumentStateManager: Error analyzing document {filePath}: {ex}");
         }
         finally
         {

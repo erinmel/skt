@@ -173,8 +173,8 @@ public class CompilerBridge
         }
     }
 
-    private void OnFileOpened(FileOpenedEvent e) => AnalyzeFileInMemory(e.FilePath);
-    private void OnTokenizeFileRequest(TokenizeFileRequestEvent e) => AnalyzeFileInMemory(e.FilePath);
+    private void OnFileOpened(FileOpenedEvent e) => _ = AnalyzeFileInMemory(e.FilePath);
+    private void OnTokenizeFileRequest(TokenizeFileRequestEvent e) => _ = AnalyzeFileInMemory(e.FilePath);
     private void OnTokenizeBufferRequest(TokenizeBufferRequestEvent e) => AnalyzeBuffer(e.Content, e.FilePath);
     private void OnParseFileRequest(ParseFileRequestEvent e) => PerformSyntaxAnalysis(e.FilePath);
     private void OnParseBufferRequest(ParseBufferRequestEvent e) => _ = ParseBuffer(e.Tokens, e.FilePath);

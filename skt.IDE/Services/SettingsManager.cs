@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 
@@ -45,7 +46,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading settings: {ex.Message}");
+                Debug.WriteLine($"SettingsManager: Error loading settings: {ex}");
             }
 
             // Return defaults if load failed or file doesn't exist
@@ -74,7 +75,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving settings: {ex.Message}");
+                Debug.WriteLine($"SettingsManager: Error saving settings: {ex}");
             }
         }
 

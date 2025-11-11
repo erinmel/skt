@@ -15,6 +15,7 @@ using AvaloniaEdit.Rendering;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.Messaging;
 using Avalonia.Styling;
+using System.Diagnostics;
 
 namespace skt.IDE.Views.Editor;
 
@@ -48,11 +49,14 @@ public partial class TextEditor : UserControl
                 var ed = editor;
                 Dispatcher.UIThread.Post(() =>
                 {
-                    try { ed.ApplyTheme(variant); } catch { }
+                    try { ed.ApplyTheme(variant); } catch (Exception ex) { Debug.WriteLine($"ApplyThemeToAll: {ex}"); }
                 });
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"ApplyThemeToAll: outer error applying theme to all editors: {ex}");
+        }
     }
 
     private static void FocusMainWindow()
@@ -150,11 +154,11 @@ public partial class TextEditor : UserControl
     // Called by containers (e.g. TabbedEditor) to apply a new theme variant to this editor.
     public void ApplyTheme(AppThemeVariant variant)
     {
-        Console.WriteLine($"  TextEditor.ApplyTheme: Applying {variant} theme to editor (document: {_currentDocumentPath ?? "no document"})");
+        Debug.WriteLine($"  TextEditor.ApplyTheme: Applying {variant} theme to editor (document: {_currentDocumentPath ?? "no document"})");
         bool isDark = variant == AppThemeVariant.Dark;
 
         // Update semantic colorizer to change suffix/brush lookups and invalidate cached pens
-        Console.WriteLine($"    - Updating colorizer isDark={isDark}");
+        Debug.WriteLine($"    - Updating colorizer isDark={isDark}");
         _colorizer?.ApplyTheme(isDark);
 
         // Force re-attach the colorizer to the TextView to ensure it re-processes lines
@@ -163,7 +167,6 @@ public partial class TextEditor : UserControl
             if (_editor?.TextArea?.TextView != null && _colorizer != null)
             {
                 var tv = _editor.TextArea.TextView;
-                // remove then re-add so the TextView re-evaluates line transformers
                 if (tv.LineTransformers.Contains(_colorizer))
                 {
                     tv.LineTransformers.Remove(_colorizer);
@@ -176,16 +179,22 @@ public partial class TextEditor : UserControl
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"TextEditor.ApplyTheme: error updating colorizer: {ex}");
+        }
 
         // Also refresh syntax colors from current ViewModel tokens to force a re-colorize pass
         try
         {
-            Console.WriteLine($"    - Refreshing syntax colors");
+            Debug.WriteLine($"    - Refreshing syntax colors");
             RefreshSyntaxColors(variant);
-            Console.WriteLine($"    - Syntax colors refreshed");
+            Debug.WriteLine($"    - Syntax colors refreshed");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"TextEditor.ApplyTheme: failed refreshing syntax colors: {ex}");
+        }
 
         // Update editor-level resources (font size, foreground/background) from application resources
         var app = Application.Current;
@@ -277,10 +286,10 @@ public partial class TextEditor : UserControl
 
         if (!_isSubscribed)
         {
-            App.Messenger.Register<SetCaretPositionRequestEvent>(this, (r, m) => OnSetCaretRequest(m));
-            App.Messenger.Register<SetCaretLineColumnRequestEvent>(this, (r, m) => OnSetCaretLineColumnRequest(m));
-            App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalCompleted(m));
-            App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (r, m) => OnLexicalFailed(m));
+            App.Messenger.Register<SetCaretPositionRequestEvent>(this, (_, m) => OnSetCaretRequest(m));
+            App.Messenger.Register<SetCaretLineColumnRequestEvent>(this, (_, m) => OnSetCaretLineColumnRequest(m));
+            App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (_, m) => OnLexicalCompleted(m));
+            App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (_, m) => OnLexicalFailed(m));
             _isSubscribed = true;
         }
 
@@ -676,7 +685,7 @@ public partial class TextEditor : UserControl
             {
 #if DEBUG
                 // Log successful resolution (only once per key to avoid spam)
-                System.Diagnostics.Debug.WriteLine($"      GetBrush: Found {key} -> {themedBrush}");
+                Debug.WriteLine($"      GetBrush: Found {key} -> {themedBrush}");
 #endif
                 return themedBrush;
             }
@@ -689,9 +698,12 @@ public partial class TextEditor : UserControl
             // Debugging help: log when neither themed nor base key found so fallback used
             try
             {
-                System.Diagnostics.Debug.WriteLine($"SemanticColorizer: no resource for {key} or {baseKey}; using fallback for dark={_isDark}");
+                Debug.WriteLine($"SemanticColorizer: no resource for {key} or {baseKey}; using fallback for dark={_isDark}");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"SemanticColorizer: Error logging resource lookup: {ex.Message}");
+            }
 #endif
 
             if (Fallback.TryGetValue(type, out var fb))
@@ -754,6 +766,33 @@ public partial class TextEditor : UserControl
             var start = view.GetVisualPosition(new TextViewPosition(doc.GetLocation(startOffset)), VisualYPosition.TextBottom);
             var end = view.GetVisualPosition(new TextViewPosition(doc.GetLocation(endOffset)), VisualYPosition.TextBottom);
             if (double.IsNaN(start.X) || double.IsNaN(end.X)) return;
+
+            try
+            {
+                var viewType = view.GetType();
+                var scrollProp = viewType.GetProperty("ScrollOffset");
+                if (scrollProp != null)
+                {
+                    var scrollVal = scrollProp.GetValue(view);
+                    if (scrollVal != null)
+                    {
+                        var sxProp = scrollVal.GetType().GetProperty("X");
+                        var syProp = scrollVal.GetType().GetProperty("Y");
+                        if (sxProp != null && syProp != null)
+                        {
+                            double sx = Convert.ToDouble(sxProp.GetValue(scrollVal));
+                            double sy = Convert.ToDouble(syProp.GetValue(scrollVal));
+                            start = new Point(start.X - sx, start.Y - sy);
+                            end = new Point(end.X - sx, end.Y - sy);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If reflection fails, fall back to original positions (best-effort).
+            }
+
             double y = start.Y - 1;
             double x = start.X;
             double xEnd = end.X;

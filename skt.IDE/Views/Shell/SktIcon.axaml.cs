@@ -154,7 +154,7 @@ public partial class SktIcon : UserControl
         else
         {
             IconImage.OpacityMask = null;
-            Background = Avalonia.Media.Brushes.Transparent;
+            Background = Brushes.Transparent;
         }
     }
 }

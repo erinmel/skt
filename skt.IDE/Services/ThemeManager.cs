@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Markup.Xaml;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Layout;
 
 namespace skt.IDE.Services
 {
@@ -50,7 +50,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to set theme tokens: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to set theme tokens: {ex}");
             }
 
             // Reload icon resources: remove any previously-merged icon dictionaries so consumers
@@ -65,7 +65,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to reload syntax token resources: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to reload syntax token resources: {ex}");
             }
 
             // Apply base Tok.* keys mapped to the active theme (Tok.<Name> -> Tok.<Name>.<Dark|Light>)
@@ -75,7 +75,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to apply active syntax token keys: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to apply active syntax token keys: {ex}");
             }
 
             // Notify subscribers that the theme was applied and resources reloaded.
@@ -85,7 +85,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: error while invoking ThemeApplied handlers: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: error while invoking ThemeApplied handlers: {ex}");
             }
 
             // As a fallback, ask TextEditor to update all registered instances (avoids visual-tree traversal).
@@ -95,7 +95,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to notify TextEditor instances: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to notify TextEditor instances: {ex}");
             }
         }
 
@@ -123,7 +123,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to load ThemeResources.axaml: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to load ThemeResources.axaml: {ex}");
             }
         }
 
@@ -266,7 +266,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to refresh theme/icon resources after font update: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to refresh theme/icon resources after font update: {ex}");
             }
 
             // Notify subscribers that font tokens changed so controls that size based on AppFontSize can update.
@@ -277,7 +277,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: error while invoking ThemeApplied after UpdateFontTokens: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: error while invoking ThemeApplied after UpdateFontTokens: {ex}");
             }
         }
 
@@ -313,7 +313,7 @@ namespace skt.IDE.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ThemeManager: failed to load SyntaxColors.axaml: {ex.Message}");
+                Debug.WriteLine($"ThemeManager: failed to load SyntaxColors.axaml: {ex}");
             }
         }
 

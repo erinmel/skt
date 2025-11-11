@@ -44,7 +44,7 @@
       <DependentUpon>StatusBar.axaml</DependentUpon>
     </Compile>
     <Compile Update="Views\ToolWindows\Chrome\Toolbar.axaml.cs">
-      <DependentUpon>ToolBar.axaml</DependentUpon>
+      <DependentUpon>Toolbar.axaml</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>
