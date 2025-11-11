@@ -431,29 +431,9 @@ public class SemanticAnalyzer
   private void AnalyzeCinOperator(AnnotatedAstNode node)
   {
     // Analyze as a function call with cin as the callee
-    if (node.Children.Count > 0)
+    foreach (var child in node.Children)
     {
-      var firstChild = node.Children[0];
-      AnalyzeNode(firstChild);
-
-      if (firstChild.Rule == "ID" && firstChild.Token != null)
-      {
-        string varName = firstChild.Token.Value;
-
-        if (!_symbolTable.IsDeclared(varName, _currentScope))
-        {
-          ReportError(
-              SemanticErrorType.UndeclaredVariable,
-              $"Variable '{varName}' is used before declaration",
-              firstChild.Line, firstChild.Column, firstChild.EndLine, firstChild.EndColumn,
-              varName
-          );
-        }
-        else
-        {
-          firstChild.DataType = _symbolTable.GetSymbolType(varName, _currentScope);
-        }
-      }
+      AnalyzeNode(child);
     }
 
     // Set return type to void for cin operator
