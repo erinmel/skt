@@ -131,14 +131,4 @@ public class SymbolTable
     _entries.Clear();
     _currentOffset = 0;
   }
-
-  /// <summary>
-  /// Copies entries from another symbol table
-  /// </summary>
-  public void CopyFrom(SymbolTable other)
-  {
-    _entries.Clear();
-    _entries.AddRange(other.Entries);
-    _currentOffset = other._currentOffset;
-  }
 }

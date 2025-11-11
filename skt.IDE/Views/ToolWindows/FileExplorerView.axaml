@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             xmlns:models="using:skt.IDE.Models"
+             xmlns:views="using:skt.IDE.Views"
+             xmlns:converters1="clr-namespace:skt.IDE.Services.Converters"
+             x:Class="skt.IDE.Views.ToolWindows.FileExplorerView"
+             x:DataType="vm:FileExplorerViewModel">
+
+  <UserControl.Resources>
+    <converters1:IconKeyToResourceConverter x:Key="IconKeyConverter"/>
+  </UserControl.Resources>
+
+  <Design.DataContext>
+    <vm:FileExplorerViewModel/>
+  </Design.DataContext>
+
+  <UserControl.Styles>
+    <Style Selector="MenuItem > StackPanel">
+      <Setter Property="Orientation" Value="Horizontal"/>
+      <Setter Property="Spacing" Value="3"/>
+    </Style>
+
+    <Style Selector="MenuItem /template/ Border">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="MenuItem:pointerover /template/ Border">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
+    </Style>
+
+    <!-- Inline editor style: remove extra spacing/height and use app default foreground -->
+    <Style Selector="TextBox#InlineEditor">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Project Header -->
+    <Border
+      Grid.Row="0"
+      Padding="8,4" Margin="2"
+      BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+      BorderThickness="0,1,0,1">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+        <TextBlock Text="{Binding ProjectName}" FontWeight="Bold"/>
+      </StackPanel>
+    </Border>
+
+    <!-- File Tree -->
+    <TreeView Grid.Row="1"
+              Name="FileTreeView"
+              ItemsSource="{Binding RootNodes}"
+              Margin="2">
+
+      <TreeView.ItemTemplate>
+        <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="models:FileNode">
+          <StackPanel Orientation="Horizontal" Spacing="3" IsVisible="{Binding IsPlaceholder, Converter={x:Static converters1:BoolInvertConverter.Instance}}">
+            <views:SktIcon IconKey="{Binding IconKey}" IconSize="16"/>
+            <TextBlock Text="{Binding DisplayName}" IsVisible="{Binding IsEditing, Converter={x:Static converters1:BoolInvertConverter.Instance}}" VerticalAlignment="Center"/>
+            <TextBox Name="InlineEditor"
+                     Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     IsVisible="{Binding IsEditing}"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     Padding="0"
+                     Margin="0"
+                     KeyDown="InlineEditor_KeyDown"
+                     LostFocus="InlineEditor_LostFocus"
+                     MinWidth="40"/>
+          </StackPanel>
+        </TreeDataTemplate>
+      </TreeView.ItemTemplate>
+
+      <TreeView.Styles>
+        <Style Selector="TreeViewItem" x:DataType="models:FileNode">
+          <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+        </Style>
+      </TreeView.Styles>
+
+      <TreeView.ContextMenu>
+        <ContextMenu>
+
+          <MenuItem Command="{Binding AddNewFileCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ToolbarFileNew" IconSize="16"/>
+                <TextBlock Text="Add New File"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem Command="{Binding AddNewFolderCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ToolbarProjectNew" IconSize="16"/>
+                <TextBlock Text="Add New Folder"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem Command="{Binding RenameResourceCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ContentRename" IconSize="16"/>
+                <TextBlock Text="Rename (F2)"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <Separator/>
+
+          <MenuItem Command="{Binding CopyCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ContentCopy" IconSize="16"/>
+                <TextBlock Text="Copy"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem Command="{Binding CutCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ContentCut" IconSize="16"/>
+                <TextBlock Text="Cut"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem Command="{Binding PasteCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ContentPaste" IconSize="16"/>
+                <TextBlock Text="Paste"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+
+          <MenuItem Command="{Binding DeleteCommand}">
+            <MenuItem.Header>
+              <StackPanel>
+                <views:SktIcon IconKey="Icon.ToolbarDelete" IconSize="16"/>
+                <TextBlock Text="Delete"/>
+              </StackPanel>
+            </MenuItem.Header>
+          </MenuItem>
+        </ContextMenu>
+      </TreeView.ContextMenu>
+
+    </TreeView>
+  </Grid>
+</UserControl>
