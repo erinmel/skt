@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        CenterAndSizeWindowToScreen();
         InitializeUi();
 
         // Keep ViewModel in sync when the WindowState changes (toolbar may change it directly)
@@ -390,4 +391,35 @@ public partial class MainWindow : Window
     }
 
     #endregion
+
+    private void CenterAndSizeWindowToScreen()
+    {
+        var screen = Screens.Primary;
+        if (screen?.WorkingArea == null) return;
+
+        var workingArea = screen.WorkingArea;
+
+        // Calculate width as 80% of screen width
+        var targetWidth = workingArea.Width * 0.8;
+
+        // Calculate height as 66% of the calculated width (maintaining aspect ratio)
+        var targetHeight = targetWidth * 0.66;
+
+        // Ensure the height doesn't exceed screen boundaries
+        if (targetHeight > workingArea.Height * 0.9)
+        {
+            targetHeight = workingArea.Height * 0.9;
+            // Recalculate width to maintain aspect ratio if height was clamped
+            targetWidth = targetHeight / 0.66;
+        }
+
+        Width = targetWidth;
+        Height = targetHeight;
+
+        // Center the window on screen
+        Position = new PixelPoint(
+            (int)(workingArea.X + (workingArea.Width - targetWidth) / 2),
+            (int)(workingArea.Y + (workingArea.Height - targetHeight) / 2)
+        );
+    }
 }
