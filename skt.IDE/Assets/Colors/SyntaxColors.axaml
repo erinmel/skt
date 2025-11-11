@@ -20,4 +20,5 @@
   <SolidColorBrush x:Key="Tok.Comment.Light" Color="#5B7B3A"/>
   <SolidColorBrush x:Key="Tok.Operator.Light" Color="#D24E00"/>
   <SolidColorBrush x:Key="Tok.Symbol.Light" Color="#333333"/>
+  <SolidColorBrush x:Key="Tok.Error.Light" Color="#FF5555"/>
 </ResourceDictionary>
