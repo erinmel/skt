@@ -90,4 +90,14 @@ public static class IconKeys
     public const string FolderGitOpen = "Icon.FolderGitOpen";
     public const string FolderGithub = "Icon.FolderGithub";
     public const string FolderGithubOpen = "Icon.FolderGithubOpen";
+    public const string Tokenization = "Icon.Tokenization";
+    public const string TokenizationErrors = "Icon.TokenizationErrors";
+    public const string TokenizationErrorsAlert = "Icon.TokenizationErrorsAlert";
+    public const string Syntax = "Icon.Syntax";
+    public const string SyntaxErrors = "Icon.SyntaxErrors";
+    public const string SyntaxErrorsAlert = "Icon.SyntaxErrorsAlert";
+    public const string Semantic = "Icon.Semantic";
+    public const string SemanticErrors = "Icon.SemanticErrors";
+    public const string SemanticErrorsAlert = "Icon.SemanticErrorsAlert";
+    public const string SymbolTable = "Icon.SymbolTable";
 }

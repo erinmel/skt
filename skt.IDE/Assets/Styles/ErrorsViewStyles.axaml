@@ -1,0 +1,192 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Root: ensure full-width stretch in containers -->
+    <Style Selector="UserControl.errors-view">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- Expander - full width, clean design -->
+    <Style Selector="UserControl.errors-view Expander">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,0,4"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- Header wrapper border to own the padding and background -->
+    <Style Selector="UserControl.errors-view Border.file-group-header-border">
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeLowBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- Custom header container (Grid inside) -->
+    <Style Selector="UserControl.errors-view Grid.file-group-header">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- Contenedor de errores: fondo y padding mínimo -->
+    <Style Selector="UserControl.errors-view Border.file-errors-container">
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view Border.file-icon-box">
+        <Setter Property="Width" Value="18"/>
+        <Setter Property="Height" Value="18"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view TextBlock.file-icon">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumHighBrush}"/>
+        <Setter Property="Text" Value="📄"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view TextBlock.file-name">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumHighBrush}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSizeSmall}"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view Border.error-count-badge">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        <Setter Property="Padding" Value="6,0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="MinWidth" Value="20"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view TextBlock.error-count-text">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSizeSmall}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Expander header hover states -->
+    <Style Selector="UserControl.errors-view Expander:pointerover Grid.file-group-header">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+
+    <!-- Expander header - compact and professional -->
+    <Style Selector="UserControl.errors-view Expander /template/ ToggleButton">
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="MinHeight" Value="20"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeLowBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view Expander /template/ ToggleButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+
+    <!-- Header text - semibold, clear -->
+    <Style Selector="UserControl.errors-view Expander /template/ ToggleButton TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSizeSmall}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Make Expander content flush with left (no default indent) -->
+    <Style Selector="UserControl.errors-view Expander /template/ Border#ExpanderContent">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+
+    <!-- Error item button - full width, clean -->
+    <Style Selector="UserControl.errors-view Button.error-item">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <!-- Grid interno de cada fila: alineación izquierda y espaciado compacto -->
+    <Style Selector="UserControl.errors-view Grid.error-item-grid">
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+
+    <!-- Alternating row backgrounds for error items -->
+    <Style Selector="UserControl.errors-view ItemsControl.errors-items-control ContentPresenter:nth-child(even) Button.error-item">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+    </Style>
+    <Style Selector="UserControl.errors-view ItemsControl.errors-items-control ContentPresenter:nth-child(odd) Button.error-item">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- Hover de fila -->
+    <Style Selector="UserControl.errors-view Button.error-item:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+
+    <!-- Hover a nivel de contenedor -->
+    <Style Selector="UserControl.errors-view ItemsControl.errors-items-control ContentPresenter:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
+    </Style>
+
+    <!-- Bring text further left and compact spacing -->
+    <Style Selector="UserControl.errors-view TextBlock.error-message">
+        <Setter Property="Margin" Value="6,0,8,0"/>
+        <Setter Property="TextAlignment" Value="Left"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view Border.error-icon-box">
+        <Setter Property="Width" Value="14"/>
+        <Setter Property="Height" Value="14"/>
+        <Setter Property="CornerRadius" Value="2"/>
+        <Setter Property="Background" Value="#E74856"/>
+        <Setter Property="Margin" Value="2,0,6,0"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view TextBlock.error-icon">
+        <Setter Property="Text" Value="✕"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- Error location badge -->
+    <Style Selector="UserControl.errors-view Border.error-location-badge">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumBrush}"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="UserControl.errors-view TextBlock.error-location">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource EditorFontFamily}"/>
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSizeSmall}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- ItemsControl - full width -->
+    <Style Selector="UserControl.errors-view ItemsControl">
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+</Styles>

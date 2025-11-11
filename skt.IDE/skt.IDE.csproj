@@ -21,7 +21,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!-- For Interaction.Behaviors, EventTriggerBehavior, InvokeCommandAction -->
     <PackageReference Include="Avalonia.Xaml.Interactivity" Version="11.3.0" />
     <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0" />
@@ -34,5 +34,17 @@
     <!-- Added reference to compiler project for lexical analysis integration -->
     <ProjectReference Include="..\skt.Compiler\skt.Compiler.csproj" />
     <ProjectReference Include="..\skt.Shared\skt.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\ToolWindows\Terminal\TerminalPanel.axaml.cs">
+      <DependentUpon>TerminalPanel.axaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\ToolWindows\Chrome\StatusBar.axaml.cs">
+      <DependentUpon>StatusBar.axaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\ToolWindows\Chrome\Toolbar.axaml.cs">
+      <DependentUpon>ToolBar.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

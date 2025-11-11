@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using skt.IDE.Services.Buss;
 using skt.Shared;
 using System;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.ViewModels.ToolWindows;
 
@@ -45,8 +46,8 @@ public partial class SymbolTableViewModel : ObservableObject, IDisposable
     {
         _source = CreateSource(_rows);
 
-        App.EventBus.Subscribe<SemanticAnalysisCompletedEvent>(OnSemanticCompleted);
-        App.EventBus.Subscribe<FileClosedEvent>(OnFileClosed);
+        App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (r, m) => OnSemanticCompleted(m));
+        App.Messenger.Register<FileClosedEvent>(this, (r, m) => OnFileClosed(m));
     }
 
     private FlatTreeDataGridSource<SymbolRow> CreateSource(IList<SymbolRow> items) => new(items)

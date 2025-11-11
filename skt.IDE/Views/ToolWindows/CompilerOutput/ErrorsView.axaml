@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             xmlns:compilerOutput="using:skt.IDE.Views.ToolWindows.CompilerOutput"
+             x:Class="skt.IDE.Views.ToolWindows.CompilerOutput.ErrorsView"
+             Classes="errors-view">
+  
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                Background="Transparent"
+                Padding="0"
+                HorizontalAlignment="Stretch">
+    <ItemsControl ItemsSource="{Binding GroupsSource, RelativeSource={RelativeSource AncestorType={x:Type compilerOutput:ErrorsView}}}"
+                  HorizontalAlignment="Stretch">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:FileErrorGroup">
+          <Expander IsExpanded="True" HorizontalAlignment="Stretch">
+            <Expander.Header>
+              <!-- Header envuelto en Border para permitir Padding en estilos -->
+              <Border Classes="file-group-header-border" HorizontalAlignment="Stretch">
+                <Grid Classes="file-group-header"
+                      ColumnDefinitions="*,Auto"
+                      HorizontalAlignment="Stretch">
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding DisplayName}"
+                             Classes="file-name"/>
+                  <Border Grid.Column="1" Classes="error-count-badge">
+                    <TextBlock Text="{Binding Errors.Count}" Classes="error-count-text"/>
+                  </Border>
+                </Grid>
+              </Border>
+            </Expander.Header>
+            <Border Classes="file-errors-container" HorizontalAlignment="Stretch">
+              <ItemsControl ItemsSource="{Binding Errors}"
+                            HorizontalAlignment="Stretch"
+                            Classes="errors-items-control">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ErrorItem">
+                    <Button DoubleTapped="OnErrorDoubleTapped"
+                            Tag="{Binding FilePath}"
+                            ToolTip.Tip="{Binding Message}"
+                            Classes="error-item"
+                            HorizontalAlignment="Stretch">
+                      <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch" Classes="error-item-grid">
+                        <Border Grid.Column="0" Classes="error-icon-box">
+                          <TextBlock Classes="error-icon"/>
+                        </Border>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Message}"
+                                   Classes="error-message"/>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </Expander>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</UserControl>
