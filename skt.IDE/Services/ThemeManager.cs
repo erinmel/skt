@@ -232,8 +232,6 @@ namespace skt.IDE.Services
                 app.Resources["StatusBarHeight"] = glStatusBar;
 
                 // Window/dialog defaults scaled slightly by font size
-                app.Resources["WindowDefaultWidth"] = Math.Max(800, Math.Round(clampedAppFontSize * 85));
-                app.Resources["WindowDefaultHeight"] = Math.Max(600, Math.Round(clampedAppFontSize * 57));
                 app.Resources["DialogDefaultWidth"] = Math.Round(clampedAppFontSize * 30);
                 app.Resources["DialogDefaultHeight"] = Math.Round(clampedAppFontSize * 14);
 
