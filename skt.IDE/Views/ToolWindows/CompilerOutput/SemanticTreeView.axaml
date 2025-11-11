@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.CompilerOutput.SemanticTreeView"
+             x:DataType="vm:SemanticTreeViewModel">
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="{DynamicResource ControlPaddingSmall}">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <Button Command="{Binding ExpandAllCommand}"
+                        ToolTip.Tip="Expand All Nodes"
+                        Content="Expand All"
+                        IsEnabled="{Binding TreeSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <Button Command="{Binding CollapseAllCommand}"
+                        ToolTip.Tip="Collapse All Nodes"
+                        Content="Collapse All"
+                        IsEnabled="{Binding TreeSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </StackPanel>
+        </Border>
+
+        <TreeDataGrid Name="SemanticTreeGrid"
+                      Source="{Binding TreeSource}"
+                      Classes="skt-standard"
+                      Margin="4,0,0,0"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="False"/>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels"
+             xmlns:shell="using:skt.IDE.Views.Shell"
+             xmlns:compilerOutput="using:skt.IDE.Views.ToolWindows.CompilerOutput"
+             x:Class="skt.IDE.Views.ToolWindows.Terminal.TerminalPanel"
+             x:DataType="vm:MainWindowViewModel">
+  <UserControl.Styles>
+    <Style Selector="TabControl#TerminalTabView">
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="ScrollViewer">
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="FontSize" Value="{DynamicResource EditorFontSize}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="compilerOutput|ErrorsView TextBlock">
+      <Setter Property="TextAlignment" Value="Left"/>
+    </Style>
+  </UserControl.Styles>
+  <Border Margin="2">
+    <TabControl Name="TerminalTabView" Padding="0">
+      <TabItem Header="Terminal">
+        <ScrollViewer>
+          <TextBox AcceptsReturn="True"
+                   FontFamily="Consolas,monospace"
+                   Watermark="Terminal output will appear here..."
+                   IsReadOnly="True"/>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Lexical Errors">
+        <compilerOutput:ErrorsView GroupsSource="{Binding Errors.LexicalGroups}" PanelTabIndex="1" />
+      </TabItem>
+      <TabItem Header="Syntax Errors">
+        <compilerOutput:ErrorsView GroupsSource="{Binding Errors.SyntaxGroups}" PanelTabIndex="2" />
+      </TabItem>
+      <TabItem Header="Semantic Errors">
+        <compilerOutput:ErrorsView GroupsSource="{Binding Errors.SemanticGroups}" PanelTabIndex="3" />
+      </TabItem>
+      <TabItem Header="Symbol Table">
+        <compilerOutput:SymbolTableView DataContext="{Binding SymbolTable}" />
+      </TabItem>
+    </TabControl>
+  </Border>
+</UserControl>

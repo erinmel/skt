@@ -8,6 +8,23 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Central theme tokens and shared resources (styles are loaded via StyleInclude above) -->
+                <ResourceInclude Source="avares://skt.IDE/Assets/Styles/ThemeResources.axaml"/>
+                <ResourceInclude Source="avares://skt.IDE/Assets/Icons/ToolIconResources.axaml"/>
+                <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FilesIconResource.axaml"/>
+                <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FoldersIconResource.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
+
+            <x:String x:Key="Skt.Version">1.0.0</x:String>
+            <x:String x:Key="Skt.Title">Skt Ide</x:String>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme>
             <FluentTheme.Palettes>
@@ -27,115 +44,21 @@
                     ChromeMedium="#ff3f2e4b" ChromeMediumLow="#ff584960" ChromeWhite="White" ListLow="#ff3f2e4b" ListMedium="#ff64576b" RegionColor="#ff262738" />
             </FluentTheme.Palettes>
         </FluentTheme>
-        <!-- TreeDataGrid control styles -->
+
+        <!-- External control styles -->
         <StyleInclude Source="avares://Avalonia.Controls.TreeDataGrid/Themes/Fluent.axaml"/>
-        <!-- AvaloniaEdit default control styles -->
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
 
-        <!-- Base Button Style - Common properties for all buttons -->
-        <Style Selector="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border x:Name="Root"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="4"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter Content="{TemplateBinding Content}"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
+        <!-- Central theme styles (tokens are separate resource dictionary) -->
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/ThemeStyles.axaml"/>
 
-        <!-- Disabled button template content -->
-        <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Opacity" Value="0.4"/>
-        </Style>
-
-        <!-- Hover effect for all buttons -->
-        <Style Selector="Button:pointerover /template/ Border#Root">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-        </Style>
-
-        <!-- Icon-only buttons (ToolIcon tag) -->
-        <Style Selector="Button[Tag=ToolIcon]">
-            <Setter Property="Padding" Value="6"/>
-        </Style>
-
-        <!-- Selected state for tool icons -->
-        <Style Selector="Button[Tag=ToolIcon].selected /template/ Border#Root">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-        </Style>
-
-        <!-- Window control buttons -->
-        <Style Selector="Button[Tag=WindowControl]">
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Width" Value="46"/>
-            <Setter Property="Height" Value="32"/>
-        </Style>
-
-        <!-- Special close button hover -->
-        <Style Selector="Button[Tag=WindowControl][Name=CloseButton]:pointerover">
-            <Setter Property="Background" Value="#E81123"/>
-        </Style>
-
-        <!-- Window control button hover -->
-        <Style Selector="Button[Tag=WindowControl]:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-        </Style>
-
-        <!-- Global splitter style -->
-        <Style Selector="GridSplitter">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                            Width="{TemplateBinding Width}"
-                            Height="{TemplateBinding Height}"
-                            Margin="0"
-                            Padding="0"/>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-
-        <!-- Disabled states - simple approach -->
-        <Style Selector="Button:disabled">
-            <Setter Property="Opacity" Value="0.4"/>
-        </Style>
-
-        <Style Selector="MenuItem:disabled">
-            <Setter Property="Opacity" Value="0.4"/>
-        </Style>
-
-
-        <!-- Hover effect for all buttons -->
-        <Style Selector="Button:pointerover /template/ Border#Root">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"/>
-        </Style>
-        <!-- Hide dropdown arrow on DropDownButton -->
-        <Style Selector="DropDownButton PathIcon">
-            <Setter Property="IsVisible" Value="False"/>
-        </Style>
+        <!-- Custom component styles -->
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/ButtonStyles.axaml"/>
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/ControlStyles.axaml"/>
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/GridSplitterStyles.axaml"/>
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/TreeDataGridStyles.axaml"/>
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/DialogStyles.axaml"/>
+        <StyleInclude Source="avares://skt.IDE/Assets/Styles/ErrorsViewStyles.axaml"/>
     </Application.Styles>
 
-    <Application.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://skt.IDE/Assets/Icons/ToolIconResources.axaml"/>
-                <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FilesIconResource.axaml"/>
-                <ResourceInclude Source="avares://skt.IDE/Assets/Icons/FoldersIconResource.axaml"/>
-                <!-- Syntax token colors -->
-                <ResourceInclude Source="avares://skt.IDE/Assets/Colors/SyntaxColors.axaml"/>
-            </ResourceDictionary.MergedDictionaries>
-
-            <FontFamily x:Key="SymbolsNerdFontMono">avares://skt.IDE/Assets/Fonts/SymbolsNerdFontMono-Regular.ttf#Symbols Nerd Font Mono</FontFamily>
-
-            <x:String x:Key="Skt.Version">1.0.0</x:String>
-            <x:String x:Key="Skt.Title">Skt Ide</x:String>
-        </ResourceDictionary>
-    </Application.Resources>
 </Application>
