@@ -276,6 +276,20 @@ public partial class TextEditor : UserControl
         else if (Text != _editor.Document.Text)
             _editor.Document.Text = Text ?? string.Empty;
 
+        // Apply font size from theme manager
+        var app = Application.Current;
+        if (app?.Resources != null)
+        {
+            if (app.Resources.TryGetValue("EditorFontSize", out var efs) && efs is double ef)
+                _editor.FontSize = ef;
+
+            if (app.Resources.TryGetValue("AppForegroundHighBrush", out var fg) && fg is IBrush fb)
+                _editor.Foreground = fb;
+
+            if (app.Resources.TryGetValue("AppBackgroundBrush", out var bg) && bg is IBrush bb)
+                _editor.Background = bb;
+        }
+
         _colorizer = new SemanticColorizer();
         _editor.TextArea.TextView.LineTransformers.Add(_colorizer);
         _editor.TextArea.TextView.BackgroundRenderers.Add(_colorizer);
@@ -290,6 +304,8 @@ public partial class TextEditor : UserControl
             App.Messenger.Register<SetCaretLineColumnRequestEvent>(this, (_, m) => OnSetCaretLineColumnRequest(m));
             App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (_, m) => OnLexicalCompleted(m));
             App.Messenger.Register<LexicalAnalysisFailedEvent>(this, (_, m) => OnLexicalFailed(m));
+            App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (_, m) => OnSemanticCompleted(m));
+            App.Messenger.Register<SemanticAnalysisFailedEvent>(this, (_, m) => OnSemanticFailed(m));
             _isSubscribed = true;
         }
 
@@ -488,6 +504,38 @@ public partial class TextEditor : UserControl
         }
     }
 
+    private void OnSemanticCompleted(SemanticAnalysisCompletedEvent e)
+    {
+        if (_editor == null || _colorizer == null) return;
+
+        var eventPath = e.FilePath ?? string.Empty;
+        var docPath = _currentDocumentPath ?? string.Empty;
+
+        var isForCurrentDocument = string.Equals(docPath, eventPath, StringComparison.OrdinalIgnoreCase);
+
+        if (isForCurrentDocument)
+        {
+            _colorizer.UpdateSemanticErrors(e.Errors);
+            _editor.TextArea.TextView.Redraw();
+        }
+    }
+
+    private void OnSemanticFailed(SemanticAnalysisFailedEvent e)
+    {
+        if (_editor == null || _colorizer == null) return;
+
+        var eventPath = e.FilePath ?? string.Empty;
+        var docPath = _currentDocumentPath ?? string.Empty;
+
+        var isForCurrentDocument = string.Equals(docPath, eventPath, StringComparison.OrdinalIgnoreCase);
+
+        if (isForCurrentDocument)
+        {
+            _colorizer.UpdateSemanticErrors(Array.Empty<SemanticError>());
+            _editor.TextArea.TextView.Redraw();
+        }
+    }
+
     private void PublishCursor()
     {
         if (_editor?.Document == null) return;
@@ -532,8 +580,11 @@ public partial class TextEditor : UserControl
         private bool _isDark;
         private readonly Dictionary<int, List<SpanPart>> _tokenPartsByLine = new();
         private readonly Dictionary<int, List<SpanPart>> _errorPartsByLine = new();
+        private readonly Dictionary<int, List<SpanPart>> _semanticErrorPartsByLine = new();
         private readonly List<int> _sortedErrorLines = new();
+        private readonly List<int> _sortedSemanticErrorLines = new();
         private Pen? _errorPen;
+        private Pen? _semanticErrorPen;
 
         private readonly struct SpanPart
         {
@@ -571,6 +622,7 @@ public partial class TextEditor : UserControl
             _isDark = isDark;
             _tokenPartsByLine.Clear();
             _errorPartsByLine.Clear();
+            _semanticErrorPartsByLine.Clear();
             foreach (var t in tokens)
                 ExplodeMultiLine(t.Line, t.EndLine, t.Column, t.EndColumn, t.Type, _tokenPartsByLine);
             foreach (var e in errors)
@@ -578,15 +630,29 @@ public partial class TextEditor : UserControl
             _sortedErrorLines.Clear();
             _sortedErrorLines.AddRange(_errorPartsByLine.Keys);
             _sortedErrorLines.Sort();
-            _errorPen = null; // theme or content may have changed
+            _sortedSemanticErrorLines.Clear();
+            _errorPen = null;
+            _semanticErrorPen = null;
+        }
+
+        public void UpdateSemanticErrors(IEnumerable<SemanticError> semanticErrors)
+        {
+            _semanticErrorPartsByLine.Clear();
+            foreach (var e in semanticErrors)
+                ExplodeMultiLine(e.Line, e.EndLine, e.Column, e.EndColumn, TokenType.Error, _semanticErrorPartsByLine);
+            _sortedSemanticErrorLines.Clear();
+            _sortedSemanticErrorLines.AddRange(_semanticErrorPartsByLine.Keys);
+            _sortedSemanticErrorLines.Sort();
+            _semanticErrorPen = null;
         }
 
         // New: allow theme changes to be applied without re-supplying tokens (keeps current token map)
         public void ApplyTheme(bool isDark)
         {
             _isDark = isDark;
-            // Invalidate cached pen so it's recreated with the new brush
+            // Invalidate cached pens so they're recreated with the new brush
             _errorPen = null;
+            _semanticErrorPen = null;
         }
 
         private static void ExplodeMultiLine(int startLine, int endLine, int startCol, int endCol, TokenType type, Dictionary<int, List<SpanPart>> target)
@@ -620,6 +686,7 @@ public partial class TextEditor : UserControl
             if (_errorPartsByLine.TryGetValue(n, out var errorParts))
                 foreach (var p in errorParts)
                     ApplySpan(line, p.StartColumn, p.EndColumnExclusive, p.Type);
+            // Note: Semantic errors are NOT colorized here - they only get yellow squiggles via Draw()
         }
 
         private void ApplySpan(DocumentLine line, int startCol, int endColExclusive, TokenType type)
@@ -715,37 +782,49 @@ public partial class TextEditor : UserControl
 
         public void Draw(TextView textView, DrawingContext drawingContext)
         {
-            if (_sortedErrorLines.Count == 0) return;
             var doc = textView.Document;
             var visualLines = textView.VisualLines;
             if (doc == null || visualLines == null || visualLines.Count == 0) return;
             int first = visualLines[0].FirstDocumentLine.LineNumber;
             int last = visualLines[^1].LastDocumentLine.LineNumber;
-            _errorPen ??= new Pen(GetBrush(TokenType.Error));
-            foreach (var lineNum in GetVisibleErrorLines(first, last))
-                DrawErrorWavesForLine(textView, drawingContext, doc, lineNum, _errorPen);
+
+            // Draw red squiggles for lexical errors
+            if (_sortedErrorLines.Count > 0)
+            {
+                _errorPen ??= new Pen(new SolidColorBrush(Color.FromRgb(0xFF, 0x55, 0x55)), 1.0);
+                foreach (var lineNum in GetVisibleErrorLines(first, last, _sortedErrorLines))
+                    DrawErrorWavesForLine(textView, drawingContext, doc, lineNum, _errorPen, _errorPartsByLine);
+            }
+
+            // Draw yellow squiggles for semantic errors (thicker for better visibility)
+            if (_sortedSemanticErrorLines.Count > 0)
+            {
+                _semanticErrorPen ??= new Pen(new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x00)), 1.5);
+                foreach (var lineNum in GetVisibleErrorLines(first, last, _sortedSemanticErrorLines))
+                    DrawErrorWavesForLine(textView, drawingContext, doc, lineNum, _semanticErrorPen, _semanticErrorPartsByLine);
+            }
         }
 
-        private IEnumerable<int> GetVisibleErrorLines(int first, int last)
+        private IEnumerable<int> GetVisibleErrorLines(int first, int last, List<int> sortedLines)
         {
-            if (_sortedErrorLines.Count == 0) yield break;
-            int lo = 0, hi = _sortedErrorLines.Count - 1;
+            if (sortedLines.Count == 0) yield break;
+            int lo = 0, hi = sortedLines.Count - 1;
             while (lo <= hi)
             {
                 int mid = (lo + hi) / 2;
-                if (_sortedErrorLines[mid] < first) lo = mid + 1; else hi = mid - 1;
+                if (sortedLines[mid] < first) lo = mid + 1; else hi = mid - 1;
             }
-            for (int i = lo; i < _sortedErrorLines.Count; i++)
+            for (int i = lo; i < sortedLines.Count; i++)
             {
-                int line = _sortedErrorLines[i];
+                int line = sortedLines[i];
                 if (line > last) yield break;
                 yield return line;
             }
         }
 
-        private void DrawErrorWavesForLine(TextView textView, DrawingContext ctx, TextDocument doc, int lineNum, Pen pen)
+        private void DrawErrorWavesForLine(TextView textView, DrawingContext ctx, TextDocument doc, int lineNum, Pen pen, Dictionary<int, List<SpanPart>> errorParts)
         {
-            if (!_errorPartsByLine.TryGetValue(lineNum, out var parts) || parts.Count == 0) return;
+            if (!errorParts.TryGetValue(lineNum, out var parts) || parts.Count == 0) return;
             if (lineNum < 1 || lineNum > doc.LineCount) return;
             var docLine = doc.GetLineByNumber(lineNum);
             int lineContentColumns = (docLine.EndOffset - docLine.Offset) + 1;

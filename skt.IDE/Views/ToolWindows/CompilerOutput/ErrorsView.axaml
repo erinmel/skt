@@ -46,11 +46,15 @@
                             ToolTip.Tip="{Binding Message}"
                             Classes="error-item"
                             HorizontalAlignment="Stretch">
-                      <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch" Classes="error-item-grid">
+                      <Grid ColumnDefinitions="Auto,Auto,*" HorizontalAlignment="Stretch" Classes="error-item-grid">
                         <Border Grid.Column="0" Classes="error-icon-box">
                           <TextBlock Classes="error-icon"/>
                         </Border>
-                        <TextBlock Grid.Column="1"
+                        <Border Grid.Column="1" Classes="error-location-badge" Margin="0,0,12,0">
+                          <TextBlock Text="{Binding StartPos}"
+                                     Classes="error-location"/>
+                        </Border>
+                        <TextBlock Grid.Column="2"
                                    Text="{Binding Message}"
                                    Classes="error-message"/>
                       </Grid>
