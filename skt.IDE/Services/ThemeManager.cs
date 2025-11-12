@@ -37,15 +37,15 @@ namespace skt.IDE.Services
             {
                 if (variant == AppThemeVariant.Dark)
                 {
-                    app.Resources["AppForegroundHighBrush"] = Brushes.White;
-                    app.Resources["AppForegroundLowBrush"] = Brushes.LightGray;
-                    app.Resources["AppBackgroundBrush"] = Brushes.Transparent; // let theme/background determine real background
+                    UpdateBrushColor(app, "AppForegroundHighBrush", Colors.White);
+                    UpdateBrushColor(app, "AppForegroundLowBrush", Colors.LightGray);
+                    UpdateBrushColor(app, "AppBackgroundBrush", Colors.Transparent);
                 }
                 else
                 {
-                    app.Resources["AppForegroundHighBrush"] = Brushes.Black;
-                    app.Resources["AppForegroundLowBrush"] = Brushes.Gray;
-                    app.Resources["AppBackgroundBrush"] = Brushes.Transparent;
+                    UpdateBrushColor(app, "AppForegroundHighBrush", Colors.Black);
+                    UpdateBrushColor(app, "AppForegroundLowBrush", Colors.Gray);
+                    UpdateBrushColor(app, "AppBackgroundBrush", Colors.Transparent);
                 }
             }
             catch (Exception ex)
@@ -341,6 +341,18 @@ namespace skt.IDE.Services
                         app.Resources.Remove(baseKey);
                     }
                 }
+            }
+        }
+
+        private static void UpdateBrushColor(Application app, string resourceKey, Color color)
+        {
+            if (app.Resources.TryGetValue(resourceKey, out var resource) && resource is SolidColorBrush brush)
+            {
+                brush.Color = color;
+            }
+            else
+            {
+                app.Resources[resourceKey] = new SolidColorBrush(color);
             }
         }
     }
