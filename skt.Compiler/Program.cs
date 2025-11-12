@@ -198,13 +198,15 @@ internal static class Program
         if (symbolTable.Entries.Count > 0)
         {
             Console.WriteLine("Symbol Table:");
-            Console.WriteLine("-" + new string('-', 100));
-            Console.WriteLine($"{"Name",-15} {"Type",-10} {"Scope",-15} {"Line",-6} {"Offset",-8} {"Value",-20}");
-            Console.WriteLine(new string('-', 100));
+            Console.WriteLine("-" + new string('-', 120));
+            Console.WriteLine($"{"Name",-15} {"Type",-10} {"Scope",-15} {"Line",-6} {"Offset",-8} {"Value",-20} {"Refs",-8}");
+            Console.WriteLine(new string('-', 120));
             foreach (var entry in symbolTable.Entries)
             {
                 string valueStr = ValueFormatter.FormatValue(entry.Value);
-                Console.WriteLine($"{entry.Name,-15} {entry.DataType,-10} {entry.Scope,-15} {entry.DeclarationLine,-6} {entry.MemoryOffset,-8} {valueStr,-20}");
+                string refLines = string.Join(", ", entry.References.Select(r => r.Line.ToString()));
+                Console.WriteLine($"{entry.Name,-15} {entry.DataType,-10} {entry.Scope,-15} {entry.DeclarationLine,-6} {entry.MemoryOffset,-8} {valueStr,-20} {entry.References.Count,-8}");
+                Console.WriteLine($"  References: [{refLines}]");
             }
             Console.WriteLine();
         }
