@@ -160,6 +160,15 @@ public class SemanticAnalyzer
               varName
           );
         }
+        else
+        {
+          // Record the declaration as a reference to the variable
+          var symbol = _symbolTable.Lookup(varName, _currentScope);
+          if (symbol != null)
+          {
+            symbol.AddReference(child.Line, child.Column);
+          }
+        }
 
         // Set type attribute (inherited from declaration)
         child.SetTypeAttribute(dataType, AttributePropagation.Inherited, node.Rule);
@@ -179,10 +188,7 @@ public class SemanticAnalyzer
     var leftNode = node.Children[0];
     var rightNode = node.Children[1];
 
-    // Analyze left side (should be an identifier)
-    AnalyzeNode(leftNode);
-
-    // Analyze right side (expression)
+    // Analyze right side first (expression)
     AnalyzeNode(rightNode);
 
     // Check if left side is declared
@@ -192,23 +198,48 @@ public class SemanticAnalyzer
 
       if (!_symbolTable.IsDeclared(varName, _currentScope))
       {
+        // Variable not declared - set type to "error"
         ReportError(
             SemanticErrorType.UndeclaredVariable,
             $"Variable '{varName}' is used before declaration",
             leftNode.Line, leftNode.Column, leftNode.EndLine, leftNode.EndColumn,
             varName
         );
+        leftNode.SetTypeAttribute("error", AttributePropagation.None, "undeclared");
+        leftNode.SetValueAttribute("error", AttributePropagation.None, "undeclared");
+        node.SetTypeAttribute("error", AttributePropagation.None, "undeclared");
+        // Set "error" as value for undeclared variable assignment
+        node.SetValueAttribute("error", AttributePropagation.Synthesized, "undeclared");
         return;
       }
 
-      // Get the type of the variable
+      // Get the type and current value of the variable BEFORE assignment
       string? varType = _symbolTable.GetSymbolType(varName, _currentScope);
+      object? oldValue = _symbolTable.GetSymbolValue(varName, _currentScope);
+
+      // Record this as a reference to the variable
+      var symbol = _symbolTable.Lookup(varName, _currentScope);
+      if (symbol != null)
+      {
+        symbol.AddReference(leftNode.Line, leftNode.Column);
+      }
+
+      // Set the type of the left node (inherited from symbol table)
       leftNode.SetTypeAttribute(varType, AttributePropagation.Inherited, "symbol_table");
 
+      // IMPORTANT: Show the value BEFORE assignment (not after)
+      // If the variable had a value before, show it; otherwise, don't set a value attribute
+      if (oldValue != null)
+      {
+        leftNode.SetValueAttribute(oldValue, AttributePropagation.Inherited, "symbol_table");
+      }
+
       // Check type compatibility
+      bool typesCompatible = false;
       if (varType != null && rightNode.DataType != null)
       {
-        if (!AreTypesCompatible(varType, rightNode.DataType))
+        typesCompatible = AreTypesCompatible(varType, rightNode.DataType);
+        if (!typesCompatible)
         {
           ReportError(
               SemanticErrorType.TypeIncompatibility,
@@ -223,8 +254,8 @@ public class SemanticAnalyzer
 
       node.SetTypeAttribute(varType, AttributePropagation.Sibling, $"{leftNode.Rule}");
 
-      // If right side has a value, update symbol table and propagate to left node
-      if (rightNode.Value != null)
+      // Only update the value in the symbol table if types are compatible
+      if (typesCompatible && rightNode.Value != null)
       {
         object? valueToStore = rightNode.Value;
 
@@ -234,25 +265,23 @@ public class SemanticAnalyzer
           // Type promotion: int to float
           valueToStore = (float)intVal;
         }
-        else if (varType == "int" && rightNode.Value is float floatVal)
-        {
-          // Type truncation: float to int (like in C)
-          valueToStore = (int)floatVal;
-        }
-        else if (varType == "int" && rightNode.Value is double doubleVal)
-        {
-          // Type truncation: double to int (like in C)
-          valueToStore = (int)doubleVal;
-        }
 
         // Update the variable's value in the symbol table
         _symbolTable.SetSymbolValue(varName, _currentScope, valueToStore);
 
-        // IMPORTANT: Update the left node (identifier) with the new value
-        // The value propagates between siblings (right to left), NOT through the parent
-        // So the assignment node (=) should NOT have a value attribute
-        leftNode.SetValueAttribute(valueToStore, AttributePropagation.Sibling, "assignment");
+        // Set the value on the assignment node (=) to indicate successful assignment
+        node.SetValueAttribute(valueToStore, AttributePropagation.Synthesized, "assignment");
       }
+      else if (!typesCompatible)
+      {
+        // Set "error" as value when assignment fails due to type incompatibility
+        node.SetValueAttribute("error", AttributePropagation.Synthesized, "type_error");
+      }
+    }
+    else
+    {
+      // Analyze left side if it's not an identifier
+      AnalyzeNode(leftNode);
     }
   }
   private void AnalyzeBinaryArithmeticOp(AnnotatedAstNode node)
@@ -358,6 +387,35 @@ public class SemanticAnalyzer
     }
 
     node.SetTypeAttribute("bool", AttributePropagation.Synthesized, "logical_op");
+
+    // Constant folding for logical operations
+    if (node.Rule == "!" && node.Children.Count == 1)
+    {
+      // Unary NOT operator
+      var operand = node.Children[0];
+      if (operand.IsConstant && operand.Value is bool boolValue)
+      {
+        node.SetValueAttribute(!boolValue, AttributePropagation.Synthesized, "constant_folding");
+      }
+    }
+    else if (node.Children.Count == 2)
+    {
+      // Binary logical operators (&&, ||)
+      var leftNode = node.Children[0];
+      var rightNode = node.Children[1];
+
+      if (leftNode.IsConstant && rightNode.IsConstant &&
+          leftNode.Value is bool leftBool && rightNode.Value is bool rightBool)
+      {
+        bool result = node.Rule switch
+        {
+          "&&" => leftBool && rightBool,
+          "||" => leftBool || rightBool,
+          _ => false
+        };
+        node.SetValueAttribute(result, AttributePropagation.Synthesized, "constant_folding");
+      }
+    }
   }
 
   private void AnalyzeIncrementDecrement(AnnotatedAstNode node)
@@ -383,6 +441,14 @@ public class SemanticAnalyzer
         }
 
         string? varType = _symbolTable.GetSymbolType(varName, _currentScope);
+
+        // Record this as a reference to the variable (++ and -- count as 2 references)
+        var symbol = _symbolTable.Lookup(varName, _currentScope);
+        if (symbol != null)
+        {
+          symbol.AddReference(operand.Line, operand.Column);  // First reference (read)
+          symbol.AddReference(operand.Line, operand.Column);  // Second reference (write)
+        }
 
         if (varType != "int" && varType != "float")
         {
@@ -434,6 +500,19 @@ public class SemanticAnalyzer
     foreach (var child in node.Children)
     {
       AnalyzeNode(child);
+
+      // Check if this is an undeclared variable being used with cin
+      if (child.Rule == "ID" && child.Token != null)
+      {
+        string varName = child.Token.Value;
+        if (!_symbolTable.IsDeclared(varName, _currentScope))
+        {
+          // Variable not declared - set type and value to "error"
+          child.SetTypeAttribute("error", AttributePropagation.None, "undeclared");
+          child.SetValueAttribute("error", AttributePropagation.None, "undeclared");
+        }
+        // Note: AddReference is already called by AnalyzeIdentifier when AnalyzeNode(child) is called above
+      }
     }
 
     // Set return type to void for cin operator
@@ -471,10 +550,29 @@ public class SemanticAnalyzer
               child.Line, child.Column, child.EndLine, child.EndColumn,
               varName
           );
+          // Set type and value to "error" for undeclared variables
+          child.SetTypeAttribute("error", AttributePropagation.None, "undeclared");
+          child.SetValueAttribute("error", AttributePropagation.None, "undeclared");
         }
         else
         {
-          child.DataType = _symbolTable.GetSymbolType(varName, _currentScope);
+          // Use SetTypeAttribute for consistency
+          string? varType = _symbolTable.GetSymbolType(varName, _currentScope);
+          child.SetTypeAttribute(varType, AttributePropagation.Inherited, "symbol_table");
+
+          // Record this as a reference to the variable
+          var symbol = _symbolTable.Lookup(varName, _currentScope);
+          if (symbol != null)
+          {
+            symbol.AddReference(child.Line, child.Column);
+          }
+
+          // Get and set the current value if it exists
+          object? value = _symbolTable.GetSymbolValue(varName, _currentScope);
+          if (value != null)
+          {
+            child.SetValueAttribute(value, AttributePropagation.Inherited, "symbol_table");
+          }
         }
       }
       else
