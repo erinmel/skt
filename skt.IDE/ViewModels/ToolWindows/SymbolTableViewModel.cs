@@ -73,8 +73,8 @@ public partial class SymbolTableViewModel : ObservableObject, IDisposable
 
             foreach (var entry in entries)
             {
-                var allLines = new List<int> { entry.DeclarationLine };
-                allLines.AddRange(entry.References.Select(r => r.Line));
+                // References now include the declaration line, so we don't need to add it separately
+                var allLines = entry.References.Select(r => r.Line).ToList();
 
                 var isUsed = entry.References.Count > 0;
                 string valueStr = ValueFormatter.FormatValue(entry.Value);
