@@ -4,7 +4,7 @@ namespace skt.Compiler;
 
 internal static class Program
 {
-    private sealed record Options(string FilePath, bool TokenizeOnly, bool ParseOnly, bool SemanticOnly, bool Verbose);
+    private sealed record Options(string FilePath, bool TokenizeOnly, bool ParseOnly, bool SemanticOnly, bool PCodeOnly, bool RunPCode, bool Verbose);
 
     public static int Main(string[] args)
     {
@@ -47,6 +47,20 @@ internal static class Program
             return 0;
         }
 
+        if (options.PCodeOnly)
+        {
+            _ = analyzer.TokenizeToFile(source, options.FilePath);
+            RunPCodeGeneration(options);
+            return 0;
+        }
+
+        if (options.RunPCode)
+        {
+            _ = analyzer.TokenizeToFile(source, options.FilePath);
+            RunPCodeAndExecute(options);
+            return 0;
+        }
+
         RunFullCompilation(analyzer, source, options);
         return 0;
     }
@@ -57,8 +71,10 @@ internal static class Program
         bool tokenizeOnly = args.Contains("--tokenize");
         bool parseOnly = args.Contains("--parse");
         bool semanticOnly = args.Contains("--semantic");
+        bool pcodeOnly = args.Contains("--pcode");
+        bool runPCode = args.Contains("--run");
         bool verbose = args.Contains("--verbose");
-        return new Options(filePath, tokenizeOnly, parseOnly, semanticOnly, verbose);
+        return new Options(filePath, tokenizeOnly, parseOnly, semanticOnly, pcodeOnly, runPCode, verbose);
     }
 
     private static void PrintUsage()
@@ -68,7 +84,13 @@ internal static class Program
         Console.WriteLine("  --tokenize    Generate token file (.sktt) only");
         Console.WriteLine("  --parse       Parse and show AST");
         Console.WriteLine("  --semantic    Perform semantic analysis");
+        Console.WriteLine("  --pcode       Generate P-Code (stack bytecode)");
+        Console.WriteLine("  --run         Generate P-Code and execute it");
         Console.WriteLine("  --verbose     Show detailed output");
+        Console.WriteLine();
+        Console.WriteLine("Examples:");
+        Console.WriteLine("  skt.Compiler program.skt --run       # Compile and run");
+        Console.WriteLine("  skt.Compiler program.skt --pcode     # Generate bytecode only");
     }
 
     private static void PrintIntro(Options options, string source)
@@ -231,6 +253,101 @@ internal static class Program
             PrintAnnotatedAst(annotatedAst, 0);
             Console.WriteLine();
         }
+    }
+
+    private static void RunPCodeGeneration(Options options)
+    {
+        var syntaxAnalyzer = new SyntaxAnalyzer();
+        var (ast, parseErrors) = syntaxAnalyzer.Parse(options.FilePath);
+
+        if (parseErrors.Count > 0 || ast == null)
+        {
+            Console.WriteLine("Cannot generate P-Code - parsing failed.");
+            return;
+        }
+
+        var semanticAnalyzer = new SemanticAnalyzer();
+        var (annotatedAst, symbolTable, semanticErrors) = semanticAnalyzer.Analyze(ast);
+
+        if (semanticErrors.Count > 0 || annotatedAst == null)
+        {
+            Console.WriteLine("Cannot generate P-Code - semantic analysis failed.");
+            return;
+        }
+
+        var pcodeGenerator = new PCodeGenerator();
+        var program = pcodeGenerator.Generate(annotatedAst);
+
+        Console.WriteLine($"P-Code Generation Complete:");
+        Console.WriteLine($"  Instructions: {program.Instructions.Count}");
+        Console.WriteLine($"  String literals: {program.StringTable.Count}");
+        Console.WriteLine($"  Data size: {program.DataSize}");
+        Console.WriteLine();
+
+        // Save files
+        string baseFileName = Path.GetFileNameWithoutExtension(options.FilePath);
+        string directory = Path.GetDirectoryName(options.FilePath) ?? "";
+        
+        string pcodeCompact = Path.Combine(directory, $"{baseFileName}.pcode");
+
+        program.SaveToFile(pcodeCompact);
+
+        Console.WriteLine($"P-Code saved to: {pcodeCompact}");
+        Console.WriteLine();
+
+        Console.WriteLine(program.ToString());
+        Console.WriteLine("✓ P-Code generation successful!");
+    }
+
+    private static void RunPCodeAndExecute(Options options)
+    {
+        var syntaxAnalyzer = new SyntaxAnalyzer();
+        var (ast, parseErrors) = syntaxAnalyzer.Parse(options.FilePath);
+
+        if (parseErrors.Count > 0 || ast == null)
+        {
+            Console.WriteLine("Cannot execute - parsing failed.");
+            return;
+        }
+
+        var semanticAnalyzer = new SemanticAnalyzer();
+        var (annotatedAst, symbolTable, semanticErrors) = semanticAnalyzer.Analyze(ast);
+
+        if (semanticErrors.Count > 0 || annotatedAst == null)
+        {
+            Console.WriteLine("Cannot execute - semantic analysis failed.");
+            return;
+        }
+
+        var pcodeGenerator = new PCodeGenerator();
+        var program = pcodeGenerator.Generate(annotatedAst);
+
+        Console.WriteLine($"P-Code Generation Complete:");
+        Console.WriteLine($"  Instructions: {program.Instructions.Count}");
+        Console.WriteLine($"  Data size: {program.DataSize}");
+        Console.WriteLine();
+
+        // Save files
+        string baseFileName = Path.GetFileNameWithoutExtension(options.FilePath);
+        string directory = Path.GetDirectoryName(options.FilePath) ?? "";
+        
+        string pcodeCompact = Path.Combine(directory, $"{baseFileName}.pcode");
+
+        program.SaveToFile(pcodeCompact);
+
+        Console.WriteLine($"P-Code saved to: {pcodeCompact}");
+        Console.WriteLine();
+
+        // Execute
+        Console.WriteLine("Executing P-Code:");
+        Console.WriteLine("=" + new string('=', 50));
+        Console.WriteLine();
+
+        var interpreter = new PCodeInterpreter(program);
+        interpreter.ExecuteInteractive();
+
+        Console.WriteLine();
+        Console.WriteLine("✓ Execution complete!");
     }
 
     private static void PrintSemanticErrors(List<SemanticError> errors)
