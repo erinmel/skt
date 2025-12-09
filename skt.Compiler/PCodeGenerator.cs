@@ -71,6 +71,13 @@ public class PCodeGenerator
       
       case "+":
       case "-":
+        // Check if unary or binary based on number of children
+        if (node.Children.Count == 1)
+          GenerateUnaryOp(node);
+        else
+          GenerateBinaryOp(node);
+        break;
+      
       case "*":
       case "/":
       case "%":
@@ -266,22 +273,59 @@ public class PCodeGenerator
     if (node.Children.Count < 2)
       return;
     
+    var leftChild = node.Children[0];
+    var rightChild = node.Children[1];
+    
     // Generate left operand (pushes to stack)
-    GenerateNode(node.Children[0]);
+    GenerateNode(leftChild);
+    
+    // Convert left operand if needed (int to float)
+    if (node.DataType == "float" && leftChild.DataType == "int")
+    {
+      Emit(PCodeOperation.I2F, 0, 0, "convert int to float");
+    }
     
     // Generate right operand (pushes to stack)
-    GenerateNode(node.Children[1]);
+    GenerateNode(rightChild);
+    
+    // Convert right operand if needed (int to float)
+    if (node.DataType == "float" && rightChild.DataType == "int")
+    {
+      Emit(PCodeOperation.I2F, 0, 0, "convert int to float");
+    }
+    
+    // Determine if we're doing float or int operation
+    bool isFloatOp = node.DataType == "float" || leftChild.DataType == "float" || rightChild.DataType == "float";
     
     // Perform operation (pops two, pushes result)
-    var op = node.Rule switch
+    PCodeOperation op;
+    if (isFloatOp)
     {
-      "+" => PCodeOperation.ADD,
-      "-" => PCodeOperation.SUB,
-      "*" => PCodeOperation.MUL,
-      "/" => PCodeOperation.DIV,
-      "%" => PCodeOperation.MOD,
-      _ => PCodeOperation.ADD
-    };
+      // Use float operations
+      op = node.Rule switch
+      {
+        "+" => PCodeOperation.FADD,
+        "-" => PCodeOperation.FSUB,
+        "*" => PCodeOperation.FMUL,
+        "/" => PCodeOperation.FDIV,
+        "^" => PCodeOperation.FPOW,
+        _ => PCodeOperation.FADD
+      };
+    }
+    else
+    {
+      // Use integer operations
+      op = node.Rule switch
+      {
+        "+" => PCodeOperation.ADD,
+        "-" => PCodeOperation.SUB,
+        "*" => PCodeOperation.MUL,
+        "/" => PCodeOperation.DIV,
+        "%" => PCodeOperation.MOD,
+        "^" => PCodeOperation.POW,
+        _ => PCodeOperation.ADD
+      };
+    }
     
     Emit(op, 0, 0, $"op {node.Rule}");
   }
@@ -337,6 +381,33 @@ public class PCodeGenerator
     
     GenerateNode(node.Children[0]);
     Emit(PCodeOperation.NOT, 0, 0, "logical not");
+  }
+  
+  private void GenerateUnaryOp(AnnotatedAstNode node)
+  {
+    if (node.Children.Count < 1)
+      return;
+    
+    var child = node.Children[0];
+    
+    // Generate the operand
+    GenerateNode(child);
+    
+    // Apply unary operation
+    if (node.Rule == "-")
+    {
+      // Use FNEG for float, NEG for int
+      bool isFloat = node.DataType == "float" || child.DataType == "float";
+      if (isFloat)
+      {
+        Emit(PCodeOperation.FNEG, 0, 0, "unary negate float");
+      }
+      else
+      {
+        Emit(PCodeOperation.NEG, 0, 0, "unary negate int");
+      }
+    }
+    // Unary + does nothing
   }
   
   private void GenerateIncrementDecrement(AnnotatedAstNode node)
@@ -480,8 +551,9 @@ public class PCodeGenerator
           PCodeOperation readOp = varType switch
           {
             "bool" => PCodeOperation.RDB,
+            "float" => PCodeOperation.RDF,
             "string" => PCodeOperation.RDS,
-            _ => PCodeOperation.RED // int, float
+            _ => PCodeOperation.RED // int
           };
           
           Emit(readOp, 0, 0, $"read {varType} {varName}");
@@ -525,26 +597,35 @@ public class PCodeGenerator
       }
       else
       {
-        // Check if it's a string variable to use correct write instruction
-        bool isStringVar = false;
+        // Check variable type for correct write instruction
+        string? varType = null;
         if (child.Rule == "ID" && child.Token != null)
         {
           string varName = child.Token.Value;
-          string varType = _variableTypes.GetValueOrDefault(varName, "int");
-          isStringVar = varType == "string";
+          _variableTypes.TryGetValue(varName, out varType);
+        }
+        
+        // If not a variable, check the expression's DataType
+        if (varType == null)
+        {
+          varType = child.DataType ?? "int";
         }
         
         // Expression - generate code (pushes value)
         GenerateNode(child);
         
-        // Write value - use WRS for strings, WRT for integers/bools
-        if (isStringVar)
+        // Write value - use appropriate instruction based on type
+        if (varType == "string")
         {
-          Emit(PCodeOperation.WRS, 0, 0, "write string variable");
+          Emit(PCodeOperation.WRS, 0, 0, "write string");
+        }
+        else if (varType == "float")
+        {
+          Emit(PCodeOperation.WRTF, 0, 0, "write float");
         }
         else
         {
-          Emit(PCodeOperation.WRT, 0, 0, "write value");
+          Emit(PCodeOperation.WRT, 0, 0, "write int");
         }
       }
     }
@@ -568,6 +649,7 @@ public class PCodeGenerator
           PCodeOperation readOp = varType switch
           {
             "bool" => PCodeOperation.RDB,
+            "float" => PCodeOperation.RDF,
             "string" => PCodeOperation.RDS,
             _ => PCodeOperation.RED
           };
@@ -601,10 +683,9 @@ public class PCodeGenerator
     }
     else if (double.TryParse(value, out double doubleValue))
     {
-      // For floats, we'll store as integer (scaled by 1000) for simplicity
-      // Or you can extend P-Code to support floats
-      int scaledValue = (int)(doubleValue * 1000);
-      Emit(PCodeOperation.LIT, 0, scaledValue, $"push {doubleValue} (scaled)");
+      // Store float value in string table and use LITF instruction
+      int strIndex = _program.AddString(value);
+      Emit(PCodeOperation.LITF, 0, strIndex, $"push {doubleValue}");
     }
     else
     {

@@ -5,11 +5,12 @@ namespace skt.Compiler;
 
 /// <summary>
 /// P-Code Stack Machine Interpreter
-/// Executes P-Code programs with full support for strings, integers, and booleans
+/// Executes P-Code programs with full support for strings, integers, floats, and booleans
+/// Uses long[] stack to store both ints and doubles (via BitConverter)
 /// </summary>
 public class PCodeInterpreter
 {
-  private readonly int[] _stack;
+  private readonly long[] _stack;
   private int _sp; // Stack pointer
   private int _pc; // Program counter
   private readonly PCodeProgram _program;
@@ -32,7 +33,7 @@ public class PCodeInterpreter
   public PCodeInterpreter(PCodeProgram program)
   {
     _program = program;
-    _stack = new int[STACK_SIZE];
+    _stack = new long[STACK_SIZE];
     _sp = 0;
     _pc = 0;
     _running = false;
@@ -42,7 +43,7 @@ public class PCodeInterpreter
   public PCodeInterpreter()
   {
     _program = new PCodeProgram();
-    _stack = new int[STACK_SIZE];
+    _stack = new long[STACK_SIZE];
     _sp = 0;
     _pc = 0;
     _running = false;
@@ -115,15 +116,31 @@ public class PCodeInterpreter
     switch (instruction.Op)
     {
       case PCodeOperation.LIT:
-        // Push literal value onto stack
-        Push(instruction.Operand);
+        // Push integer literal value onto stack
+        PushInt(instruction.Operand);
         _pc++;
+        break;
+      
+      case PCodeOperation.LITF:
+        // Push float literal - operand is index to string table containing the float value
+        {
+          string floatStr = program.StringTable[instruction.Operand];
+          if (double.TryParse(floatStr, out double floatValue))
+          {
+            PushDouble(floatValue);
+          }
+          else
+          {
+            PushDouble(0.0);
+          }
+          _pc++;
+        }
         break;
       
       case PCodeOperation.LOD:
         // Load variable from data area
         {
-          int value = _stack[instruction.Operand];
+          long value = _stack[instruction.Operand];
           Push(value);
           _pc++;
         }
@@ -132,7 +149,7 @@ public class PCodeInterpreter
       case PCodeOperation.STO:
         // Store top of stack in variable
         {
-          int value = Pop();
+          long value = Pop();
           _stack[instruction.Operand] = value;
           _pc++;
         }
@@ -140,35 +157,62 @@ public class PCodeInterpreter
       
       case PCodeOperation.ADD:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a + b);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a + b);
           _pc++;
         }
         break;
       
       case PCodeOperation.SUB:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a - b);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a - b);
           _pc++;
         }
         break;
       
       case PCodeOperation.MUL:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a * b);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a * b);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FADD:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushDouble(a + b);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FSUB:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushDouble(a - b);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FMUL:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushDouble(a * b);
           _pc++;
         }
         break;
       
       case PCodeOperation.DIV:
         {
-          int b = Pop();
-          int a = Pop();
+          int b = PopInt();
+          int a = PopInt();
           if (b == 0)
           {
             _output.AppendLine("Runtime Error: Division by zero");
@@ -176,16 +220,43 @@ public class PCodeInterpreter
           }
           else
           {
-            Push(a / b);
+            PushInt(a / b);
           }
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FDIV:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          if (Math.Abs(b) < double.Epsilon)
+          {
+            _output.AppendLine("Runtime Error: Division by zero");
+            _running = false;
+          }
+          else
+          {
+            PushDouble(a / b);
+          }
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FPOW:
+        {
+          double exponent = PopDouble();
+          double baseValue = PopDouble();
+          double result = Math.Pow(baseValue, exponent);
+          PushDouble(result);
           _pc++;
         }
         break;
       
       case PCodeOperation.MOD:
         {
-          int b = Pop();
-          int a = Pop();
+          int b = PopInt();
+          int a = PopInt();
           if (b == 0)
           {
             _output.AppendLine("Runtime Error: Modulo by zero");
@@ -193,96 +264,132 @@ public class PCodeInterpreter
           }
           else
           {
-            Push(a % b);
+            PushInt(a % b);
           }
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.POW:
+        {
+          int exponent = PopInt();
+          int baseValue = PopInt();
+          int result = (int)Math.Pow(baseValue, exponent);
+          PushInt(result);
           _pc++;
         }
         break;
       
       case PCodeOperation.NEG:
         {
-          int a = Pop();
-          Push(-a);
+          int a = PopInt();
+          PushInt(-a);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FNEG:
+        {
+          double a = PopDouble();
+          PushDouble(-a);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.I2F:
+        {
+          // Convert int to float
+          int a = PopInt();
+          PushDouble((double)a);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.F2I:
+        {
+          // Convert float to int (truncate)
+          double a = PopDouble();
+          PushInt((int)a);
           _pc++;
         }
         break;
       
       case PCodeOperation.EQL:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a == b ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a == b ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.NEQ:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a != b ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a != b ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.LSS:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a < b ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a < b ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.LEQ:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a <= b ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a <= b ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.GTR:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a > b ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a > b ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.GEQ:
         {
-          int b = Pop();
-          int a = Pop();
-          Push(a >= b ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt(a >= b ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.AND:
         {
-          int b = Pop();
-          int a = Pop();
-          Push((a != 0 && b != 0) ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt((a != 0 && b != 0) ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.OR:
         {
-          int b = Pop();
-          int a = Pop();
-          Push((a != 0 || b != 0) ? 1 : 0);
+          int b = PopInt();
+          int a = PopInt();
+          PushInt((a != 0 || b != 0) ? 1 : 0);
           _pc++;
         }
         break;
       
       case PCodeOperation.NOT:
         {
-          int a = Pop();
-          Push(a == 0 ? 1 : 0);
+          int a = PopInt();
+          PushInt(a == 0 ? 1 : 0);
           _pc++;
         }
         break;
@@ -295,7 +402,7 @@ public class PCodeInterpreter
       case PCodeOperation.JPC:
         // Jump if false (top of stack is 0)
         {
-          int condition = Pop();
+          int condition = PopInt();
           if (condition == 0)
             _pc = instruction.Operand;
           else
@@ -312,7 +419,7 @@ public class PCodeInterpreter
           string? input = await ReadInputAsync();
           if (input != null && int.TryParse(input, out int value))
           {
-            Push(value);
+            PushInt(value);
           }
           else
           {
@@ -320,7 +427,29 @@ public class PCodeInterpreter
             Console.Write(error);
             _output.Append(error);
             OnOutput?.Invoke(error);
-            Push(0);
+            PushInt(0);
+          }
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.RDF:
+        // Read float
+        {
+          Console.Out.Flush();
+          
+          string? input = await ReadInputAsync();
+          if (input != null && double.TryParse(input, out double value))
+          {
+            PushDouble(value);
+          }
+          else
+          {
+            string error = $"Invalid float input: {input ?? "null"}\n";
+            Console.Write(error);
+            _output.Append(error);
+            OnOutput?.Invoke(error);
+            PushDouble(0.0);
           }
           _pc++;
         }
@@ -355,7 +484,7 @@ public class PCodeInterpreter
             }
           }
           
-          Push(boolValue);
+          PushInt(boolValue);
           _pc++;
         }
         break;
@@ -375,11 +504,11 @@ public class PCodeInterpreter
               program.StringTable.Add(input);
               strIndex = program.StringTable.Count - 1;
             }
-            Push(strIndex);
+            PushInt(strIndex);
           }
           else
           {
-            Push(0); // Empty string index
+            PushInt(0); // Empty string index
           }
           _pc++;
         }
@@ -388,8 +517,20 @@ public class PCodeInterpreter
       case PCodeOperation.WRT:
         // Write integer
         {
-          int value = Pop();
+          int value = PopInt();
           string output = value.ToString();
+          Console.Write(output);
+          _output.Append(output);
+          OnOutput?.Invoke(output);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.WRTF:
+        // Write float
+        {
+          double floatValue = PopDouble();
+          string output = floatValue.ToString("0.###########");
           Console.Write(output);
           _output.Append(output);
           OnOutput?.Invoke(output);
@@ -400,7 +541,7 @@ public class PCodeInterpreter
       case PCodeOperation.WRS:
         // Write string
         {
-          int strIndex = Pop();
+          int strIndex = PopInt();
           if (strIndex >= 0 && strIndex < program.StringTable.Count)
           {
             string str = program.StringTable[strIndex];
@@ -438,7 +579,7 @@ public class PCodeInterpreter
     }
   }
   
-  private void Push(int value)
+  private void Push(long value)
   {
     if (_sp >= STACK_SIZE)
     {
@@ -449,7 +590,7 @@ public class PCodeInterpreter
     _stack[_sp++] = value;
   }
   
-  private int Pop()
+  private long Pop()
   {
     if (_sp <= 0)
     {
@@ -458,6 +599,26 @@ public class PCodeInterpreter
       return 0;
     }
     return _stack[--_sp];
+  }
+  
+  private void PushInt(int value)
+  {
+    Push(value);
+  }
+  
+  private int PopInt()
+  {
+    return (int)Pop();
+  }
+  
+  private void PushDouble(double value)
+  {
+    Push(BitConverter.DoubleToInt64Bits(value));
+  }
+  
+  private double PopDouble()
+  {
+    return BitConverter.Int64BitsToDouble(Pop());
   }
   
   private string? ReadInput()

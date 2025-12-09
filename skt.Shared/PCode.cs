@@ -6,17 +6,31 @@
 public enum PCodeOperation
 {
   // Stack operations
-  LIT,    // Load literal: LIT 0, value - push value onto stack
+  LIT,    // Load int literal: LIT 0, value - push int value onto stack
+  LITF,   // Load float literal: LITF 0, strIdx - push double from string table
   LOD,    // Load variable: LOD level, offset - push variable value
   STO,    // Store: STO level, offset - pop and store in variable
   
-  // Arithmetic operations
-  ADD,    // Add: pop two values, push sum
-  SUB,    // Subtract: pop two values, push difference
-  MUL,    // Multiply: pop two values, push product
-  DIV,    // Divide: pop two values, push quotient
-  MOD,    // Modulo: pop two values, push remainder
-  NEG,    // Negate: pop value, push -value
+  // Integer arithmetic operations
+  ADD,    // Add integers: pop two ints, push int sum
+  SUB,    // Subtract integers: pop two ints, push int difference
+  MUL,    // Multiply integers: pop two ints, push int product
+  DIV,    // Integer divide: pop two ints, push int quotient
+  MOD,    // Modulo: pop two ints, push int remainder
+  POW,    // Power: pop two ints (base, exponent), push int result
+  NEG,    // Negate integer: pop int, push negated int
+  
+  // Float arithmetic operations (use double precision)
+  FADD,   // Add floats: pop two doubles, push double sum
+  FSUB,   // Subtract floats: pop two doubles, push double difference
+  FMUL,   // Multiply floats: pop two doubles, push double product
+  FDIV,   // Divide floats: pop two doubles, push double quotient
+  FPOW,   // Power: pop two doubles (base, exponent), push double result
+  FNEG,   // Negate float: pop double, push negated double
+  
+  // Type conversion
+  I2F,    // Convert int to float: pop int, push double
+  F2I,    // Convert float to int: pop double, push int (truncate)
   
   // Comparison operations
   EQL,    // Equal: pop two values, push 1 if equal, 0 otherwise
@@ -41,11 +55,13 @@ public enum PCodeOperation
   RET,    // Return from procedure
   
   // I/O operations
-  RED,    // Read integer: pop address, read and store
-  RDB,    // Read boolean: read true/false/1/0 and store
-  RDS,    // Read string: read string and store string index
-  WRT,    // Write integer: pop and write value
-  WRS,    // Write string: pop string reference and write
+  RED,    // Read integer: read int and push onto stack
+  RDF,    // Read float: read double and push onto stack
+  RDB,    // Read boolean: read true/false/1/0 and push as int
+  RDS,    // Read string: read string and push string table index
+  WRT,    // Write integer: pop int and write
+  WRTF,   // Write float: pop double and write as decimal
+  WRS,    // Write string: pop string index and write from table
   WRL,    // Write line: write newline
   
   // Special operations

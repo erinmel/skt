@@ -545,7 +545,31 @@ public class CstToAstConverter
         {
             if (tokens[i] is Token token && _operators.ContainsKey(token.Value))
             {
+                // Check if this is a unary operator (+ or -)
+                bool isUnary = false;
+                if ((token.Value == "+" || token.Value == "-") && i == 0)
+                {
+                    // At the start of expression - definitely unary
+                    isUnary = true;
+                }
+                else if ((token.Value == "+" || token.Value == "-") && i > 0)
+                {
+                    // Check if previous token is an operator (making this unary)
+                    var prevToken = tokens[i - 1];
+                    if (prevToken is Token prevT && _operators.ContainsKey(prevT.Value))
+                    {
+                        isUnary = true;
+                    }
+                }
+                
                 int precedence = _operators[token.Value];
+                
+                // Unary operators have highest precedence (should be processed last in tree building)
+                if (isUnary)
+                {
+                    precedence = 0;
+                }
+                
                 if (precedence >= minPrecedence)
                 {
                     minPrecedence = precedence;

@@ -71,6 +71,12 @@ public class SemanticAnalyzer
         break;
       case "+":
       case "-":
+        // Check if unary or binary
+        if (node.Children.Count == 1)
+          AnalyzeUnaryArithmeticOp(node);
+        else
+          AnalyzeBinaryArithmeticOp(node);
+        break;
       case "*":
       case "/":
       case "%":
@@ -323,6 +329,44 @@ public class SemanticAnalyzer
     if (leftNode.IsConstant && rightNode.IsConstant && leftNode.Value != null && rightNode.Value != null)
     {
       object? computedValue = ComputeArithmeticValue(node.Rule, leftNode.Value, rightNode.Value);
+      if (computedValue != null)
+      {
+        node.SetValueAttribute(computedValue, AttributePropagation.Synthesized, "constant_folding");
+      }
+    }
+  }
+
+  private void AnalyzeUnaryArithmeticOp(AnnotatedAstNode node)
+  {
+    if (node.Children.Count < 1)
+    {
+      return;
+    }
+
+    var operandNode = node.Children[0];
+    AnalyzeNode(operandNode);
+
+    // Unary +/- preserves the type of the operand
+    string? resultType = operandNode.DataType;
+
+    if (resultType != null && !IsNumericType(resultType))
+    {
+      ReportError(
+          SemanticErrorType.InvalidOperator,
+          $"Invalid operand type for unary operator '{node.Rule}': '{resultType}' (expected numeric type)",
+          node.Line, node.Column, node.EndLine, node.EndColumn
+      );
+      node.SetTypeAttribute("int", AttributePropagation.None, "error_recovery");
+    }
+    else
+    {
+      node.SetTypeAttribute(resultType ?? "int", AttributePropagation.Synthesized, "child");
+    }
+
+    // Check for constant folding
+    if (operandNode.IsConstant && operandNode.Value != null)
+    {
+      object? computedValue = ComputeUnaryArithmeticValue(node.Rule, operandNode.Value);
       if (computedValue != null)
       {
         node.SetValueAttribute(computedValue, AttributePropagation.Synthesized, "constant_folding");
@@ -822,6 +866,24 @@ public class SemanticAnalyzer
         "^" => (float)Math.Pow(floatValue2, intValue2),
         _ => null
       };
+    }
+
+    return null;
+  }
+
+  private static object? ComputeUnaryArithmeticValue(string op, object? operand)
+  {
+    if (op == "-")
+    {
+      if (operand is int intValue)
+        return -intValue;
+      if (operand is float floatValue)
+        return -floatValue;
+    }
+    else if (op == "+")
+    {
+      // Unary + does nothing
+      return operand;
     }
 
     return null;
