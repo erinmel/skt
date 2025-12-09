@@ -43,19 +43,29 @@
                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                    Focusable="True"
                    IsTabStop="True"
-                   Padding="4">
+                   Padding="8,4">
             <TextBox.Styles>
+              <!-- Override all TextBox states to have consistent simple styling -->
               <Style Selector="TextBox">
                 <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
                 <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+              </Style>
+              <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+              </Style>
+              <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
               </Style>
               <Style Selector="TextBox:focus">
                 <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
-                <Setter Property="BorderThickness" Value="0"/>
               </Style>
               <Style Selector="TextBox:pointerover">
                 <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
-                <Setter Property="BorderThickness" Value="0"/>
               </Style>
             </TextBox.Styles>
           </TextBox>

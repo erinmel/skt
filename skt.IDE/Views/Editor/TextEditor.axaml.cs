@@ -591,6 +591,7 @@ public partial class TextEditor : UserControl
         private readonly List<int> _sortedSemanticErrorLines = new();
         private Pen? _errorPen;
         private Pen? _semanticErrorPen;
+        private readonly Dictionary<string, IBrush> _brushCache = new(); // Cache for brush lookups
 
         private readonly struct SpanPart
         {
@@ -625,6 +626,12 @@ public partial class TextEditor : UserControl
 
         public void Update(IEnumerable<Token> tokens, IEnumerable<ErrorToken> errors, bool isDark)
         {
+            // Clear cache if theme changed
+            if (_isDark != isDark)
+            {
+                _brushCache.Clear();
+            }
+            
             _isDark = isDark;
             _tokenPartsByLine.Clear();
             _errorPartsByLine.Clear();
@@ -733,6 +740,13 @@ public partial class TextEditor : UserControl
                 TokenType.Error => $"Tok.Error.{suffix}",
                 _ => string.Empty
             };
+            
+            // Check cache first - massive performance improvement
+            if (_brushCache.TryGetValue(key, out var cachedBrush))
+            {
+                return cachedBrush;
+            }
+            
             // First try the base key (Tok.<Name>) which ThemeManager now maps to the active themed brush.
             string baseKey = type switch
             {
@@ -753,35 +767,32 @@ public partial class TextEditor : UserControl
                 _ => string.Empty
             };
 
+            IBrush? resultBrush = null;
+            
             // Prefer the themed keys (Tok.*.Dark / Tok.*.Light) from the merged SyntaxColors dictionary.
             if (!string.IsNullOrEmpty(key) && Application.Current != null && Application.Current.TryFindResource(key, out var themedRes) && themedRes is IBrush themedBrush)
             {
-#if DEBUG
-                // Log successful resolution (only once per key to avoid spam)
-                Debug.WriteLine($"      GetBrush: Found {key} -> {themedBrush}");
-#endif
-                return themedBrush;
+                resultBrush = themedBrush;
             }
-
             // Fallback to base key mapping applied by ThemeManager (Tok.<Name>)
-            if (!string.IsNullOrEmpty(baseKey) && Application.Current != null && Application.Current.TryFindResource(baseKey, out var baseRes2) && baseRes2 is IBrush baseBrush2)
-                return baseBrush2;
-
-#if DEBUG
-            // Debugging help: log when neither themed nor base key found so fallback used
-            try
+            else if (!string.IsNullOrEmpty(baseKey) && Application.Current != null && Application.Current.TryFindResource(baseKey, out var baseRes2) && baseRes2 is IBrush baseBrush2)
             {
-                Debug.WriteLine($"SemanticColorizer: no resource for {key} or {baseKey}; using fallback for dark={_isDark}");
+                resultBrush = baseBrush2;
             }
-            catch (Exception ex)
+            // Final fallback to hardcoded colors
+            else if (Fallback.TryGetValue(type, out var fb))
             {
-                Debug.WriteLine($"SemanticColorizer: Error logging resource lookup: {ex.Message}");
+                resultBrush = new SolidColorBrush(_isDark ? fb.dark : fb.light);
             }
-#endif
-
-            if (Fallback.TryGetValue(type, out var fb))
-                return new SolidColorBrush(_isDark ? fb.dark : fb.light);
-            return _isDark ? Brushes.White : Brushes.Black;
+            else
+            {
+                resultBrush = _isDark ? Brushes.White : Brushes.Black;
+            }
+            
+            // Cache the result for future use
+            _brushCache[key] = resultBrush;
+            
+            return resultBrush;
         }
 
         public KnownLayer Layer => KnownLayer.Selection;

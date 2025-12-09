@@ -105,7 +105,9 @@
         <chrome:ToolWindowStrip Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Name="ToolWindowStripControl" />
 
         <!-- Terminal/Errors extracted to its own control -->
-        <terminal:TerminalPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Name="TerminalPanelControl" />
+        <terminal:TerminalPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" 
+                                Name="TerminalPanelControl"
+                                Padding="0,0,0,1" />
 
         <!-- Status Bar -->
         <chrome:StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"/>
