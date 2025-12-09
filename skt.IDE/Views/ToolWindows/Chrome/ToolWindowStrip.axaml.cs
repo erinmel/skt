@@ -23,6 +23,7 @@ public partial class ToolWindowStrip : UserControl
             var tokens = this.FindControl<Button>("TokensToggle");
             var syntax = this.FindControl<Button>("SyntaxTreeToggle");
             var semantic = this.FindControl<Button>("SemanticTreeToggle");
+            var pcode = this.FindControl<Button>("PCodeToggle");
 
             var terminal = this.FindControl<Button>("TerminalToggle");
             var tokenErrors = this.FindControl<Button>("TokenErrorsToggle");
@@ -34,6 +35,7 @@ public partial class ToolWindowStrip : UserControl
             if (tokens is not null) tokens.Click += ToolWindowToggle_Click;
             if (syntax is not null) syntax.Click += ToolWindowToggle_Click;
             if (semantic is not null) semantic.Click += ToolWindowToggle_Click;
+            if (pcode is not null) pcode.Click += ToolWindowToggle_Click;
 
             if (terminal is not null) terminal.Click += ToolPanelToggle_Click;
             if (tokenErrors is not null) tokenErrors.Click += ToolPanelToggle_Click;
@@ -80,6 +82,7 @@ public partial class ToolWindowStrip : UserControl
         TokensToggle.Classes.Remove(SelectedCssClass);
         SyntaxTreeToggle.Classes.Remove(SelectedCssClass);
         SemanticTreeToggle.Classes.Remove(SelectedCssClass);
+        PCodeToggle.Classes.Remove(SelectedCssClass);
     }
 
     public void SetSelectedToolWindow(string buttonName)
@@ -99,6 +102,9 @@ public partial class ToolWindowStrip : UserControl
                 break;
             case nameof(SemanticTreeToggle):
                 SemanticTreeToggle.Classes.Add(SelectedCssClass);
+                break;
+            case nameof(PCodeToggle):
+                PCodeToggle.Classes.Add(SelectedCssClass);
                 break;
         }
     }

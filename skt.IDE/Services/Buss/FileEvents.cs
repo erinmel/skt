@@ -156,6 +156,11 @@ public class ShowTerminalTabRequestEvent
     public ShowTerminalTabRequestEvent(int tabIndex) => TabIndex = tabIndex;
 }
 
+// Request to clear terminal output
+public class ClearTerminalRequestEvent
+{
+}
+
 public class ActiveEditorChangedEvent
 {
     public ViewModels.TextEditorViewModel? ActiveEditor { get; }

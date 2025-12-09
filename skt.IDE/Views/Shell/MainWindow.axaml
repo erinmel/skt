@@ -86,6 +86,9 @@
                     <!-- Tokens View -->
                     <compilerOutput:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
 
+                    <!-- P-Code View -->
+                    <compilerOutput:PCodeView Name="PCodeContent" IsVisible="False" DataContext="{Binding PCode}"/>
+
                     <!-- Syntax Tree View -->
                     <compilerOutput:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding SyntaxTree}"/>
 

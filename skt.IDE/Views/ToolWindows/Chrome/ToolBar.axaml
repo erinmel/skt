@@ -76,6 +76,7 @@
                             <MenuItem Header="Lexical" Name="LexicalAnalysisMenuItem" Click="LexicalAnalysisMenuItem_Click"/>
                             <MenuItem Header="Syntactic" Name="SyntacticAnalysisMenuItem" Click="SyntacticAnalysisMenuItem_Click" IsEnabled="False"/>
                             <MenuItem Header="Semantic" Name="SemanticAnalysisMenuItem" Click="SemanticAnalysisMenuItem_Click" IsEnabled="False"/>
+                            <MenuItem Header="P-Code" Name="GeneratePCodeMenuItem" Click="GeneratePCodeMenuItem_Click" IsEnabled="False"/>
                         </MenuFlyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>
@@ -134,6 +135,18 @@
                         ToolTip.Tip="Save As"
                         Click="SaveAsButton_Click">
                     <shell:SktIcon IconKey="Icon.ToolbarSaveAs" IconSize="{DynamicResource IconSizeToolbar}"/>
+                </Button>
+
+                <!-- Execute P-Code Button -->
+                <Button Name="ExecutePCodeButton"
+                        Tag="ToolIcon"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="{DynamicResource ButtonPadding}"
+                        ToolTip.Tip="Execute P-Code"
+                        Click="ExecutePCodeButton_Click"
+                        IsEnabled="False">
+                    <shell:SktIcon IconKey="Icon.ToolbarExecute" IconSize="{DynamicResource IconSizeToolbar}"/>
                 </Button>
             </StackPanel>
 

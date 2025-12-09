@@ -10,6 +10,7 @@ using System.IO;
 using System.Threading.Tasks;
 using skt.IDE.Views.Dialogs;
 using skt.IDE.Views.Shell;
+using skt.Shared;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace skt.IDE.Views.ToolWindows.Chrome;
@@ -64,6 +65,10 @@ public partial class Toolbar : UserControl
         App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (r, m) => OnLexicalAnalysisCompleted(m));
         // Subscribe to syntax analysis completion to enable semantic analysis
         App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (r, m) => OnSyntaxAnalysisCompleted(m));
+        // Subscribe to semantic analysis completion to enable P-Code generation
+        App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (r, m) => OnSemanticAnalysisCompleted(m));
+        // Subscribe to P-Code generation completion to enable execution
+        App.Messenger.Register<PCodeGenerationCompletedEvent>(this, (r, m) => OnPCodeGenerationCompleted(m));
 
         // Clean up on unload
         Unloaded += (_, _) => App.Messenger.UnregisterAll(this);
@@ -104,6 +109,19 @@ public partial class Toolbar : UserControl
             var syntaxMenuItem = this.FindControl<MenuItem>("SyntacticAnalysisMenuItem");
             if (syntaxMenuItem != null)
                 syntaxMenuItem.IsEnabled = e.HasSelection && !string.IsNullOrEmpty(e.FilePath);
+
+            // Check if document has semantic tree to enable P-Code generation
+            if (DataContext is MainWindowViewModel vm)
+            {
+                var doc = vm.TabbedEditorViewModel.SelectedDocument;
+                var pcodeMenuItem = this.FindControl<MenuItem>("GeneratePCodeMenuItem");
+                if (pcodeMenuItem != null)
+                    pcodeMenuItem.IsEnabled = doc?.SemanticTree != null && !string.IsNullOrEmpty(e.FilePath);
+
+                var executeButton = this.FindControl<Button>("ExecutePCodeButton");
+                if (executeButton != null)
+                    executeButton.IsEnabled = doc?.PCodeProgram != null;
+            }
         });
     }
 
@@ -124,6 +142,26 @@ public partial class Toolbar : UserControl
             var semanticMenuItem = this.FindControl<MenuItem>("SemanticAnalysisMenuItem");
             if (semanticMenuItem != null)
                 semanticMenuItem.IsEnabled = e.Errors.Count == 0 && !string.IsNullOrEmpty(e.FilePath);
+        });
+    }
+
+    private void OnSemanticAnalysisCompleted(SemanticAnalysisCompletedEvent e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var pcodeMenuItem = this.FindControl<MenuItem>("GeneratePCodeMenuItem");
+            if (pcodeMenuItem != null)
+                pcodeMenuItem.IsEnabled = e.Errors.Count == 0 && !string.IsNullOrEmpty(e.FilePath);
+        });
+    }
+
+    private void OnPCodeGenerationCompleted(PCodeGenerationCompletedEvent e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var executeButton = this.FindControl<Button>("ExecutePCodeButton");
+            if (executeButton != null)
+                executeButton.IsEnabled = true;
         });
     }
 
@@ -368,5 +406,51 @@ public partial class Toolbar : UserControl
     {
         App.Messenger.Send(new ShowToolWindowRequestEvent("SemanticTreeToggle"));
         App.Messenger.Send(new StatusBarMessageEvent("Semantic analysis running live", 2000));
+    }
+
+    private void GeneratePCodeMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            App.Messenger.Send(new StatusBarMessageEvent("No context for P-code generation", true));
+            return;
+        }
+
+        var doc = vm.TabbedEditorViewModel.SelectedDocument;
+        if (doc == null || doc.SemanticTree == null)
+        {
+            App.Messenger.Send(new StatusBarMessageEvent("No semantic tree available for P-code generation", true));
+            return;
+        }
+
+        App.Messenger.Send(new PCodeGenerationRequestEvent(doc.SemanticTree, doc.FilePath, false));
+        App.Messenger.Send(new ShowToolWindowRequestEvent("PCodeToggle"));
+        App.Messenger.Send(new StatusBarMessageEvent("Generating P-Code", 2000));
+    }
+
+    private void ExecutePCodeButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            App.Messenger.Send(new StatusBarMessageEvent("No context for execution", true));
+            return;
+        }
+
+        var doc = vm.TabbedEditorViewModel.SelectedDocument;
+        if (doc == null || doc.PCodeProgram == null)
+        {
+            App.Messenger.Send(new StatusBarMessageEvent("No P-code available to execute", true));
+            return;
+        }
+
+        // Clear terminal before execution
+        App.Messenger.Send(new ClearTerminalRequestEvent());
+        
+        // Show terminal
+        App.Messenger.Send(new ShowTerminalTabRequestEvent(0));
+        
+        // Execute P-code
+        App.Messenger.Send(new PCodeExecutionRequestEvent(doc.PCodeProgram, doc.FilePath));
+        App.Messenger.Send(new StatusBarMessageEvent("Executing P-Code", 2000));
     }
 }

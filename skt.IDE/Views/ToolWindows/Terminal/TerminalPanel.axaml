@@ -29,8 +29,9 @@
   <Border Margin="2">
     <TabControl Name="TerminalTabView" Padding="0">
       <TabItem Header="Terminal">
-        <ScrollViewer>
-          <TextBox AcceptsReturn="True"
+        <ScrollViewer Name="TerminalScrollViewer">
+          <TextBox Name="TerminalTextBox"
+                   AcceptsReturn="True"
                    FontFamily="Consolas,monospace"
                    Watermark="Terminal output will appear here..."
                    IsReadOnly="True"/>

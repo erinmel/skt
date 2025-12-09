@@ -76,6 +76,18 @@ public class DocumentStateManager
                             symbolTable,
                             semanticErrors));
                     });
+
+                    // Generate P-Code if semantic analysis succeeded
+                    if (annotatedAst != null && semanticErrors.Count == 0)
+                    {
+                        var pcodeGenerator = new PCodeGenerator();
+                        var program = pcodeGenerator.Generate(annotatedAst);
+
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            _messenger.Send(new PCodeGenerationCompletedEvent(filePath, program, true));
+                        });
+                    }
                 }
             });
         }

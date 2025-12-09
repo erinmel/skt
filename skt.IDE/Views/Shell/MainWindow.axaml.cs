@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     {
         FileExplorer,
         Tokens,
+        PCode,
         SyntaxTree,
         SemanticTree
     }
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
         public const string Tokens = "Tokens";
         public const string SyntaxTree = "Syntax Tree";
         public const string SemanticTree = "Semantic Tree";
+        public const string PCode = "P-Code";
     }
 
     private MainWindowViewModel? ViewModel => DataContext as MainWindowViewModel;
@@ -160,6 +162,7 @@ public partial class MainWindow : Window
             "TokensToggle" => ToolWindowType.Tokens,
             "SyntaxTreeToggle" => ToolWindowType.SyntaxTree,
             "SemanticTreeToggle" => ToolWindowType.SemanticTree,
+            "PCodeToggle" => ToolWindowType.PCode,
             _ => ToolWindowType.FileExplorer
         };
     }
@@ -191,6 +194,7 @@ public partial class MainWindow : Window
             ToolWindowType.Tokens => ToolWindowTitles.Tokens,
             ToolWindowType.SyntaxTree => ToolWindowTitles.SyntaxTree,
             ToolWindowType.SemanticTree => ToolWindowTitles.SemanticTree,
+            ToolWindowType.PCode => ToolWindowTitles.PCode,
             _ => ToolWindowTitles.FileExplorer
         };
     }
@@ -200,11 +204,13 @@ public partial class MainWindow : Window
         // Find the dynamic content controls by name at runtime to avoid relying on generated fields
         var fileExplorer = this.FindControl<Control>("FileExplorerContent");
         var tokens = this.FindControl<Control>("TokensContent");
+        var pcode = this.FindControl<Control>("PCodeContent");
         var syntax = this.FindControl<Control>("SyntaxTreeContent");
         var semantic = this.FindControl<Control>("SemanticTreeContent");
 
         if (fileExplorer is not null) fileExplorer.IsVisible = _selectedToolWindow == ToolWindowType.FileExplorer;
         if (tokens is not null) tokens.IsVisible = _selectedToolWindow == ToolWindowType.Tokens;
+        if (pcode is not null) pcode.IsVisible = _selectedToolWindow == ToolWindowType.PCode;
         if (syntax is not null) syntax.IsVisible = _selectedToolWindow == ToolWindowType.SyntaxTree;
         if (semantic is not null) semantic.IsVisible = _selectedToolWindow == ToolWindowType.SemanticTree;
     }
@@ -221,6 +227,7 @@ public partial class MainWindow : Window
         {
             ToolWindowType.FileExplorer => "FileExplorerToggle",
             ToolWindowType.Tokens => "TokensToggle",
+            ToolWindowType.PCode => "PCodeToggle",
             ToolWindowType.SyntaxTree => "SyntaxTreeToggle",
             ToolWindowType.SemanticTree => "SemanticTreeToggle",
             _ => "FileExplorerToggle"

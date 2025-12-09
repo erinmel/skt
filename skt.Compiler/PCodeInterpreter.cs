@@ -22,9 +22,23 @@ public class PCodeInterpreter
   public string Output => _output.ToString();
   public bool IsRunning => _running;
   
+  // Events for real-time output/error reporting
+  public event Action<string>? OnOutput;
+  public event Action<string>? OnError;
+  
   public PCodeInterpreter(PCodeProgram program)
   {
     _program = program;
+    _stack = new int[STACK_SIZE];
+    _sp = 0;
+    _pc = 0;
+    _running = false;
+    _output = new StringBuilder();
+  }
+
+  public PCodeInterpreter()
+  {
+    _program = new PCodeProgram();
     _stack = new int[STACK_SIZE];
     _sp = 0;
     _pc = 0;
@@ -35,7 +49,20 @@ public class PCodeInterpreter
   /// <summary>
   /// Executes the P-Code program
   /// </summary>
+  public void Execute(PCodeProgram program, string[]? inputs = null)
+  {
+    Execute(program.Instructions, program.StringTable, program.DataSize, inputs);
+  }
+
+  /// <summary>
+  /// Executes the P-Code program (legacy method for backward compatibility)
+  /// </summary>
   public void Execute(string[]? inputs = null)
+  {
+    Execute(_program.Instructions, _program.StringTable, _program.DataSize, inputs);
+  }
+
+  private void Execute(List<PCodeInstruction> instructions, List<string> stringTable, int dataSize, string[]? inputs = null)
   {
     if (inputs != null)
     {
@@ -48,16 +75,24 @@ public class PCodeInterpreter
     _output.Clear();
     
     // Allocate space for variables
-    _sp = _program.DataSize;
+    _sp = dataSize;
     
-    while (_running && _pc < _program.Instructions.Count)
+    // Create a temporary program for execution context
+    var execProgram = new PCodeProgram
     {
-      var instruction = _program.Instructions[_pc];
-      ExecuteInstruction(instruction);
+      Instructions = new List<PCodeInstruction>(instructions),
+      StringTable = new List<string>(stringTable),
+      DataSize = dataSize
+    };
+    
+    while (_running && _pc < instructions.Count)
+    {
+      var instruction = instructions[_pc];
+      ExecuteInstruction(instruction, execProgram);
     }
   }
   
-  private void ExecuteInstruction(PCodeInstruction instruction)
+  private void ExecuteInstruction(PCodeInstruction instruction, PCodeProgram program)
   {
     switch (instruction.Op)
     {
@@ -310,11 +345,11 @@ public class PCodeInterpreter
           if (input != null)
           {
             // Add string to string table if not already there
-            int strIndex = _program.StringTable.IndexOf(input);
+            int strIndex = program.StringTable.IndexOf(input);
             if (strIndex < 0)
             {
-              _program.StringTable.Add(input);
-              strIndex = _program.StringTable.Count - 1;
+              program.StringTable.Add(input);
+              strIndex = program.StringTable.Count - 1;
             }
             Push(strIndex);
           }
@@ -353,6 +388,7 @@ public class PCodeInterpreter
       case PCodeOperation.WRL:
         // Write line
         _output.AppendLine();
+        OnOutput?.Invoke(Environment.NewLine);
         _pc++;
         break;
       
@@ -367,7 +403,9 @@ public class PCodeInterpreter
         break;
       
       default:
-        _output.AppendLine($"Unknown instruction: {instruction.Op}");
+        string errorMsg = $"Unknown instruction: {instruction.Op}{Environment.NewLine}";
+        _output.Append(errorMsg);
+        OnError?.Invoke(errorMsg);
         _running = false;
         break;
     }
@@ -438,7 +476,7 @@ public class PCodeInterpreter
       
       trace.AppendLine($"PC={_pc,4} SP={_sp,4} : {instruction}");
       
-      ExecuteInstruction(instruction);
+      ExecuteInstruction(instruction, _program);
       steps++;
     }
     

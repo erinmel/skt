@@ -53,6 +53,16 @@
                         ToolTip.Tip="Semantic Tree">
                     <shell:SktIcon IconKey="Icon.Semantic" IconSize="{DynamicResource IconSizeToolbar}"/>
                 </Button>
+
+                <Button Name="PCodeToggle"
+                        Tag="ToolIcon"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="{DynamicResource ButtonPaddingCompact}"
+                        Margin="0,3"
+                        ToolTip.Tip="P-Code">
+                    <shell:SktIcon IconKey="Icon.PCode" IconSize="{DynamicResource IconSizeToolbar}"/>
+                </Button>
             </StackPanel>
 
             <Grid Grid.Row="1" Margin="5,10"/>

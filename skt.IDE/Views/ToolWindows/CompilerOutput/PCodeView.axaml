@@ -1,0 +1,16 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:skt.IDE.ViewModels.ToolWindows"
+             x:Class="skt.IDE.Views.ToolWindows.CompilerOutput.PCodeView"
+             x:DataType="vm:PCodeViewModel">
+  <Design.DataContext>
+    <vm:PCodeViewModel/>
+  </Design.DataContext>
+
+  <TreeDataGrid Source="{Binding Source}"
+                Classes="skt-standard"
+                Margin="4,0,0,0"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="True"/>
+</UserControl>
+

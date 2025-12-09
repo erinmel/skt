@@ -77,6 +77,9 @@ public partial class MainWindowViewModel : ObservableObject
     // Symbol Table view model
     public SymbolTableViewModel SymbolTable { get; } = new();
 
+    // P-Code view model
+    public PCodeViewModel PCode { get; } = new();
+
     // Expose TabbedEditorViewModel for MainWindow binding
     public TabbedEditorViewModel TabbedEditorViewModel { get; } = new();
 

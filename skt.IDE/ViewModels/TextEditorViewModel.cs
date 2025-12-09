@@ -83,6 +83,8 @@ public class TextEditorViewModel : INotifyPropertyChanged
     public SymbolTable SymbolTable { get; } = new();
     public List<SemanticError> SemanticErrors { get; } = new();
 
+    public PCodeProgram? PCodeProgram { get; private set; }
+
     public Dictionary<string, bool> SyntaxTreeExpansionState { get; } = new();
     public Dictionary<string, bool> SemanticTreeExpansionState { get; } = new();
 
@@ -94,6 +96,7 @@ public class TextEditorViewModel : INotifyPropertyChanged
     public bool HasLexicalAnalysis => Tokens.Count > 0 || LexicalErrors.Count > 0;
     public bool HasSyntaxAnalysis => SyntaxTree != null;
     public bool HasSemanticAnalysis => SemanticTree != null;
+    public bool HasPCodeGeneration => PCodeProgram != null;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -160,6 +163,13 @@ public class TextEditorViewModel : INotifyPropertyChanged
         LastAnalyzed = DateTime.Now;
     }
 
+    public void UpdatePCodeGeneration(PCodeProgram? program)
+    {
+        PCodeProgram = program;
+        LastAnalyzed = DateTime.Now;
+        OnPropertyChanged(nameof(HasPCodeGeneration));
+    }
+
     public void ClearAnalysisResults()
     {
         Tokens.Clear();
@@ -169,6 +179,7 @@ public class TextEditorViewModel : INotifyPropertyChanged
         SemanticTree = null;
         SymbolTable.Clear();
         SemanticErrors.Clear();
+        PCodeProgram = null;
         SyntaxTreeExpansionState.Clear();
         SemanticTreeExpansionState.Clear();
     }

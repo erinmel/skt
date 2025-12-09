@@ -848,6 +848,10 @@ public partial class TextEditor : UserControl
 
         private static void DrawWave(TextView view, DrawingContext ctx, TextDocument doc, int startOffset, int endOffset, Pen pen)
         {
+            // Validate offsets before attempting to get location
+            if (startOffset < 0 || startOffset > doc.TextLength || endOffset < 0 || endOffset > doc.TextLength)
+                return;
+            
             var start = view.GetVisualPosition(new TextViewPosition(doc.GetLocation(startOffset)), VisualYPosition.TextBottom);
             var end = view.GetVisualPosition(new TextViewPosition(doc.GetLocation(endOffset)), VisualYPosition.TextBottom);
             if (double.IsNaN(start.X) || double.IsNaN(end.X)) return;

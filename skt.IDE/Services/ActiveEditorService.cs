@@ -21,6 +21,7 @@ public class ActiveEditorService
         App.Messenger.Register<LexicalAnalysisCompletedEvent>(this, (_, e) => OnLexicalAnalysisCompleted(e));
         App.Messenger.Register<SyntaxAnalysisCompletedEvent>(this, (_, e) => OnSyntaxAnalysisCompleted(e));
         App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (_, e) => OnSemanticAnalysisCompleted(e));
+        App.Messenger.Register<PCodeGenerationCompletedEvent>(this, (_, e) => OnPCodeGenerationCompleted(e));
     }
 
     private void OnActiveEditorChanged(ActiveEditorChangedEvent e)
@@ -49,6 +50,12 @@ public class ActiveEditorService
     {
         var editor = FindEditorByFilePath(e.FilePath);
         editor?.UpdateSemanticAnalysis(e.AnnotatedAst, e.SymbolTable, e.Errors);
+    }
+
+    private void OnPCodeGenerationCompleted(PCodeGenerationCompletedEvent e)
+    {
+        var editor = FindEditorByFilePath(e.FilePath);
+        editor?.UpdatePCodeGeneration(e.Program);
     }
 
     private TextEditorViewModel? FindEditorByFilePath(string? filePath)
