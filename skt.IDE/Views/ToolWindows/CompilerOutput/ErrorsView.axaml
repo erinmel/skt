@@ -8,7 +8,7 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 Background="Transparent"
-                Padding="0"
+                Padding="0,0,0,2"
                 HorizontalAlignment="Stretch">
     <ItemsControl ItemsSource="{Binding GroupsSource, RelativeSource={RelativeSource AncestorType={x:Type compilerOutput:ErrorsView}}}"
                   HorizontalAlignment="Stretch">

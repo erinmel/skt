@@ -29,103 +29,108 @@
     </Design.DataContext>
 
 
+    <!-- Main vertical layout: Toolbar -> Content -> Output -> StatusBar -->
     <Grid x:Name="RootGrid" Margin="0">
         <Grid.RowDefinitions>
-            <!-- Toolbar (this includes your custom window controls) -->
+            <!-- Toolbar -->
             <RowDefinition Height="{DynamicResource ToolbarHeight}"/>
-            <!-- Main content area -->
+            <!-- Content Area (Editor + Tools + ToolStrip) -->
             <RowDefinition Height="*"/>
-            <!-- Terminal/Errors - Use pixel height that can be dynamically changed -->
+            <!-- Terminal/Output Panel -->
             <RowDefinition Height="0" MinHeight="0"/>
-            <!-- Status bar -->
+            <!-- Status Bar -->
             <RowDefinition Height="{DynamicResource StatusBarHeight}"/>
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <!-- Text Editor -->
-            <ColumnDefinition Width="5*"/>
-            <!-- Tools (File Explorer) -->
-            <ColumnDefinition Width="3*"/>
-            <!-- Tool Window (Very narrow, fixed width) -->
-            <ColumnDefinition Width="{DynamicResource ToolStripWidth}" MinWidth="{DynamicResource ToolStripWidthValue}" MaxWidth="{DynamicResource ToolStripWidthValue}"/>
-        </Grid.ColumnDefinitions>
-
         <!-- Custom Toolbar with Window Controls -->
-        <chrome:Toolbar Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Name="MainToolbar" Margin="0" />
+        <chrome:Toolbar Grid.Row="0" Name="MainToolbar" Margin="0" />
 
-        <!-- Main Content Area -->
-        <Border Grid.Row="1" Grid.Column="0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <!-- Content Area: Horizontal layout (Editor | Tools | ToolStrip) -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- Text Editor -->
+                <ColumnDefinition Width="5*"/>
+                <!-- Tools (File Explorer, etc.) -->
+                <ColumnDefinition Width="3*"/>
+                <!-- Tool Window Strip -->
+                <ColumnDefinition Width="{DynamicResource ToolStripWidth}" 
+                                  MinWidth="{DynamicResource ToolStripWidthValue}" 
+                                  MaxWidth="{DynamicResource ToolStripWidthValue}"/>
+            </Grid.ColumnDefinitions>
 
-                <Border Grid.Row="0" Padding="0">
-                    <texteditorviews:TabbedEditor Name="TabbedEditorControl" DataContext="{Binding TabbedEditorViewModel}"/>
-                </Border>
-            </Grid>
-        </Border>
+            <!-- Editor Area -->
+            <Border Grid.Column="0">
+                <texteditorviews:TabbedEditor Name="TabbedEditorControl" DataContext="{Binding TabbedEditorViewModel}"/>
+            </Border>
 
-        <!-- Tools/Tool Window Content (Dynamic content based on selected tool) -->
-        <Border Grid.Row="1" Grid.Column="1">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="{DynamicResource TabHeaderHeight}"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+            <!-- Tools Area -->
+            <Border Grid.Column="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="{DynamicResource TabHeaderHeight}"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Padding="5" HorizontalAlignment="Center">
-                    <TextBlock Text="{Binding SelectedToolWindowTitle}" FontWeight="Bold"/>
-                </Border>
+                    <Border Grid.Row="0" Padding="5" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding SelectedToolWindowTitle}" FontWeight="Bold"/>
+                    </Border>
 
-                <!-- Dynamic content based on selected tool window -->
-                <Grid Grid.Row="1">
-                    <!-- File Explorer (default) -->
-                    <navigation:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
+                    <!-- Dynamic content based on selected tool window -->
+                    <Grid Grid.Row="1">
+                        <!-- File Explorer (default) -->
+                        <navigation:FileExplorerView Name="FileExplorerContent" DataContext="{Binding FileExplorer}"/>
 
-                    <!-- Tokens View -->
-                    <compilerOutput:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
+                        <!-- Tokens View -->
+                        <compilerOutput:TokensView Name="TokensContent" IsVisible="False" DataContext="{Binding Tokens}"/>
 
-                    <!-- P-Code View -->
-                    <compilerOutput:PCodeView Name="PCodeContent" IsVisible="False" DataContext="{Binding PCode}"/>
+                        <!-- P-Code View -->
+                        <compilerOutput:PCodeView Name="PCodeContent" IsVisible="False" DataContext="{Binding PCode}"/>
 
-                    <!-- Syntax Tree View -->
-                    <compilerOutput:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding SyntaxTree}"/>
+                        <!-- Syntax Tree View -->
+                        <compilerOutput:SyntaxTreeView Name="SyntaxTreeContent" IsVisible="False" DataContext="{Binding SyntaxTree}"/>
 
-                    <!-- Semantic Tree View -->
-                    <compilerOutput:SemanticTreeView Name="SemanticTreeContent" IsVisible="False" DataContext="{Binding SemanticTree}"/>
+                        <!-- Semantic Tree View -->
+                        <compilerOutput:SemanticTreeView Name="SemanticTreeContent" IsVisible="False" DataContext="{Binding SemanticTree}"/>
 
-                    <!-- Phase Output View -->
-                    <compilerOutput:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
+                        <!-- Phase Output View -->
+                        <compilerOutput:PhaseOutputView Name="PhaseOutputContent" DataContext="{Binding PhaseOutput}" IsVisible="False"/>
+                    </Grid>
                 </Grid>
-            </Grid>
-        </Border>
+            </Border>
 
-        <!-- Tool Window (Toggle Buttons) -->
-        <chrome:ToolWindowStrip Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Name="ToolWindowStripControl" />
+            <!-- Tool Window Strip -->
+            <chrome:ToolWindowStrip Grid.Column="2" Name="ToolWindowStripControl" />
 
-        <!-- Terminal/Errors extracted to its own control -->
-        <terminal:TerminalPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" 
-                                Name="TerminalPanelControl"
-                                Padding="0,0,0,1" />
+            <!-- Vertical Splitter between Editor and Tools -->
+            <GridSplitter Grid.Column="1"
+                         Width="{DynamicResource SplitterThickness}"
+                         HorizontalAlignment="Left"
+                         ResizeDirection="Columns"
+                         Margin="0"
+                         Padding="0"
+                         ZIndex="1"/>
+        </Grid>
 
-        <!-- Status Bar -->
-        <chrome:StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"/>
-
-        <!-- Splitters -->
-        <GridSplitter Grid.Row="1" Grid.Column="0"
-                     Width="{DynamicResource SplitterThickness}"
-                     HorizontalAlignment="Right"
-                     ResizeDirection="Columns"
-                     Margin="0"
-                     Padding="0"/>
-
-        <!-- Horizontal splitter between main area and terminal -->
-        <GridSplitter Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+        <!-- Horizontal Splitter between Content and Output -->
+        <GridSplitter Grid.Row="1"
                      Height="{DynamicResource SplitterThickness}"
-                     VerticalAlignment="Top"
+                     VerticalAlignment="Bottom"
+                     HorizontalAlignment="Stretch"
                      ResizeDirection="Rows"
                      Margin="0"
-                     Padding="0"/>
+                     Padding="0"
+                     ZIndex="10"/>
+
+        <!-- Output Panel (Terminal/Errors) -->
+        <Grid Grid.Row="2" ClipToBounds="True">
+            <terminal:TerminalPanel Name="TerminalPanelControl"
+                                    Padding="0"
+                                    ClipToBounds="True"
+                                    VerticalAlignment="Stretch"
+                                    HorizontalAlignment="Stretch" />
+        </Grid>
+
+        <!-- Status Bar -->
+        <chrome:StatusBar Grid.Row="3"/>
     </Grid>
 </Window>

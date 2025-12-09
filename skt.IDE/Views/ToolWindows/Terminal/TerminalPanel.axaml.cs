@@ -11,6 +11,7 @@ public partial class TerminalPanel : UserControl
 {
     private bool _waitingForInput = false;
     private int _inputStartPosition = 0;
+    private string _lastValidText = string.Empty;
     
     public TerminalPanel()
     {
@@ -34,6 +35,25 @@ public partial class TerminalPanel : UserControl
             terminalTextBox.PointerPressed += TerminalTextBox_PointerPressed;
         }
         
+        // Constrain TextBox height to prevent overflow beyond ScrollViewer
+        var terminalScrollViewer = this.FindControl<ScrollViewer>("TerminalScrollViewer");
+        if (terminalScrollViewer != null && terminalTextBox != null)
+        {
+            // Update MaxHeight when ScrollViewer size changes
+            terminalScrollViewer.SizeChanged += (s, e) =>
+            {
+                if (e.NewSize.Height > 0 && terminalTextBox != null)
+                {
+                    // Set MaxHeight to available height minus padding
+                    var availableHeight = e.NewSize.Height - 6; // 6 is top padding
+                    if (availableHeight > 0)
+                    {
+                        terminalTextBox.MaxHeight = availableHeight;
+                    }
+                }
+            };
+        }
+        
         // Clean up on unload
         Unloaded += (_, _) => App.Messenger.UnregisterAll(this);
     }
@@ -55,9 +75,8 @@ public partial class TerminalPanel : UserControl
                 textBox.Text += e.Output;
                 _inputStartPosition = textBox.Text?.Length ?? 0;
                 
-                // Scroll to end
-                var scrollViewer = this.FindControl<ScrollViewer>("TerminalScrollViewer");
-                scrollViewer?.ScrollToEnd();
+                // Scroll to end by setting caret to end
+                textBox.CaretIndex = textBox.Text?.Length ?? 0;
             }
             else
             {
@@ -112,6 +131,8 @@ public partial class TerminalPanel : UserControl
             {
                 // Mark where user input starts
                 _inputStartPosition = textBox.Text?.Length ?? 0;
+                // Store ALL accumulated text (all previous outputs + inputs) as the last valid state
+                _lastValidText = textBox.Text ?? string.Empty;
                 
                 System.Diagnostics.Debug.WriteLine($"[TerminalPanel] Input start position: {_inputStartPosition}");
                 System.Diagnostics.Debug.WriteLine($"[TerminalPanel] Current text: '{textBox.Text}'");
@@ -186,6 +207,7 @@ public partial class TerminalPanel : UserControl
             // Add newline to terminal
             textBox.Text += Environment.NewLine;
             _inputStartPosition = textBox.Text.Length;
+            _lastValidText = textBox.Text;
             
             // Make readonly again while executing
             textBox.IsReadOnly = true;
@@ -198,9 +220,17 @@ public partial class TerminalPanel : UserControl
             _waitingForInput = false;
             e.Handled = true; // Critical: Prevent Enter from creating additional newline
             
-            // Scroll to end
+            // Auto-scroll to end after input is submitted - multiple attempts for reliability
             var scrollViewer = this.FindControl<ScrollViewer>("TerminalScrollViewer");
-            scrollViewer?.ScrollToEnd();
+            if (scrollViewer != null)
+            {
+                Dispatcher.UIThread.Post(() => scrollViewer.ScrollToEnd(), DispatcherPriority.Background);
+                Dispatcher.UIThread.Post(() => 
+                {
+                    System.Threading.Thread.Sleep(10);
+                    scrollViewer.ScrollToEnd();
+                }, DispatcherPriority.Background);
+            }
             
             System.Diagnostics.Debug.WriteLine($"[TerminalPanel] ===== INPUT HANDLING COMPLETE =====");
         }
@@ -224,13 +254,64 @@ public partial class TerminalPanel : UserControl
             textBox.CaretIndex = _inputStartPosition;
         }
         
-        if (e.Key == Key.Back || e.Key == Key.Delete || e.Key == Key.Left)
+        // Check if there's a selection that includes protected text
+        if (!string.IsNullOrEmpty(textBox.SelectedText))
         {
-            // Prevent deleting or moving before the input start position
+            var selectionStart = textBox.SelectionStart;
+            if (selectionStart < _inputStartPosition)
+            {
+                // Selection includes protected text, prevent any modification
+                if (e.Key == Key.Back || e.Key == Key.Delete || e.Key == Key.X && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                {
+                    e.Handled = true;
+                    textBox.SelectionStart = _inputStartPosition;
+                    textBox.SelectionEnd = _inputStartPosition;
+                    return;
+                }
+            }
+        }
+        
+        // Prevent Backspace at or before input start
+        if (e.Key == Key.Back)
+        {
             if (textBox.CaretIndex <= _inputStartPosition)
             {
                 e.Handled = true;
             }
+        }
+        
+        // Prevent Delete if caret is before input start or at the protected boundary
+        if (e.Key == Key.Delete)
+        {
+            if (textBox.CaretIndex < _inputStartPosition)
+            {
+                e.Handled = true;
+            }
+        }
+        
+        // Prevent Left arrow at input start position
+        if (e.Key == Key.Left)
+        {
+            if (textBox.CaretIndex <= _inputStartPosition)
+            {
+                e.Handled = true;
+            }
+        }
+        
+        // Prevent Home key from going before input start
+        if (e.Key == Key.Home)
+        {
+            e.Handled = true;
+            textBox.CaretIndex = _inputStartPosition;
+        }
+        
+        // Prevent Ctrl+A (Select All) as it would select protected text
+        if (e.Key == Key.A && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            e.Handled = true;
+            // Select only user input
+            textBox.SelectionStart = _inputStartPosition;
+            textBox.SelectionEnd = textBox.Text?.Length ?? _inputStartPosition;
         }
     }
     
@@ -242,12 +323,24 @@ public partial class TerminalPanel : UserControl
         if (textBox == null) return;
         
         // Prevent user from deleting text before input start position
-        var currentLength = textBox.Text?.Length ?? 0;
+        var currentText = textBox.Text ?? string.Empty;
+        var currentLength = currentText.Length;
+        
         if (currentLength < _inputStartPosition)
         {
             // User tried to delete program output, restore it
-            // This is a safety measure, KeyDown should prevent this
-            e.Handled = true;
+            System.Diagnostics.Debug.WriteLine($"[TerminalPanel] User tried to delete output. Restoring from length {currentLength} to {_inputStartPosition}");
+            
+            // Restore the text up to the input start position
+            textBox.Text = _lastValidText;
+            textBox.CaretIndex = _inputStartPosition;
+            
+            System.Diagnostics.Debug.WriteLine($"[TerminalPanel] Text restored, caret at {textBox.CaretIndex}");
+        }
+        else if (currentLength >= _inputStartPosition)
+        {
+            // Valid text change, update last valid text
+            _lastValidText = currentText;
         }
     }
     
@@ -298,32 +391,46 @@ public partial class TerminalPanel : UserControl
         
         if (_waitingForInput)
         {
-            System.Diagnostics.Debug.WriteLine($"[TerminalPanel] User clicked on terminal while waiting for input - restoring state");
+            System.Diagnostics.Debug.WriteLine($"[TerminalPanel] User clicked on terminal while waiting for input");
             
             // Restore input state
             textBox.IsReadOnly = false;
             textBox.Focusable = true;
             
-            // Restore caret to end of text
-            var currentLength = textBox.Text?.Length ?? 0;
-            var targetPosition = Math.Max(_inputStartPosition, currentLength);
-            
-            // Set caret immediately
-            textBox.CaretIndex = targetPosition;
-            
-            // Focus with slight delay to ensure proper state
+            // Immediately enforce caret position after click is processed
             Dispatcher.UIThread.Post(() =>
             {
-                if (_waitingForInput && textBox != null) // Double check we're still waiting
+                if (textBox.CaretIndex < _inputStartPosition)
                 {
-                    textBox.Focus();
-                    textBox.CaretIndex = targetPosition;
-                    System.Diagnostics.Debug.WriteLine($"[TerminalPanel] State restored: CaretIndex={textBox.CaretIndex}, IsReadOnly={textBox.IsReadOnly}, IsFocused={textBox.IsFocused}");
+                    System.Diagnostics.Debug.WriteLine($"[TerminalPanel] User clicked before input position ({textBox.CaretIndex}), correcting to {_inputStartPosition}");
+                    textBox.CaretIndex = _inputStartPosition;
                 }
-            }, Avalonia.Threading.DispatcherPriority.Input);
+                
+                // Clear any selection that includes protected text
+                if (!string.IsNullOrEmpty(textBox.SelectedText))
+                {
+                    var selectionStart = textBox.SelectionStart;
+                    if (selectionStart < _inputStartPosition)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[TerminalPanel] Selection includes protected text, clearing selection");
+                        textBox.SelectionStart = _inputStartPosition;
+                        textBox.SelectionEnd = _inputStartPosition;
+                    }
+                }
+            }, DispatcherPriority.Render);
             
-            // IMPORTANT: Mark event as handled to prevent it from being processed as text input
-            e.Handled = true;
+            // Also verify after a longer delay to catch any edge cases
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_waitingForInput && textBox != null)
+                {
+                    if (textBox.CaretIndex < _inputStartPosition)
+                    {
+                        textBox.CaretIndex = _inputStartPosition;
+                    }
+                    textBox.Focus();
+                }
+            }, DispatcherPriority.Background);
         }
     }
 }

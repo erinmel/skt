@@ -4,18 +4,33 @@
              xmlns:shell="using:skt.IDE.Views.Shell"
              xmlns:compilerOutput="using:skt.IDE.Views.ToolWindows.CompilerOutput"
              x:Class="skt.IDE.Views.ToolWindows.Terminal.TerminalPanel"
-             x:DataType="vm:MainWindowViewModel">
+             x:DataType="vm:MainWindowViewModel"
+             ClipToBounds="True">
   <UserControl.Styles>
     <Style Selector="TabControl#TerminalTabView">
       <Setter Property="Padding" Value="0"/>
+      <Setter Property="VerticalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="TabControl#TerminalTabView > ContentPresenter">
+      <Setter Property="ClipToBounds" Value="True"/>
+      <Setter Property="VerticalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
     <Style Selector="TabItem">
       <Setter Property="Padding" Value="10,6"/>
       <Setter Property="FontSize" Value="{DynamicResource AppFontSize}"/>
       <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="ClipToBounds" Value="True"/>
     </Style>
     <Style Selector="ScrollViewer">
       <Setter Property="Padding" Value="0"/>
+      <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+    <Style Selector="ScrollViewer#TerminalScrollViewer">
+      <Setter Property="ClipToBounds" Value="True"/>
+      <Setter Property="VerticalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
     <Style Selector="TextBox">
       <Setter Property="FontSize" Value="{DynamicResource EditorFontSize}"/>
@@ -26,24 +41,32 @@
       <Setter Property="TextAlignment" Value="Left"/>
     </Style>
   </UserControl.Styles>
-  <Border Margin="2">
-    <TabControl Name="TerminalTabView" Padding="0">
-      <TabItem Header="Terminal">
+  <TabControl Name="TerminalTabView" Padding="0" ClipToBounds="True">
+    <TabItem Header="Terminal" ClipToBounds="True">
         <ScrollViewer Name="TerminalScrollViewer"
                       Background="{DynamicResource SystemChromeLowColor}"
-                      Padding="8">
+                      Padding="6,6,6,0"
+                      ClipToBounds="True"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      VerticalAlignment="Stretch"
+                      HorizontalAlignment="Stretch">
           <TextBox Name="TerminalTextBox"
                    AcceptsReturn="True"
                    FontFamily="Consolas,monospace"
                    Watermark="Terminal output will appear here..."
-                   IsReadOnly="False"
+                   IsReadOnly="True"
                    TextWrapping="Wrap"
                    BorderThickness="0"
-                   Background="{DynamicResource SystemChromeLowColor}"
+                   Background="Transparent"
                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                    Focusable="True"
                    IsTabStop="True"
-                   Padding="8,4">
+                   Padding="0"
+                   Margin="0"
+                   MinHeight="0"
+                   VerticalAlignment="Top"
+                   HorizontalAlignment="Stretch">
             <TextBox.Styles>
               <!-- Override all TextBox states to have consistent simple styling -->
               <Style Selector="TextBox">
@@ -84,5 +107,4 @@
         <compilerOutput:SymbolTableView DataContext="{Binding SymbolTable}" />
       </TabItem>
     </TabControl>
-  </Border>
 </UserControl>

@@ -7,7 +7,7 @@
   <TreeDataGrid Name="SymbolTableGrid"
                 Source="{Binding Source}"
                 Classes="skt-standard"
-                Margin="4,0,0,0"
+                Margin="4,0,0,2"
                 CanUserResizeColumns="True"
                 CanUserSortColumns="True"/>
 </UserControl>
