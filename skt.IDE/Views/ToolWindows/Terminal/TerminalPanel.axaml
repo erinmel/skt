@@ -29,7 +29,9 @@
   <Border Margin="2">
     <TabControl Name="TerminalTabView" Padding="0">
       <TabItem Header="Terminal">
-        <ScrollViewer Name="TerminalScrollViewer">
+        <ScrollViewer Name="TerminalScrollViewer"
+                      Background="{DynamicResource SystemChromeLowColor}"
+                      Padding="8">
           <TextBox Name="TerminalTextBox"
                    AcceptsReturn="True"
                    FontFamily="Consolas,monospace"
@@ -37,9 +39,26 @@
                    IsReadOnly="False"
                    TextWrapping="Wrap"
                    BorderThickness="0"
-                   Background="Transparent"
+                   Background="{DynamicResource SystemChromeLowColor}"
+                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                    Focusable="True"
-                   IsTabStop="True"/>
+                   IsTabStop="True"
+                   Padding="4">
+            <TextBox.Styles>
+              <Style Selector="TextBox">
+                <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+              </Style>
+              <Style Selector="TextBox:focus">
+                <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+              </Style>
+              <Style Selector="TextBox:pointerover">
+                <Setter Property="Background" Value="{DynamicResource SystemChromeLowColor}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+              </Style>
+            </TextBox.Styles>
+          </TextBox>
         </ScrollViewer>
       </TabItem>
       <TabItem Header="Lexical Errors">

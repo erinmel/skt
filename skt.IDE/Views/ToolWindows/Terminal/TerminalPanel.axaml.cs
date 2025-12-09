@@ -20,6 +20,7 @@ public partial class TerminalPanel : UserControl
         App.Messenger.Register<PCodeExecutionOutputEvent>(this, (_, m) => OnExecutionOutput(m));
         App.Messenger.Register<ClearTerminalRequestEvent>(this, (_, m) => OnClearTerminal(m));
         App.Messenger.Register<PCodeInputRequestEvent>(this, (_, m) => OnInputRequest(m));
+        App.Messenger.Register<PCodeExecutionCompletedEvent>(this, (_, m) => OnExecutionCompleted(m));
         
         // Handle input in the main terminal TextBox
         var terminalTextBox = this.FindControl<TextBox>("TerminalTextBox");
@@ -79,6 +80,23 @@ public partial class TerminalPanel : UserControl
             
             _waitingForInput = false;
             _inputStartPosition = 0;
+        });
+    }
+
+    private void OnExecutionCompleted(PCodeExecutionCompletedEvent e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[TerminalPanel] Execution completed, cleaning up input state");
+        Dispatcher.UIThread.Post(() =>
+        {
+            var textBox = this.FindControl<TextBox>("TerminalTextBox");
+            if (textBox != null)
+            {
+                textBox.IsReadOnly = true; // Make readonly when execution completes
+            }
+            
+            // Clean up waiting state
+            _waitingForInput = false;
+            System.Diagnostics.Debug.WriteLine($"[TerminalPanel] _waitingForInput set to false");
         });
     }
     

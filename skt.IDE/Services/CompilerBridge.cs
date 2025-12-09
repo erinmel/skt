@@ -294,6 +294,13 @@ public class CompilerBridge
             {
                 System.Diagnostics.Debug.WriteLine($"[Interpreter] Requesting input");
                 
+                // Check if execution was already cancelled
+                if (_executionCancellation?.IsCancellationRequested == true)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Interpreter] Execution cancelled, throwing OperationCanceledException");
+                    throw new OperationCanceledException();
+                }
+                
                 // Create TaskCompletionSource for waiting on response
                 var tcs = new TaskCompletionSource<string?>();
                 
@@ -302,7 +309,17 @@ public class CompilerBridge
                 _messenger.Register<PCodeInputResponseEvent>(recipient, (r, m) =>
                 {
                     System.Diagnostics.Debug.WriteLine($"[Interpreter] Received input: {m.Input}");
-                    tcs.TrySetResult(m.Input);
+                    
+                    // Check if cancelled before accepting input
+                    if (_executionCancellation?.IsCancellationRequested == true)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Interpreter] Execution cancelled, ignoring input");
+                        tcs.TrySetCanceled();
+                    }
+                    else
+                    {
+                        tcs.TrySetResult(m.Input);
+                    }
                     _messenger.Unregister<PCodeInputResponseEvent>(recipient);
                 });
                 
@@ -319,6 +336,14 @@ public class CompilerBridge
                     if (completedTask == tcs.Task)
                     {
                         var result = await tcs.Task;
+                        
+                        // Final check before returning
+                        if (_executionCancellation?.IsCancellationRequested == true)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Interpreter] Execution cancelled after receiving input");
+                            throw new OperationCanceledException();
+                        }
+                        
                         System.Diagnostics.Debug.WriteLine($"[Interpreter] Returning input to interpreter: {result}");
                         return result;
                     }
@@ -329,6 +354,12 @@ public class CompilerBridge
                         return "0"; // Return default value on timeout
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Interpreter] Input cancelled");
+                    _messenger.Unregister<PCodeInputResponseEvent>(recipient);
+                    throw; // Re-throw to stop interpreter
+                }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"[Interpreter] ERROR: Exception waiting for input: {ex.Message}");
@@ -337,23 +368,15 @@ public class CompilerBridge
                 }
             };
 
-            // Execute the program asynchronously
-            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Calling ExecuteAsync");
-            await interpreter.ExecuteAsync(request.Program);
+            // Execute the program asynchronously with cancellation support
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Calling ExecuteAsync with cancellation token");
+            await interpreter.ExecuteAsync(request.Program, null, _executionCancellation.Token);
             
-            // Check if execution was cancelled
-            if (_executionCancellation?.IsCancellationRequested == true)
-            {
-                System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution was cancelled");
-                _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, false, "Cancelled"));
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution completed successfully");
-                // Send completion message
-                _messenger.Send(new PCodeExecutionOutputEvent("\nProgram exited successfully.\n", false));
-                _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, true));
-            }
+            // If we reach here without exception, execution completed successfully
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution completed successfully");
+            // Send completion message
+            _messenger.Send(new PCodeExecutionOutputEvent("\nProgram exited successfully.\n", false));
+            _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, true));
         }
         catch (OperationCanceledException)
         {

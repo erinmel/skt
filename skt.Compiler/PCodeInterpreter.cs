@@ -52,9 +52,9 @@ public class PCodeInterpreter
   /// <summary>
   /// Executes the P-Code program
   /// </summary>
-  public async Task ExecuteAsync(PCodeProgram program, string[]? inputs = null)
+  public async Task ExecuteAsync(PCodeProgram program, string[]? inputs = null, System.Threading.CancellationToken cancellationToken = default)
   {
-    await ExecuteAsync(program.Instructions, program.StringTable, program.DataSize, inputs);
+    await ExecuteAsync(program.Instructions, program.StringTable, program.DataSize, inputs, cancellationToken);
   }
   
   /// <summary>
@@ -73,7 +73,7 @@ public class PCodeInterpreter
     ExecuteAsync(_program.Instructions, _program.StringTable, _program.DataSize, inputs).GetAwaiter().GetResult();
   }
 
-  private async Task ExecuteAsync(List<PCodeInstruction> instructions, List<string> stringTable, int dataSize, string[]? inputs = null)
+  private async Task ExecuteAsync(List<PCodeInstruction> instructions, List<string> stringTable, int dataSize, string[]? inputs = null, System.Threading.CancellationToken cancellationToken = default)
   {
     if (inputs != null)
     {
@@ -98,6 +98,13 @@ public class PCodeInterpreter
     
     while (_running && _pc < instructions.Count)
     {
+      // Check for cancellation
+      if (cancellationToken.IsCancellationRequested)
+      {
+        _running = false;
+        throw new System.OperationCanceledException("Program execution was cancelled", cancellationToken);
+      }
+      
       var instruction = instructions[_pc];
       await ExecuteInstructionAsync(instruction, execProgram);
     }
