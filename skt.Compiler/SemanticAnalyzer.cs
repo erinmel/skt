@@ -308,6 +308,36 @@ public class SemanticAnalyzer
     AnalyzeNode(leftNode);
     AnalyzeNode(rightNode);
 
+    // Check if this is string concatenation (only valid for + operator)
+    bool isStringOperation = leftNode.DataType == "string" || rightNode.DataType == "string";
+    
+    if (isStringOperation)
+    {
+      if (node.Rule != "+")
+      {
+        ReportError(
+            SemanticErrorType.InvalidOperator,
+            $"String operands only valid with '+' operator, not '{node.Rule}'",
+            node.Line, node.Column, node.EndLine, node.EndColumn
+        );
+        node.SetTypeAttribute("string", AttributePropagation.None, "error_recovery");
+      }
+      else
+      {
+        // Valid string concatenation - result is always string
+        node.SetTypeAttribute("string", AttributePropagation.Synthesized, "children");
+        
+        // Check for constant folding with strings
+        if (leftNode.IsConstant && rightNode.IsConstant && leftNode.Value != null && rightNode.Value != null)
+        {
+          string leftStr = leftNode.Value.ToString() ?? "";
+          string rightStr = rightNode.Value.ToString() ?? "";
+          node.SetValueAttribute(leftStr + rightStr, AttributePropagation.Synthesized, "constant_folding");
+        }
+      }
+      return;
+    }
+
     // Determine result type based on operand types (synthesized from children)
     string? resultType = InferArithmeticResultType(leftNode.DataType, rightNode.DataType);
 

@@ -314,6 +314,39 @@ public class PCodeInterpreter
         }
         break;
       
+      case PCodeOperation.I2S:
+        {
+          // Convert int to string
+          int a = PopInt();
+          string str = a.ToString();
+          int strIdx = program.AddString(str);
+          PushInt(strIdx);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.F2S:
+        {
+          // Convert float to string
+          double a = PopDouble();
+          string str = ValueFormatter.FormatValue(a);
+          int strIdx = program.AddString(str);
+          PushInt(strIdx);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.B2S:
+        {
+          // Convert bool to string
+          int a = PopInt();
+          string str = a != 0 ? "true" : "false";
+          int strIdx = program.AddString(str);
+          PushInt(strIdx);
+          _pc++;
+        }
+        break;
+      
       case PCodeOperation.EQL:
         {
           int b = PopInt();
@@ -612,6 +645,26 @@ public class PCodeInterpreter
         _output.AppendLine();
         OnOutput?.Invoke(Environment.NewLine);
         _pc++;
+        break;
+      
+      case PCodeOperation.CONCAT:
+        // Concatenate strings
+        {
+          int rightIdx = PopInt();
+          int leftIdx = PopInt();
+          
+          string leftStr = (leftIdx >= 0 && leftIdx < program.StringTable.Count) 
+            ? program.StringTable[leftIdx] 
+            : "";
+          string rightStr = (rightIdx >= 0 && rightIdx < program.StringTable.Count) 
+            ? program.StringTable[rightIdx] 
+            : "";
+          
+          string result = leftStr + rightStr;
+          int resultIdx = program.AddString(result);
+          PushInt(resultIdx);
+          _pc++;
+        }
         break;
       
       case PCodeOperation.HLT:

@@ -276,6 +276,32 @@ public class PCodeGenerator
     var leftChild = node.Children[0];
     var rightChild = node.Children[1];
     
+    // Check if this is string concatenation
+    if (node.DataType == "string" && node.Rule == "+")
+    {
+      // Generate left operand (pushes to stack)
+      GenerateNode(leftChild);
+      
+      // Convert left operand to string if needed
+      if (leftChild.DataType != "string")
+      {
+        EmitTypeToStringConversion(leftChild.DataType);
+      }
+      
+      // Generate right operand (pushes to stack)
+      GenerateNode(rightChild);
+      
+      // Convert right operand to string if needed
+      if (rightChild.DataType != "string")
+      {
+        EmitTypeToStringConversion(rightChild.DataType);
+      }
+      
+      // Concatenate strings
+      Emit(PCodeOperation.CONCAT, 0, 0, "concatenate strings");
+      return;
+    }
+    
     // Generate left operand (pushes to stack)
     GenerateNode(leftChild);
     
@@ -328,6 +354,23 @@ public class PCodeGenerator
     }
     
     Emit(op, 0, 0, $"op {node.Rule}");
+  }
+  
+  private void EmitTypeToStringConversion(string? dataType)
+  {
+    switch (dataType)
+    {
+      case "int":
+        Emit(PCodeOperation.I2S, 0, 0, "convert int to string");
+        break;
+      case "float":
+        Emit(PCodeOperation.F2S, 0, 0, "convert float to string");
+        break;
+      case "bool":
+        Emit(PCodeOperation.B2S, 0, 0, "convert bool to string");
+        break;
+      // string doesn't need conversion
+    }
   }
   
   private void GenerateRelationalOp(AnnotatedAstNode node)

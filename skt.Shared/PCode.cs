@@ -31,6 +31,9 @@ public enum PCodeOperation
   // Type conversion
   I2F,    // Convert int to float: pop int, push double
   F2I,    // Convert float to int: pop double, push int (truncate)
+  I2S,    // Convert int to string: pop int, push string index
+  F2S,    // Convert float to string: pop double, push string index
+  B2S,    // Convert bool to string: pop int (0/1), push string index
   
   // Integer comparison operations
   EQL,    // Equal: pop two ints, push 1 if equal, 0 otherwise
@@ -71,6 +74,7 @@ public enum PCodeOperation
   WRTF,   // Write float: pop double and write as decimal
   WRS,    // Write string: pop string index and write from table
   WRL,    // Write line: write newline
+  CONCAT, // Concatenate strings: pop two string indices, push new string index
   
   // Special operations
   HLT,    // Halt execution
