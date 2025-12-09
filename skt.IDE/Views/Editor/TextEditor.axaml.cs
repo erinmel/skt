@@ -276,6 +276,12 @@ public partial class TextEditor : UserControl
         else if (Text != _editor.Document.Text)
             _editor.Document.Text = Text ?? string.Empty;
 
+        // Configure editor options for smart indentation with tabs converted to spaces
+        _editor.Options.ConvertTabsToSpaces = true;
+        _editor.Options.IndentationSize = 4;
+        _editor.Options.ShowTabs = true;
+        _editor.Options.ShowSpaces = false;
+
         // Apply font size from theme manager
         var app = Application.Current;
         if (app?.Resources != null)
