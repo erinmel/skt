@@ -1,0 +1,43 @@
+﻿// Test program for cout/cin in control structures
+main {
+    int choice, counter, num;
+    
+    cout << "=== TEST 1: IF/ELSE ===" << "\n";
+    cout << "Enter 1 for IF, 2 for ELSE: ";
+    cin >> choice;
+    
+    if choice == 1 {
+        cout << "Inside IF block" << "\n";
+        cout << "IF works correctly!" << "\n";
+    } else {
+        cout << "Inside ELSE block" << "\n";
+        cout << "ELSE works correctly!" << "\n";
+    }
+    
+    cout << "\n" << "=== TEST 2: WHILE ===" << "\n";
+    cout << "Enter starting number (try 1): ";
+    cin >> counter;
+    
+    while counter <= 3 {
+        cout << "WHILE iteration: " << counter << "\n";
+        cout << "Enter next number: ";
+        cin >> num;
+        counter = counter + 1;
+    }
+    cout << "WHILE loop completed!" << "\n";
+    
+    cout << "\n" << "=== TEST 3: DO-WHILE ===" << "\n";
+    cout << "Enter starting number (try 1): ";
+    cin >> counter;
+    
+    do {
+        cout << "DO-WHILE iteration: " << counter << "\n";
+        cout << "Enter next number: ";
+        cin >> num;
+        counter = counter + 1;
+    } while counter <= 3;
+    
+    cout << "DO-WHILE loop completed!" << "\n";
+    cout << "\n" << "All tests completed successfully!" << "\n";
+}
+

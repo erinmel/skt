@@ -34,9 +34,9 @@
             <!-- Toolbar (this includes your custom window controls) -->
             <RowDefinition Height="{DynamicResource ToolbarHeight}"/>
             <!-- Main content area -->
-            <RowDefinition Height="7*"/>
-            <!-- Terminal/Errors -->
-            <RowDefinition Height="0*" MinHeight="0"/>
+            <RowDefinition Height="*"/>
+            <!-- Terminal/Errors - Use pixel height that can be dynamically changed -->
+            <RowDefinition Height="0" MinHeight="0"/>
             <!-- Status bar -->
             <RowDefinition Height="{DynamicResource StatusBarHeight}"/>
         </Grid.RowDefinitions>

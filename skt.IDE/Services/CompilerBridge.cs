@@ -12,6 +12,8 @@ namespace skt.IDE.Services;
 public class CompilerBridge
 {
     private readonly IMessenger _messenger;
+    private System.Threading.CancellationTokenSource? _executionCancellation;
+    private bool _isExecuting = false;
 
     public CompilerBridge(IMessenger messenger)
     {
@@ -24,6 +26,7 @@ public class CompilerBridge
         _messenger.Register<SemanticAnalysisRequestEvent>(this, (r, m) => OnSemanticAnalysisRequest(m));
         _messenger.Register<PCodeGenerationRequestEvent>(this, (r, m) => OnPCodeGenerationRequest(m));
         _messenger.Register<PCodeExecutionRequestEvent>(this, (r, m) => OnPCodeExecutionRequest(m));
+        _messenger.Register<StopExecutionRequestEvent>(this, (r, m) => OnStopExecutionRequest(m));
     }
 
     private async Task AnalyzeFileInMemory(string filePath)
@@ -217,35 +220,158 @@ public class CompilerBridge
         }
     }
 
+    private void OnStopExecutionRequest(StopExecutionRequestEvent request)
+    {
+        System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Stop execution requested");
+        
+        if (_isExecuting && _executionCancellation != null)
+        {
+            _executionCancellation.Cancel();
+            _messenger.Send(new PCodeExecutionOutputEvent("\n\nProgram execution stopped by user.\n", true));
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution cancelled");
+            
+            // Send completion event to update UI
+            _messenger.Send(new PCodeExecutionCompletedEvent(null, false, "Stopped by user"));
+            
+            // Clean up state
+            _isExecuting = false;
+            _executionCancellation?.Dispose();
+            _executionCancellation = null;
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] No execution running to stop");
+        }
+    }
+
     private async void OnPCodeExecutionRequest(PCodeExecutionRequestEvent request)
     {
         try
         {
-            await Task.Run(() =>
+            // Cancel any previous execution
+            if (_isExecuting && _executionCancellation != null)
             {
-                var interpreter = new PCodeInterpreter();
+                System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Cancelling previous execution");
+                _executionCancellation.Cancel();
+                await Task.Delay(100); // Give time for cancellation to complete
+            }
+            
+            // Create new cancellation token for this execution
+            _executionCancellation = new System.Threading.CancellationTokenSource();
+            _isExecuting = true;
+            
+            // Notify that execution started
+            _messenger.Send(new PCodeExecutionStartedEvent(request.FilePath));
+            
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Starting P-Code execution");
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Program has {request.Program?.Instructions?.Count ?? 0} instructions");
+            
+            if (request.Program == null || request.Program.Instructions == null || request.Program.Instructions.Count == 0)
+            {
+                _messenger.Send(new PCodeExecutionOutputEvent("Error: No P-Code instructions to execute\n", true));
+                _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, false, "No instructions"));
+                _isExecuting = false;
+                return;
+            }
+            
+            var interpreter = new PCodeInterpreter();
+            
+            // Subscribe to output events
+            interpreter.OnOutput += (output) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[Interpreter] Output: {output}");
+                _messenger.Send(new PCodeExecutionOutputEvent(output, false));
+            };
+            
+            interpreter.OnError += (error) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[Interpreter] Error: {error}");
+                _messenger.Send(new PCodeExecutionOutputEvent(error, true));
+            };
+            
+            // Subscribe to input request events
+            interpreter.OnInputRequest += async () =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[Interpreter] Requesting input");
                 
-                // Subscribe to output events
-                interpreter.OnOutput += (output) =>
-                {
-                    _messenger.Send(new PCodeExecutionOutputEvent(output, false));
-                };
+                // Create TaskCompletionSource for waiting on response
+                var tcs = new TaskCompletionSource<string?>();
                 
-                interpreter.OnError += (error) =>
+                // Register temporary handler for input response - needs a unique recipient
+                var recipient = new object();
+                _messenger.Register<PCodeInputResponseEvent>(recipient, (r, m) =>
                 {
-                    _messenger.Send(new PCodeExecutionOutputEvent(error, true));
-                };
+                    System.Diagnostics.Debug.WriteLine($"[Interpreter] Received input: {m.Input}");
+                    tcs.TrySetResult(m.Input);
+                    _messenger.Unregister<PCodeInputResponseEvent>(recipient);
+                });
+                
+                // Request input from the terminal
+                _messenger.Send(new PCodeInputRequestEvent());
+                
+                // Wait for response with timeout to prevent deadlock
+                try
+                {
+                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(5));
+                    var timeoutTask = Task.Delay(System.Threading.Timeout.Infinite, cts.Token);
+                    var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+                    
+                    if (completedTask == tcs.Task)
+                    {
+                        var result = await tcs.Task;
+                        System.Diagnostics.Debug.WriteLine($"[Interpreter] Returning input to interpreter: {result}");
+                        return result;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Interpreter] ERROR: Input timeout after 5 minutes");
+                        _messenger.Unregister<PCodeInputResponseEvent>(recipient);
+                        return "0"; // Return default value on timeout
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Interpreter] ERROR: Exception waiting for input: {ex.Message}");
+                    _messenger.Unregister<PCodeInputResponseEvent>(recipient);
+                    return "0";
+                }
+            };
 
-                // Execute the program
-                interpreter.Execute(request.Program);
-                
+            // Execute the program asynchronously
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Calling ExecuteAsync");
+            await interpreter.ExecuteAsync(request.Program);
+            
+            // Check if execution was cancelled
+            if (_executionCancellation?.IsCancellationRequested == true)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution was cancelled");
+                _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, false, "Cancelled"));
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution completed successfully");
+                // Send completion message
+                _messenger.Send(new PCodeExecutionOutputEvent("\nProgram exited successfully.\n", false));
                 _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, true));
-            });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Execution cancelled via exception");
+            _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, false, "Cancelled"));
         }
         catch (Exception ex)
         {
-            _messenger.Send(new PCodeExecutionOutputEvent($"Execution error: {ex.Message}", true));
+            System.Diagnostics.Debug.WriteLine($"[CompilerBridge] Exception: {ex}");
+            _messenger.Send(new PCodeExecutionOutputEvent($"\nRuntime Error: {ex.Message}\n", true));
+            _messenger.Send(new PCodeExecutionOutputEvent("Program exited with errors.\n", true));
             _messenger.Send(new PCodeExecutionCompletedEvent(request.FilePath, false, ex.Message));
+        }
+        finally
+        {
+            _isExecuting = false;
+            _executionCancellation?.Dispose();
+            _executionCancellation = null;
         }
     }
 

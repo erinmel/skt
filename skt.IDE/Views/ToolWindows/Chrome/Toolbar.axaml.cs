@@ -69,6 +69,9 @@ public partial class Toolbar : UserControl
         App.Messenger.Register<SemanticAnalysisCompletedEvent>(this, (r, m) => OnSemanticAnalysisCompleted(m));
         // Subscribe to P-Code generation completion to enable execution
         App.Messenger.Register<PCodeGenerationCompletedEvent>(this, (r, m) => OnPCodeGenerationCompleted(m));
+        // Subscribe to execution started/completed to show/hide Stop button
+        App.Messenger.Register<PCodeExecutionStartedEvent>(this, (r, m) => OnExecutionStarted(m));
+        App.Messenger.Register<PCodeExecutionCompletedEvent>(this, (r, m) => OnExecutionCompleted(m));
 
         // Clean up on unload
         Unloaded += (_, _) => App.Messenger.UnregisterAll(this);
@@ -160,6 +163,38 @@ public partial class Toolbar : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             var executeButton = this.FindControl<Button>("ExecutePCodeButton");
+            if (executeButton != null)
+                executeButton.IsEnabled = true;
+        });
+    }
+
+    private void OnExecutionStarted(PCodeExecutionStartedEvent e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Show Stop button, hide Execute button
+            var stopButton = this.FindControl<Button>("StopExecutionButton");
+            var executeButton = this.FindControl<Button>("ExecutePCodeButton");
+            
+            if (stopButton != null)
+                stopButton.IsVisible = true;
+            
+            if (executeButton != null)
+                executeButton.IsEnabled = false;
+        });
+    }
+
+    private void OnExecutionCompleted(PCodeExecutionCompletedEvent e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Hide Stop button, re-enable Execute button
+            var stopButton = this.FindControl<Button>("StopExecutionButton");
+            var executeButton = this.FindControl<Button>("ExecutePCodeButton");
+            
+            if (stopButton != null)
+                stopButton.IsVisible = false;
+            
             if (executeButton != null)
                 executeButton.IsEnabled = true;
         });
@@ -430,6 +465,8 @@ public partial class Toolbar : UserControl
 
     private void ExecutePCodeButton_Click(object? sender, RoutedEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"[Toolbar] ExecutePCodeButton_Click called");
+        
         if (DataContext is not MainWindowViewModel vm)
         {
             App.Messenger.Send(new StatusBarMessageEvent("No context for execution", true));
@@ -439,18 +476,33 @@ public partial class Toolbar : UserControl
         var doc = vm.TabbedEditorViewModel.SelectedDocument;
         if (doc == null || doc.PCodeProgram == null)
         {
+            System.Diagnostics.Debug.WriteLine($"[Toolbar] No PCode program available");
             App.Messenger.Send(new StatusBarMessageEvent("No P-code available to execute", true));
             return;
         }
 
+        System.Diagnostics.Debug.WriteLine($"[Toolbar] PCode program has {doc.PCodeProgram.Instructions.Count} instructions");
+        
         // Clear terminal before execution
+        System.Diagnostics.Debug.WriteLine($"[Toolbar] Sending ClearTerminalRequestEvent");
         App.Messenger.Send(new ClearTerminalRequestEvent());
         
         // Show terminal
+        System.Diagnostics.Debug.WriteLine($"[Toolbar] Sending ShowTerminalTabRequestEvent(0)");
         App.Messenger.Send(new ShowTerminalTabRequestEvent(0));
         
         // Execute P-code
+        System.Diagnostics.Debug.WriteLine($"[Toolbar] Sending PCodeExecutionRequestEvent");
         App.Messenger.Send(new PCodeExecutionRequestEvent(doc.PCodeProgram, doc.FilePath));
         App.Messenger.Send(new StatusBarMessageEvent("Executing P-Code", 2000));
+    }
+
+    private void StopExecutionButton_Click(object? sender, RoutedEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[Toolbar] StopExecutionButton_Click called");
+        
+        // Send stop execution request
+        App.Messenger.Send(new StopExecutionRequestEvent());
+        App.Messenger.Send(new StatusBarMessageEvent("Stopping execution...", 2000));
     }
 }

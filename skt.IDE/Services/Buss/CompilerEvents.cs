@@ -241,3 +241,31 @@ public class PCodeExecutionCompletedEvent
     }
 }
 
+public class PCodeInputRequestEvent
+{
+}
+
+public class PCodeInputResponseEvent
+{
+    public string? Input { get; }
+
+    public PCodeInputResponseEvent(string? input)
+    {
+        Input = input;
+    }
+}
+
+public class PCodeExecutionStartedEvent
+{
+    public string? FilePath { get; }
+
+    public PCodeExecutionStartedEvent(string? filePath)
+    {
+        FilePath = filePath;
+    }
+}
+
+public class StopExecutionRequestEvent
+{
+}
+

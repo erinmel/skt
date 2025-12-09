@@ -34,7 +34,12 @@
                    AcceptsReturn="True"
                    FontFamily="Consolas,monospace"
                    Watermark="Terminal output will appear here..."
-                   IsReadOnly="True"/>
+                   IsReadOnly="False"
+                   TextWrapping="Wrap"
+                   BorderThickness="0"
+                   Background="Transparent"
+                   Focusable="True"
+                   IsTabStop="True"/>
         </ScrollViewer>
       </TabItem>
       <TabItem Header="Lexical Errors">

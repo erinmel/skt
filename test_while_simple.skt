@@ -1,0 +1,14 @@
+﻿main {
+    int counter;
+    counter = 1;
+    
+    cout << "Starting WHILE test with counter = " << counter << "\n";
+    
+    while counter <= 3 {
+        cout << "Inside WHILE, counter = " << counter << "\n";
+        counter = counter + 1;
+    }
+    
+    cout << "WHILE finished, final counter = " << counter << "\n";
+}
+

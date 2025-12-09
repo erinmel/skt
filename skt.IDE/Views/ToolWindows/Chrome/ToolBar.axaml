@@ -137,16 +137,28 @@
                     <shell:SktIcon IconKey="Icon.ToolbarSaveAs" IconSize="{DynamicResource IconSizeToolbar}"/>
                 </Button>
 
-                <!-- Execute P-Code Button -->
+                <!-- Execute Button -->
                 <Button Name="ExecutePCodeButton"
                         Tag="ToolIcon"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="{DynamicResource ButtonPadding}"
-                        ToolTip.Tip="Execute P-Code"
+                        ToolTip.Tip="Execute"
                         Click="ExecutePCodeButton_Click"
                         IsEnabled="False">
                     <shell:SktIcon IconKey="Icon.ToolbarExecute" IconSize="{DynamicResource IconSizeToolbar}"/>
+                </Button>
+
+                <!-- Stop Execution Button -->
+                <Button Name="StopExecutionButton"
+                        Tag="ToolIcon"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="{DynamicResource ButtonPadding}"
+                        ToolTip.Tip="Stop Execution"
+                        Click="StopExecutionButton_Click"
+                        IsVisible="False">
+                    <shell:SktIcon IconKey="Icon.ToolbarForceHalt" IconSize="{DynamicResource IconSizeToolbar}"/>
                 </Button>
             </StackPanel>
 

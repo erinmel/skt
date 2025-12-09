@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private ToolWindowType _selectedToolWindow = ToolWindowType.FileExplorer;
     private TerminalPanelType _selectedTerminalPanel = TerminalPanelType.Terminal;
     private bool _isTerminalPanelVisible;
+    private double _previousTerminalPanelHeight = 200.0; // Remember last height, default 200px
 
     public MainWindow()
     {
@@ -119,6 +120,8 @@ public partial class MainWindow : Window
 
     private void OnShowTerminalTabRequest(ShowTerminalTabRequestEvent e)
     {
+        System.Diagnostics.Debug.WriteLine($"[MainWindow] ShowTerminalTabRequest received for tab {e.TabIndex}");
+        
         // Map incoming tab index to internal TerminalPanelType and ensure panel is visible
         var panelType = e.TabIndex switch
         {
@@ -132,11 +135,13 @@ public partial class MainWindow : Window
 
         Dispatcher.UIThread.Post(() =>
         {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] Setting terminal panel to {panelType}, visible = true");
             _selectedTerminalPanel = panelType;
             _isTerminalPanelVisible = true;
             UpdateTerminalPanelVisibility();
             UpdateTerminalPanelSelection();
             SwitchTerminalTab();
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] Terminal panel should now be visible");
         });
     }
 
@@ -273,10 +278,42 @@ public partial class MainWindow : Window
     private void UpdateTerminalPanelVisibility()
     {
         var terminalRow = RootGrid.RowDefinitions[2]; // Terminal/Errors row (corrected index - now row 2)
+        var currentHeight = terminalRow.Height.Value;
 
-        terminalRow.Height = _isTerminalPanelVisible
-            ? new GridLength(200, GridUnitType.Pixel) // Show with 200px height
-            : new GridLength(0, GridUnitType.Pixel);   // Hide
+        if (_isTerminalPanelVisible)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] Making panel visible:");
+            System.Diagnostics.Debug.WriteLine($"  Current height: {currentHeight}px");
+            System.Diagnostics.Debug.WriteLine($"  Saved height: {_previousTerminalPanelHeight}px");
+            
+            // Only restore saved height if panel is currently hidden (0)
+            // Otherwise keep current height (user may have just resized)
+            if (currentHeight == 0)
+            {
+                terminalRow.Height = new GridLength(_previousTerminalPanelHeight, GridUnitType.Pixel);
+                System.Diagnostics.Debug.WriteLine($"  Applied saved height: {_previousTerminalPanelHeight}px");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"  Keeping current height: {currentHeight}px");
+            }
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] Hiding panel:");
+            System.Diagnostics.Debug.WriteLine($"  Current height: {currentHeight}px");
+            
+            // Save current height before hiding (if not already 0)
+            if (currentHeight > 0)
+            {
+                _previousTerminalPanelHeight = currentHeight;
+                System.Diagnostics.Debug.WriteLine($"  Saved height: {_previousTerminalPanelHeight}px");
+            }
+            
+            // Hide panel
+            terminalRow.Height = new GridLength(0, GridUnitType.Pixel);
+            System.Diagnostics.Debug.WriteLine($"  Panel hidden");
+        }
     }
 
     private void UpdateTerminalPanelSelection()

@@ -26,6 +26,9 @@ public class PCodeInterpreter
   public event Action<string>? OnOutput;
   public event Action<string>? OnError;
   
+  // Event for requesting input from UI
+  public event Func<Task<string?>>? OnInputRequest;
+  
   public PCodeInterpreter(PCodeProgram program)
   {
     _program = program;
@@ -49,9 +52,17 @@ public class PCodeInterpreter
   /// <summary>
   /// Executes the P-Code program
   /// </summary>
+  public async Task ExecuteAsync(PCodeProgram program, string[]? inputs = null)
+  {
+    await ExecuteAsync(program.Instructions, program.StringTable, program.DataSize, inputs);
+  }
+  
+  /// <summary>
+  /// Executes the P-Code program (synchronous version for backwards compatibility)
+  /// </summary>
   public void Execute(PCodeProgram program, string[]? inputs = null)
   {
-    Execute(program.Instructions, program.StringTable, program.DataSize, inputs);
+    ExecuteAsync(program.Instructions, program.StringTable, program.DataSize, inputs).GetAwaiter().GetResult();
   }
 
   /// <summary>
@@ -59,10 +70,10 @@ public class PCodeInterpreter
   /// </summary>
   public void Execute(string[]? inputs = null)
   {
-    Execute(_program.Instructions, _program.StringTable, _program.DataSize, inputs);
+    ExecuteAsync(_program.Instructions, _program.StringTable, _program.DataSize, inputs).GetAwaiter().GetResult();
   }
 
-  private void Execute(List<PCodeInstruction> instructions, List<string> stringTable, int dataSize, string[]? inputs = null)
+  private async Task ExecuteAsync(List<PCodeInstruction> instructions, List<string> stringTable, int dataSize, string[]? inputs = null)
   {
     if (inputs != null)
     {
@@ -88,11 +99,11 @@ public class PCodeInterpreter
     while (_running && _pc < instructions.Count)
     {
       var instruction = instructions[_pc];
-      ExecuteInstruction(instruction, execProgram);
+      await ExecuteInstructionAsync(instruction, execProgram);
     }
   }
   
-  private void ExecuteInstruction(PCodeInstruction instruction, PCodeProgram program)
+  private async Task ExecuteInstructionAsync(PCodeInstruction instruction, PCodeProgram program)
   {
     switch (instruction.Op)
     {
@@ -291,14 +302,17 @@ public class PCodeInterpreter
           // Flush console to ensure all cout appears before reading
           Console.Out.Flush();
           
-          string? input = ReadInput();
+          string? input = await ReadInputAsync();
           if (input != null && int.TryParse(input, out int value))
           {
             Push(value);
           }
           else
           {
-            Console.WriteLine($"Invalid integer input: {input ?? "null"}");
+            string error = $"Invalid integer input: {input ?? "null"}\n";
+            Console.Write(error);
+            _output.Append(error);
+            OnOutput?.Invoke(error);
             Push(0);
           }
           _pc++;
@@ -310,7 +324,7 @@ public class PCodeInterpreter
         {
           Console.Out.Flush();
           
-          string? input = ReadInput();
+          string? input = await ReadInputAsync();
           int boolValue = 0;
           
           if (input != null)
@@ -326,7 +340,10 @@ public class PCodeInterpreter
             }
             else
             {
-              Console.WriteLine($"Invalid boolean input: {input} (expected: true/false/1/0)");
+              string error = $"Invalid boolean input: {input} (expected: true/false/1/0)\n";
+              Console.Write(error);
+              _output.Append(error);
+              OnOutput?.Invoke(error);
               boolValue = 0;
             }
           }
@@ -341,7 +358,7 @@ public class PCodeInterpreter
         {
           Console.Out.Flush();
           
-          string? input = ReadInput();
+          string? input = await ReadInputAsync();
           if (input != null)
           {
             // Add string to string table if not already there
@@ -365,8 +382,10 @@ public class PCodeInterpreter
         // Write integer
         {
           int value = Pop();
-          Console.Write(value);
-          _output.Append(value);
+          string output = value.ToString();
+          Console.Write(output);
+          _output.Append(output);
+          OnOutput?.Invoke(output);
           _pc++;
         }
         break;
@@ -375,11 +394,12 @@ public class PCodeInterpreter
         // Write string
         {
           int strIndex = Pop();
-          if (strIndex >= 0 && strIndex < _program.StringTable.Count)
+          if (strIndex >= 0 && strIndex < program.StringTable.Count)
           {
-            string str = _program.StringTable[strIndex];
+            string str = program.StringTable[strIndex];
             Console.Write(str);
             _output.Append(str);
+            OnOutput?.Invoke(str);
           }
           _pc++;
         }
@@ -445,6 +465,23 @@ public class PCodeInterpreter
     return Console.ReadLine();
   }
   
+  private async Task<string?> ReadInputAsync()
+  {
+    if (_inputQueue != null && _inputQueue.Count > 0)
+    {
+      return _inputQueue.Dequeue();
+    }
+    
+    // If OnInputRequest event is subscribed, use it for UI input
+    if (OnInputRequest != null)
+    {
+      return await OnInputRequest.Invoke();
+    }
+    
+    // Fallback to console if no UI input handler
+    return Console.ReadLine();
+  }
+  
   /// <summary>
   /// Executes with interactive input
   /// </summary>
@@ -476,7 +513,7 @@ public class PCodeInterpreter
       
       trace.AppendLine($"PC={_pc,4} SP={_sp,4} : {instruction}");
       
-      ExecuteInstruction(instruction, _program);
+      ExecuteInstructionAsync(instruction, _program).GetAwaiter().GetResult();
       steps++;
     }
     

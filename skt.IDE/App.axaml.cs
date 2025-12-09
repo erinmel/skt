@@ -48,6 +48,10 @@ public class App : Application
         _documentStateManager = new DocumentStateManager(Messenger);
         services.Add(typeof(DocumentStateManager), _documentStateManager);
 
+        // Register CompilerBridge as singleton (handles compilation and execution)
+        var compilerBridge = new CompilerBridge(Messenger);
+        services.Add(typeof(CompilerBridge), compilerBridge);
+
         // Create simple service provider
         Services = new SimpleServiceProvider(services);
     }

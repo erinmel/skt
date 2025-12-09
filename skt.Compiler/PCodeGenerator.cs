@@ -448,20 +448,19 @@ public class PCodeGenerator
     // Generate body
     GenerateNode(node.Children[0]);
     
-    // Generate condition
+    // Generate condition (evaluates to 1 if true, 0 if false)
     GenerateNode(node.Children[1]);
     
-    // Push 0 and compare (if condition != 0, jump back)
-    Emit(PCodeOperation.LIT, 0, 0, "push 0");
-    Emit(PCodeOperation.NEQ, 0, 0, "check condition");
-    Emit(PCodeOperation.JPC, 0, 0, "exit if false");
-    int exitAddr = _program.Instructions.Count - 1;
+    // JPC jumps if top of stack is 0 (false)
+    // So we jump to exit if condition is false
+    Emit(PCodeOperation.JPC, 0, 0, $"exit loop if false");
+    int exitJumpAddr = _program.Instructions.Count - 1;
     
-    // Jump back to start
+    // Condition is true, jump back to start
     Emit(PCodeOperation.JMP, 0, loopStart, $"loop back to {startLabel}");
     
-    // Fix exit
-    _program.Instructions[exitAddr].Operand = _program.Instructions.Count;
+    // Fix exit jump address
+    _program.Instructions[exitJumpAddr].Operand = _program.Instructions.Count;
   }
   
   private void GenerateCin(AnnotatedAstNode node)
