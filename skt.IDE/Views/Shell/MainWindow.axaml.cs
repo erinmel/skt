@@ -277,8 +277,12 @@ public partial class MainWindow : Window
 
     private void UpdateTerminalPanelVisibility()
     {
-        var terminalRow = RootGrid.RowDefinitions[2]; // Terminal/Errors row (corrected index - now row 2)
-        var currentHeight = terminalRow.Height.Value;
+        // Access the SectionGrid (which contains MainView and Output rows)
+        var sectionGrid = this.FindControl<Grid>("SectionGrid");
+        if (sectionGrid == null) return;
+        
+        var outputRow = sectionGrid.RowDefinitions[1]; // Output Panel row (row 1 in SectionGrid)
+        var currentHeight = outputRow.Height.Value;
 
         if (_isTerminalPanelVisible)
         {
@@ -290,7 +294,7 @@ public partial class MainWindow : Window
             // Otherwise keep current height (user may have just resized)
             if (currentHeight == 0)
             {
-                terminalRow.Height = new GridLength(_previousTerminalPanelHeight, GridUnitType.Pixel);
+                outputRow.Height = new GridLength(_previousTerminalPanelHeight, GridUnitType.Pixel);
                 System.Diagnostics.Debug.WriteLine($"  Applied saved height: {_previousTerminalPanelHeight}px");
             }
             else
@@ -311,7 +315,7 @@ public partial class MainWindow : Window
             }
             
             // Hide panel
-            terminalRow.Height = new GridLength(0, GridUnitType.Pixel);
+            outputRow.Height = new GridLength(0, GridUnitType.Pixel);
             System.Diagnostics.Debug.WriteLine($"  Panel hidden");
         }
     }
