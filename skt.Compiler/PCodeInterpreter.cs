@@ -368,6 +368,60 @@ public class PCodeInterpreter
         }
         break;
       
+      case PCodeOperation.FEQL:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushInt(Math.Abs(a - b) < double.Epsilon ? 1 : 0);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FNEQ:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushInt(Math.Abs(a - b) >= double.Epsilon ? 1 : 0);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FLSS:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushInt(a < b ? 1 : 0);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FLEQ:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushInt(a <= b ? 1 : 0);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FGTR:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushInt(a > b ? 1 : 0);
+          _pc++;
+        }
+        break;
+      
+      case PCodeOperation.FGEQ:
+        {
+          double b = PopDouble();
+          double a = PopDouble();
+          PushInt(a >= b ? 1 : 0);
+          _pc++;
+        }
+        break;
+      
       case PCodeOperation.AND:
         {
           int b = PopInt();

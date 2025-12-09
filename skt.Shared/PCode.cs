@@ -32,13 +32,21 @@ public enum PCodeOperation
   I2F,    // Convert int to float: pop int, push double
   F2I,    // Convert float to int: pop double, push int (truncate)
   
-  // Comparison operations
-  EQL,    // Equal: pop two values, push 1 if equal, 0 otherwise
+  // Integer comparison operations
+  EQL,    // Equal: pop two ints, push 1 if equal, 0 otherwise
   NEQ,    // Not equal
   LSS,    // Less than
   LEQ,    // Less or equal
   GTR,    // Greater than
   GEQ,    // Greater or equal
+  
+  // Float comparison operations
+  FEQL,   // Float equal: pop two doubles, push 1 if equal, 0 otherwise
+  FNEQ,   // Float not equal
+  FLSS,   // Float less than
+  FLEQ,   // Float less or equal
+  FGTR,   // Float greater than
+  FGEQ,   // Float greater or equal
   
   // Logical operations
   AND,    // Logical AND

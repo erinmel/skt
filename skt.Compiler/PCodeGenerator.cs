@@ -335,23 +335,58 @@ public class PCodeGenerator
     if (node.Children.Count < 2)
       return;
     
+    var leftChild = node.Children[0];
+    var rightChild = node.Children[1];
+    
     // Generate left operand
-    GenerateNode(node.Children[0]);
+    GenerateNode(leftChild);
+    
+    // Convert left operand if needed (int to float)
+    if (rightChild.DataType == "float" && leftChild.DataType == "int")
+    {
+      Emit(PCodeOperation.I2F, 0, 0, "convert int to float");
+    }
     
     // Generate right operand
-    GenerateNode(node.Children[1]);
+    GenerateNode(rightChild);
+    
+    // Convert right operand if needed (int to float)
+    if (leftChild.DataType == "float" && rightChild.DataType == "int")
+    {
+      Emit(PCodeOperation.I2F, 0, 0, "convert int to float");
+    }
+    
+    // Determine if we're doing float or int comparison
+    bool isFloatOp = leftChild.DataType == "float" || rightChild.DataType == "float";
     
     // Perform comparison
-    var op = node.Rule switch
+    PCodeOperation op;
+    if (isFloatOp)
     {
-      "<" => PCodeOperation.LSS,
-      "<=" => PCodeOperation.LEQ,
-      ">" => PCodeOperation.GTR,
-      ">=" => PCodeOperation.GEQ,
-      "==" => PCodeOperation.EQL,
-      "!=" => PCodeOperation.NEQ,
-      _ => PCodeOperation.EQL
-    };
+      op = node.Rule switch
+      {
+        "<" => PCodeOperation.FLSS,
+        "<=" => PCodeOperation.FLEQ,
+        ">" => PCodeOperation.FGTR,
+        ">=" => PCodeOperation.FGEQ,
+        "==" => PCodeOperation.FEQL,
+        "!=" => PCodeOperation.FNEQ,
+        _ => PCodeOperation.FEQL
+      };
+    }
+    else
+    {
+      op = node.Rule switch
+      {
+        "<" => PCodeOperation.LSS,
+        "<=" => PCodeOperation.LEQ,
+        ">" => PCodeOperation.GTR,
+        ">=" => PCodeOperation.GEQ,
+        "==" => PCodeOperation.EQL,
+        "!=" => PCodeOperation.NEQ,
+        _ => PCodeOperation.EQL
+      };
+    }
     
     Emit(op, 0, 0, $"compare {node.Rule}");
   }
